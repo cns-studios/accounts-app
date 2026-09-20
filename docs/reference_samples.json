@@ -1,0 +1,54 @@
+{
+  "referenceSize": [
+    402,
+    874
+  ],
+  "samples": {
+    "top_left": [
+      0,
+      0,
+      0
+    ],
+    "center_gap": [
+      0,
+      0,
+      0
+    ],
+    "bottom_right": [
+      0,
+      0,
+      0
+    ]
+  },
+  "regions": {
+    "background_status": [
+      0,
+      0,
+      402,
+      62
+    ],
+    "header_settings": [
+      18,
+      62,
+      384,
+      187
+    ],
+    "request_buttons": [
+      27,
+      187,
+      367,
+      333
+    ],
+    "bottom_nav": [
+      18,
+      801,
+      385,
+      855
+    ]
+  },
+  "expectedBackground": [
+    0,
+    0,
+    0
+  ]
+}

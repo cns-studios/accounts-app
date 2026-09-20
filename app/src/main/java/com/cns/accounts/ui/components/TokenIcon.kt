@@ -1,0 +1,97 @@
+package com.cns.accounts.ui.components
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.cns.accounts.R
+import com.cns.accounts.ui.theme.LocalAppColors
+
+enum class TokenIconKind { User, Search, Settings, ChevronRight, Dots }
+
+@Composable
+fun TokenIcon(
+    kind: TokenIconKind,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalAppColors.current.onSurface,
+) {
+    if (kind != TokenIconKind.Dots) {
+        Image(
+            painter = painterResource(
+                when (kind) {
+                    TokenIconKind.User -> R.drawable.token_user
+                    TokenIconKind.Search -> R.drawable.token_search
+                    TokenIconKind.Settings -> R.drawable.token_settings
+                    TokenIconKind.ChevronRight -> R.drawable.token_chevron
+                    TokenIconKind.Dots -> R.drawable.token_user
+                },
+            ),
+            contentDescription = kind.name,
+            colorFilter = ColorFilter.tint(tint),
+            modifier = modifier.size(24.dp),
+        )
+        return
+    }
+
+    Canvas(modifier = modifier.size(24.dp)) {
+        val stroke = 1.8.dp.toPx()
+        val style = androidx.compose.ui.graphics.Paint().apply {
+            color = tint
+            this.strokeWidth = stroke
+            isAntiAlias = true
+            strokeCap = StrokeCap.Round
+            strokeJoin = StrokeJoin.Round
+            style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+        }
+
+        when (kind) {
+            TokenIconKind.User -> {
+                drawCircle(tint, radius = 4f * density, center = Offset(size.width / 2, 7f * density))
+                drawArc(
+                    color = tint,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = false,
+                    topLeft = Offset(5f * density, 11f * density),
+                    size = androidx.compose.ui.geometry.Size(14f * density, 10f * density),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = StrokeCap.Round),
+                )
+            }
+            TokenIconKind.Search -> {
+                drawCircle(
+                    color = tint,
+                    radius = 7f * density,
+                    center = Offset(10f * density, 10f * density),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(stroke),
+                )
+                drawLine(tint, Offset(15f * density, 15f * density), Offset(20f * density, 20f * density), stroke, StrokeCap.Round)
+            }
+            TokenIconKind.Settings -> {
+                drawCircle(tint, radius = 7f * density, center = Offset(size.width / 2, size.height / 2), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                drawCircle(tint, radius = 2.5f * density, center = Offset(size.width / 2, size.height / 2))
+            }
+            TokenIconKind.ChevronRight -> {
+                drawLine(tint, Offset(9f * density, 5f * density), Offset(16f * density, 12f * density), stroke, StrokeCap.Round)
+                drawLine(tint, Offset(16f * density, 12f * density), Offset(9f * density, 19f * density), stroke, StrokeCap.Round)
+            }
+            TokenIconKind.Dots -> {
+                val points = listOf(
+                    Offset(5f, 12f), Offset(12f, 5f), Offset(19f, 12f),
+                    Offset(12f, 19f), Offset(12f, 12f),
+                )
+                points.forEach { drawCircle(tint, radius = 2f * density, center = it * density) }
+            }
+        }
+    }
+
+}
