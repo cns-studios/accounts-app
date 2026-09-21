@@ -20,14 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.animateColorAsState
 import kotlinx.coroutines.delay
-import android.os.SystemClock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -67,14 +64,15 @@ fun HomeScreen(
     onCopyAccountCode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var navDrag by remember { mutableFloatStateOf(0f) }
-    var showingHistory by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var selectedTab by remember { androidx.compose.runtime.mutableStateOf("home") }
+    val showingHistory = selectedTab == "history"
     var timerSeconds by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
-        val startedAt = SystemClock.elapsedRealtime()
+        var totalSeconds = 0
         while (true) {
-            timerSeconds = ((SystemClock.elapsedRealtime() - startedAt) / 1000L % 30L).toInt()
-            delay(100L)
+            delay(1000L)
+            totalSeconds += 1
+            timerSeconds = totalSeconds % 30
         }
     }
     val spacing = LocalSpacing.current
@@ -121,27 +119,11 @@ fun HomeScreen(
             }
         }
         HomeBottomNavigation(
-            selected = state.selectedDestination,
-            onItemSelected = { destination ->
-                if (destination == "home") onDestinationSelected(destination)
+            selectedTab = selectedTab,
+            onTabSelected = { tab ->
+                selectedTab = tab
+                if (tab == "home") onDestinationSelected(tab)
             },
-            onHomeDrag = { delta ->
-                if (showingHistory && delta < 0f) {
-                    showingHistory = false
-                    navDrag = 0f
-                } else {
-                    navDrag = (navDrag + delta).coerceIn(0f, 220f)
-                    if (navDrag > 36f) {
-                        showingHistory = true
-                        navDrag = 220f
-                    }
-                }
-            },
-            onHomeDragEnd = {
-                navDrag = 0f
-            },
-            historySelected = showingHistory,
-            dragProgress = navDrag / 220f,
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomCenter)
                 .padding(bottom = 19.dp),
