@@ -35,7 +35,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -76,32 +78,41 @@ fun HomeBottomNavigation(
     onTabSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     onSwipeProgress: (Float) -> Unit = {},
+    onUserClick: () -> Unit = {},
 ) {
     val dimensions = LocalDimensions.current
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = modifier.width(dimensions.navWidth),
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        InertNavCircle(TokenIconKind.User)
+        NavCircle(TokenIconKind.User, onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onUserClick()
+        })
         SegmentedTabControl(
             selectedTab = selectedTab,
-            onTabSelected = onTabSelected,
+            onTabSelected = { tab ->
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onTabSelected(tab)
+            },
             onSwipeProgress = onSwipeProgress,
         )
-        InertNavCircle(TokenIconKind.Search)
+        NavCircle(TokenIconKind.Search)
     }
 }
 
 @Composable
-private fun InertNavCircle(icon: TokenIconKind) {
+private fun NavCircle(icon: TokenIconKind, onClick: (() -> Unit)? = null) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
     Box(
         modifier = Modifier
             .size(dimensions.navHeight)
             .clip(CircleShape)
-            .background(colors.elevatedSurface),
+            .background(colors.elevatedSurface)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         TokenIcon(icon, tint = colors.onSurface)

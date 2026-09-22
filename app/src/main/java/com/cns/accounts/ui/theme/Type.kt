@@ -37,8 +37,18 @@ val ProfileNameText = TextStyle(fontFamily = InstrumentSerif, fontSize = 36.sp, 
 val AccountCodeText = TextStyle(fontFamily = JetBrainsMono, fontSize = 36.sp, lineHeight = 43.sp)
 val RequestTitleText = TextStyle(fontFamily = Rubik, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Medium)
 val RequestMetaText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp)
+val RequestCaptionText = TextStyle(fontFamily = Rubik, fontSize = 15.sp, lineHeight = 19.sp)
 
 // history.json: History event card text styles.
 val HistoryEventTitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
 val HistoryEventTimeText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 24.sp)
 val HistoryEventDetailText = TextStyle(fontFamily = Rubik, fontSize = 15.sp, lineHeight = 18.sp)
+
+// settings.tokens.json: the "80%" security-completion figure on the Security center card.
+val SecurityPercentText = TextStyle(fontFamily = JetBrainsMono, fontSize = 40.sp, lineHeight = 48.sp)
+val SecurityFactorLabelText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp)
+
+// settings.tokens.json (Inputfield): the reusable input-field/action dialog text styles.
+val DialogTitleText = TextStyle(fontFamily = InstrumentSerif, fontSize = 32.sp, lineHeight = 38.sp)
+val DialogSubtitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp)
+val DialogButtonText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)

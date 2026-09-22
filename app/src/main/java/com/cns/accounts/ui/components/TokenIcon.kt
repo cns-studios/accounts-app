@@ -17,7 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.cns.accounts.R
 import com.cns.accounts.ui.theme.LocalAppColors
 
-enum class TokenIconKind { User, Search, Settings, ChevronRight, Dots, LogOut }
+enum class TokenIconKind { User, Search, Settings, ChevronRight, ChevronLeft, Edit, Help, Image, Trash, Shield, Check, Dots, LogOut }
 
 @Composable
 fun TokenIcon(
@@ -33,6 +33,13 @@ fun TokenIcon(
                     TokenIconKind.Search -> R.drawable.token_search
                     TokenIconKind.Settings -> R.drawable.token_settings
                     TokenIconKind.ChevronRight -> R.drawable.token_chevron
+                    TokenIconKind.ChevronLeft -> R.drawable.token_chevron_left
+                    TokenIconKind.Edit -> R.drawable.token_pen
+                    TokenIconKind.Help -> R.drawable.token_help
+                    TokenIconKind.Image -> R.drawable.token_image
+                    TokenIconKind.Trash -> R.drawable.token_trash
+                    TokenIconKind.Shield -> R.drawable.token_shield
+                    TokenIconKind.Check -> R.drawable.token_check
                     TokenIconKind.Dots, TokenIconKind.LogOut -> R.drawable.token_user
                 },
             ),
@@ -113,6 +120,9 @@ fun TokenIcon(
                 drawPath(arrow, tint, style = strokeStyle)
                 drawLine(tint, p(21f, 12f), p(9f, 12f), stroke, StrokeCap.Round)
             }
+            TokenIconKind.ChevronLeft, TokenIconKind.Edit, TokenIconKind.Help,
+            TokenIconKind.Image, TokenIconKind.Trash, TokenIconKind.Shield, TokenIconKind.Check,
+            -> Unit // rendered via the vector-drawable branch above
         }
     }
 

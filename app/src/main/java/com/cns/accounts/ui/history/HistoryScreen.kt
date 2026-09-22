@@ -34,6 +34,7 @@ import com.cns.accounts.ui.theme.HistoryEventTimeText
 import com.cns.accounts.ui.theme.HistoryEventTitleText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
+import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.ProfileNameText
 
 // history.json: the "History" tab — a page title, a scrollable feed of activity cards, and a
@@ -87,11 +88,12 @@ fun HistoryScreen(
 @Composable
 private fun HistoryEventCard(event: HistoryEvent) {
     val colors = LocalAppColors.current
+    val radii = LocalRadii.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(2.dp, colors.elevatedSurface, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
+            .border(2.dp, colors.elevatedSurface, RoundedCornerShape(radii.card))
+            .clip(RoundedCornerShape(radii.card))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

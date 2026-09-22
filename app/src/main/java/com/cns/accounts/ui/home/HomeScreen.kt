@@ -25,15 +25,27 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.sp
@@ -55,6 +67,7 @@ import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalSpacing
 import com.cns.accounts.ui.theme.LocalRadii
+import com.cns.accounts.ui.theme.RequestCaptionText
 import com.cns.accounts.ui.theme.RequestMetaText
 import com.cns.accounts.ui.theme.RequestTitleText
 
@@ -72,6 +85,7 @@ fun HomeScreen(
     var swipeProgress by remember { mutableFloatStateOf(0f) }
     var timerMillis by remember { mutableIntStateOf(0) }
     var accountCode by remember { androidx.compose.runtime.mutableStateOf(state.data.account.code) }
+    val haptic = LocalHapticFeedback.current
     LaunchedEffect(Unit) {
         var totalMillis = 0
         while (true) {
@@ -80,6 +94,7 @@ fun HomeScreen(
             val newTimerMillis = totalMillis % 30_000
             if (newTimerMillis < timerMillis) {
                 accountCode = com.cns.accounts.data.randomAccountCode()
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
             timerMillis = newTimerMillis
         }
@@ -89,7 +104,8 @@ fun HomeScreen(
     androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxSize()
-            .background(LocalAppColors.current.background),
+            .background(LocalAppColors.current.background)
+            .navigationBarsPadding(),
     ) {
         LazyColumn(
             modifier = Modifier
@@ -102,7 +118,7 @@ fun HomeScreen(
                 start = spacing.xl,
                 end = spacing.xl,
                 top = 62.dp,
-                bottom = dimensions.navHeight + 19.dp,
+                bottom = dimensions.navHeight + 24.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
@@ -142,9 +158,10 @@ fun HomeScreen(
                 if (tab == "home") onDestinationSelected(tab)
             },
             onSwipeProgress = { swipeProgress = it },
+            onUserClick = onSettingsClick,
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomCenter)
-                .padding(bottom = 19.dp),
+                .padding(bottom = 24.dp),
         )
     }
 }
@@ -181,9 +198,9 @@ private fun SignInRequestCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(stringResource(R.string.sign_in_request), color = colors.onSurface, style = RequestTitleText)
-                    Text(request.timeLabel, color = colors.onSurface, style = RequestMetaText)
+                    Text(request.timeLabel, color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
                 }
-                Text(request.device, modifier = Modifier.padding(horizontal = LocalSpacing.current.sm), color = colors.onSurface, style = RequestMetaText)
+                Text(request.device, modifier = Modifier.padding(horizontal = LocalSpacing.current.sm), color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
             }
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -198,6 +215,7 @@ private fun SignInRequestCard(
 
 @Composable
 private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, outlined: Boolean = false) {
+    val haptic = LocalHapticFeedback.current
     Text(
         label,
         modifier = modifier
@@ -214,7 +232,10 @@ private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier
                     Modifier.background(LocalAppColors.current.mutedSurface)
                 },
             )
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(horizontal = 8.dp, vertical = 8.dp),
         textAlign = TextAlign.Center,
         color = if (outlined) androidx.compose.ui.graphics.Color.White else LocalAppColors.current.onLightSurface,
@@ -240,17 +261,7 @@ private fun AccountCard(account: Account, code: String, timerMillis: Int, onCopy
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AnimatedAccountCode(code, color = colors.onSurface)
-                Text(
-                    stringResource(R.string.copy),
-                    modifier = Modifier
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(LocalDimensions.current.copyRadius))
-                        .background(colors.background)
-                        .clickable(onClick = onCopy)
-                        .padding(horizontal = 35.dp, vertical = 13.dp),
-                    color = colors.onSurface,
-                    style = RequestMetaText.copy(fontSize = 16.sp),
-                )
+                CopyCodeButton(code = code, onCopy = onCopy)
             }
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier
@@ -262,6 +273,54 @@ private fun AccountCard(account: Account, code: String, timerMillis: Int, onCopy
             }
         }
 
+    }
+}
+
+private const val CopyConfirmationMillis = 1400L
+
+@Composable
+private fun CopyCodeButton(code: String, onCopy: () -> Unit) {
+    val colors = LocalAppColors.current
+    val haptic = LocalHapticFeedback.current
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    var copied by remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(LocalDimensions.current.copyRadius))
+            .background(colors.background)
+            .clickable(enabled = !copied) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                clipboard.setText(AnnotatedString(code))
+                onCopy()
+                copied = true
+                scope.launch {
+                    delay(CopyConfirmationMillis)
+                    copied = false
+                }
+            }
+            .padding(horizontal = 35.dp, vertical = 13.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(
+            targetState = copied,
+            transitionSpec = {
+                (fadeIn(tween(180)) + scaleIn(initialScale = 0.7f, animationSpec = tween(180)))
+                    .togetherWith(fadeOut(tween(140)) + scaleOut(targetScale = 0.7f, animationSpec = tween(140)))
+            },
+            label = "copy-button-content",
+        ) { isCopied ->
+            if (isCopied) {
+                TokenIcon(TokenIconKind.Check, tint = colors.onSurface)
+            } else {
+                Text(
+                    stringResource(R.string.copy),
+                    color = colors.onSurface,
+                    style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp),
+                )
+            }
+        }
     }
 }
 

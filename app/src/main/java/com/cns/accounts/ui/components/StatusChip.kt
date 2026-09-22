@@ -29,7 +29,7 @@ fun StatusChip(
             modifier = Modifier
                 .clip(RoundedCornerShape(LocalRadii.current.card))
                 .background(background)
-                .padding(horizontal = 10.dp, vertical = 5.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             color = LocalAppColors.current.onLightSurface,
             style = textStyle,
         )
