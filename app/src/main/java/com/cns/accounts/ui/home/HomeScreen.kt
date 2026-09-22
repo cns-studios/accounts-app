@@ -85,6 +85,13 @@ fun HomeScreen(
     var swipeProgress by remember { mutableFloatStateOf(0f) }
     var timerMillis by remember { mutableIntStateOf(0) }
     var accountCode by remember { androidx.compose.runtime.mutableStateOf(state.data.account.code) }
+    var searchActive by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var searchQuery by remember { androidx.compose.runtime.mutableStateOf("") }
+    val searchAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (searchActive) 1f else 0f,
+        animationSpec = tween(280),
+        label = "search-overlay-alpha",
+    )
     val haptic = LocalHapticFeedback.current
     LaunchedEffect(Unit) {
         var totalMillis = 0
@@ -151,6 +158,15 @@ fun HomeScreen(
                 alpha = swipeProgress
             },
         )
+        // search.tokens.json: an opaque full-screen overlay above Home/History while search is
+        // active; closing it (the bar's X) just fades it away, revealing whichever tab was
+        // showing underneath — Home or History are untouched, not navigated away from.
+        if (searchActive || searchAlpha > 0.01f) {
+            com.cns.accounts.ui.search.SearchScreen(
+                query = searchQuery,
+                modifier = Modifier.graphicsLayer { alpha = searchAlpha },
+            )
+        }
         HomeBottomNavigation(
             selectedTab = selectedTab,
             onTabSelected = { tab ->
@@ -159,6 +175,10 @@ fun HomeScreen(
             },
             onSwipeProgress = { swipeProgress = it },
             onUserClick = onSettingsClick,
+            isSearchActive = searchActive,
+            onSearchActiveChange = { searchActive = it },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomCenter)
                 .padding(bottom = 24.dp),

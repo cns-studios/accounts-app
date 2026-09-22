@@ -52,3 +52,7 @@ val SecurityFactorLabelText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, li
 val DialogTitleText = TextStyle(fontFamily = InstrumentSerif, fontSize = 32.sp, lineHeight = 38.sp)
 val DialogSubtitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp)
 val DialogButtonText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
+
+// search.tokens.json: search-bar input text and result-card title styles.
+val SearchBarText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp)
+val SearchResultTitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)

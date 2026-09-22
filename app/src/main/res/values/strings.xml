@@ -40,4 +40,7 @@
     <string name="change_avatar_dialog_subtitle">Pick a new photo to use as your profile picture.</string>
     <string name="remove_avatar_dialog_subtitle">Your profile photo will be removed and replaced with the default.</string>
     <string name="configure_2fa_dialog_subtitle">Set up an authenticator app as an extra sign-in step.</string>
+    <string name="search_placeholder">Search anything...</string>
+    <string name="open_search">Search</string>
+    <string name="clear_search">Clear search</string>
 </resources>

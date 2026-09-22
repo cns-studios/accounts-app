@@ -1,8 +1,10 @@
 package com.cns.accounts.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +14,8 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -19,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,15 +36,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -51,6 +61,8 @@ import com.cns.accounts.ui.theme.HomeNavigationText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
+import com.cns.accounts.ui.theme.SearchBarText
+import kotlinx.coroutines.delay
 
 /**
  * token.json (PositionHistory export): a two-destination segmented control.
@@ -72,6 +84,8 @@ private const val HISTORY_TAB = "history"
 private const val FLING_VELOCITY_THRESHOLD = 900f
 private val TabSettleSpring = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
 
+private val SearchExpandSpec = tween<Float>(320, easing = FastOutSlowInEasing)
+
 @Composable
 fun HomeBottomNavigation(
     selectedTab: String,
@@ -79,27 +93,166 @@ fun HomeBottomNavigation(
     modifier: Modifier = Modifier,
     onSwipeProgress: (Float) -> Unit = {},
     onUserClick: () -> Unit = {},
+    isSearchActive: Boolean = false,
+    onSearchActiveChange: (Boolean) -> Unit = {},
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
 ) {
     val dimensions = LocalDimensions.current
     val haptic = LocalHapticFeedback.current
+    // 0f = the normal three-part nav (user circle + tab switch + search circle); 1f = the search
+    // circle has expanded to fill the whole bar, replacing the other two. The user/tab controls
+    // shrink to 0dp width (rather than being removed outright) so the search control's own
+    // Modifier.weight(1f) picks up exactly the width they give up, frame by frame.
+    val searchProgress by animateFloatAsState(
+        targetValue = if (isSearchActive) 1f else 0f,
+        animationSpec = SearchExpandSpec,
+        label = "search-expand-progress",
+    )
     Row(
         modifier = modifier.width(dimensions.navWidth),
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavCircle(TokenIconKind.User, onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onUserClick()
-        })
-        SegmentedTabControl(
-            selectedTab = selectedTab,
-            onTabSelected = { tab ->
+        Box(
+            modifier = Modifier
+                .width(lerp(dimensions.navHeight, 0.dp, searchProgress))
+                .graphicsLayer { alpha = 1f - searchProgress },
+        ) {
+            if (searchProgress < 1f) {
+                NavCircle(TokenIconKind.User, onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onUserClick()
+                })
+            }
+        }
+        Box(
+            modifier = Modifier
+                .width(lerp(dimensions.navSelectedFrameWidth, 0.dp, searchProgress))
+                .graphicsLayer { alpha = 1f - searchProgress },
+        ) {
+            if (searchProgress < 1f) {
+                SegmentedTabControl(
+                    selectedTab = selectedTab,
+                    onTabSelected = { tab ->
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onTabSelected(tab)
+                    },
+                    onSwipeProgress = onSwipeProgress,
+                )
+            }
+        }
+        SearchControl(
+            modifier = Modifier.weight(1f),
+            expanded = isSearchActive,
+            progress = searchProgress,
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            onExpand = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onTabSelected(tab)
+                onSearchActiveChange(true)
             },
-            onSwipeProgress = onSwipeProgress,
+            onCollapse = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onSearchQueryChange("")
+                onSearchActiveChange(false)
+            },
         )
-        NavCircle(TokenIconKind.Search)
+    }
+}
+
+// search.tokens.json ("Nav" > "Frame2"): the same pill either collapsed to a plain search-icon
+// circle, or expanded to a full search bar (icon, text field, clear button) — one shape at every
+// width, so the expand animation never needs to swap between a circle and a stadium shape.
+@Composable
+private fun SearchControl(
+    modifier: Modifier,
+    expanded: Boolean,
+    progress: Float,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onExpand: () -> Unit,
+    onCollapse: () -> Unit,
+) {
+    val colors = LocalAppColors.current
+    val dimensions = LocalDimensions.current
+    val focusRequester = remember { FocusRequester() }
+    val openLabel = stringResource(R.string.open_search)
+    val clearLabel = stringResource(R.string.clear_search)
+    val placeholder = stringResource(R.string.search_placeholder)
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            delay(180)
+            focusRequester.requestFocus()
+        }
+    }
+    // Below the midpoint the bar is still narrow (down to a 54dp circle), so only the centered
+    // icon renders there. The full icon+field+clear row only mounts once the bar is already more
+    // than half expanded — by then there's easily enough width for it — and crossfades in against
+    // the icon-only version fading out, rather than the two ever fighting for the same cramped space.
+    val expandedContentAlpha = ((progress - 0.5f) / 0.5f).coerceIn(0f, 1f)
+    Box(
+        modifier = modifier
+            .height(dimensions.navHeight)
+            .clip(RoundedCornerShape(50))
+            .background(colors.elevatedSurface)
+            .then(
+                if (!expanded) {
+                    Modifier
+                        .clickable(onClickLabel = openLabel, onClick = onExpand)
+                        .semantics { contentDescription = openLabel }
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (progress < 1f) {
+            TokenIcon(
+                TokenIconKind.Search,
+                tint = colors.onSurface,
+                modifier = Modifier.graphicsLayer { alpha = 1f - expandedContentAlpha },
+            )
+        }
+        if (progress > 0.5f) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+                    .graphicsLayer { alpha = expandedContentAlpha },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TokenIcon(TokenIconKind.Search, tint = colors.onSurface)
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    textStyle = SearchBarText.copy(color = colors.onSurface),
+                    cursorBrush = SolidColor(colors.onSurface),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text(placeholder, color = colors.fieldPlaceholder, style = SearchBarText)
+                            }
+                            innerTextField()
+                        }
+                    },
+                )
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable(onClickLabel = clearLabel, onClick = onCollapse)
+                        .semantics { contentDescription = clearLabel },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    TokenIcon(TokenIconKind.CircleX, tint = colors.onSurface)
+                }
+            }
+        }
     }
 }
 
