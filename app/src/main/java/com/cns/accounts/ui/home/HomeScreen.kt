@@ -122,33 +122,59 @@ fun HomeScreen(
                     alpha = 1f - swipeProgress
                 },
             contentPadding = PaddingValues(
-                start = spacing.xl,
-                end = spacing.xl,
                 top = 62.dp,
                 bottom = dimensions.navHeight + 24.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             item(key = "profile", contentType = "header") {
-                ProfileHeader(state.data.profile, onSettingsClick)
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ProfileHeader(state.data.profile, onSettingsClick)
+                }
             }
             item(key = "profile-request-gap", contentType = "spacer") {
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
             }
             item(key = "request", contentType = "request") {
-                SignInRequestCard(state.data.signInRequest, onApproveRequest, onDenyRequest)
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SignInRequestCard(state.data.signInRequest, onApproveRequest, onDenyRequest)
+                }
             }
             item(key = "request-account-gap", contentType = "spacer") {
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
             }
             item(key = "account", contentType = "account") {
-                AccountCard(state.data.account, accountCode, timerMillis, onCopyAccountCode)
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AccountCard(state.data.account, accountCode, timerMillis, onCopyAccountCode)
+                }
             }
             item(key = "account-services-gap", contentType = "spacer") {
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
             }
             item(key = "services", contentType = "services") {
-                ServicesCard(state.data.services)
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ServicesCard(state.data.services)
+                }
             }
         }
         com.cns.accounts.ui.history.HistoryScreen(
