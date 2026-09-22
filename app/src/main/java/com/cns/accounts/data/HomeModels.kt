@@ -27,6 +27,7 @@ data class Service(
     val status: String,
 )
 
+@Immutable
 data class HomeData(
     val profile: Profile = Profile("aaron", "2FA enabled"),
     val signInRequest: SignInRequest = SignInRequest("Firefox on Linux", "now"),

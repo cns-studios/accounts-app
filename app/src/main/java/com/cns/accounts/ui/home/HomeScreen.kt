@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
@@ -27,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -58,8 +64,11 @@ import com.cns.accounts.data.Account
 import com.cns.accounts.data.SignInRequest
 import com.cns.accounts.data.Service
 import com.cns.accounts.ui.components.AppCard
+import com.cns.accounts.ui.components.FLING_VELOCITY_THRESHOLD
 import com.cns.accounts.ui.components.HomeBottomNavigation
+import com.cns.accounts.ui.components.NothingPullToRefreshBox
 import com.cns.accounts.ui.components.ProfileHeader
+import com.cns.accounts.ui.components.TabSettleSpring
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
 import com.cns.accounts.ui.theme.AccountCodeText
@@ -70,6 +79,8 @@ import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.RequestCaptionText
 import com.cns.accounts.ui.theme.RequestMetaText
 import com.cns.accounts.ui.theme.RequestTitleText
+
+private const val HomeFakeRefreshMillis = 1200L
 
 @Composable
 fun HomeScreen(
@@ -82,28 +93,72 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { androidx.compose.runtime.mutableStateOf("home") }
-    var swipeProgress by remember { mutableFloatStateOf(0f) }
-    var timerMillis by remember { mutableIntStateOf(0) }
+    // Home/history swipe: a drag on EITHER the segmented nav pill or the page background below
+    // drives this same liveSwipeProgress/isSwipeDragging pair — see onSwipeDragStarted/
+    // onSwipeSettle — so it doesn't matter which surface the user actually touches, and
+    // settledSwipeProgress is where it springs to once released (or a tab is tapped directly).
+    var isSwipeDragging by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var liveSwipeProgress by remember { mutableFloatStateOf(0f) }
+    var settledSwipeProgress by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(selectedTab) {
+        if (!isSwipeDragging) settledSwipeProgress = if (selectedTab == "home") 0f else 1f
+    }
+    val swipeProgress by animateFloatAsState(
+        targetValue = if (isSwipeDragging) liveSwipeProgress else settledSwipeProgress,
+        animationSpec = if (isSwipeDragging) snap() else TabSettleSpring,
+        label = "page-swipe-progress",
+    )
+    fun selectTab(tab: String) {
+        selectedTab = tab
+        if (tab == "home") onDestinationSelected(tab)
+    }
+    val onSwipeDragStarted: () -> Unit = {
+        liveSwipeProgress = swipeProgress
+        isSwipeDragging = true
+    }
+    val onSwipeSettle: (Float) -> Unit = { velocity ->
+        val settleToHistory = when {
+            velocity > FLING_VELOCITY_THRESHOLD -> true
+            velocity < -FLING_VELOCITY_THRESHOLD -> false
+            else -> liveSwipeProgress > 0.5f
+        }
+        isSwipeDragging = false
+        settledSwipeProgress = if (settleToHistory) 1f else 0f
+        val newTab = if (settleToHistory) "history" else "home"
+        if (newTab != selectedTab) selectTab(newTab)
+    }
+    var pageWidthPx by remember { mutableFloatStateOf(1f) }
+    // Only the discrete "how many squares are spent" bucket is ever shown on screen, so this is
+    // only written when that bucket actually changes (a handful of times per 30s cycle) rather
+    // than on every 100ms tick — the ticks themselves still run every 100ms internally (for code
+    // rotation + exact timing), they just don't all trigger recomposition of the account card.
+    var spentCount by remember { mutableIntStateOf(0) }
     var accountCode by remember { androidx.compose.runtime.mutableStateOf(state.data.account.code) }
     var searchActive by remember { androidx.compose.runtime.mutableStateOf(false) }
     var searchQuery by remember { androidx.compose.runtime.mutableStateOf("") }
-    val searchAlpha by androidx.compose.animation.core.animateFloatAsState(
+    var isHomeRefreshing by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val refreshScope = rememberCoroutineScope()
+    val searchAlpha by animateFloatAsState(
         targetValue = if (searchActive) 1f else 0f,
         animationSpec = tween(280),
         label = "search-overlay-alpha",
     )
     val haptic = LocalHapticFeedback.current
+    val secretLength = state.data.account.secretLength
     LaunchedEffect(Unit) {
         var totalMillis = 0
         while (true) {
             delay(100L)
             totalMillis += 100
-            val newTimerMillis = totalMillis % 30_000
-            if (newTimerMillis < timerMillis) {
+            val cycleMillis = totalMillis % 30_000
+            if (cycleMillis == 0) {
                 accountCode = com.cns.accounts.data.randomAccountCode()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
-            timerMillis = newTimerMillis
+            val newSpentCount = ((cycleMillis + 100) * secretLength / 30_000f).toInt().coerceIn(0, secretLength)
+            if (newSpentCount != spentCount) {
+                spentCount = newSpentCount
+            }
         }
     }
     val spacing = LocalSpacing.current
@@ -112,73 +167,96 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .background(LocalAppColors.current.background)
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .onSizeChanged { pageWidthPx = it.width.toFloat() }
+            .draggable(
+                orientation = Orientation.Horizontal,
+                enabled = !searchActive,
+                state = rememberDraggableState { delta ->
+                    liveSwipeProgress = (liveSwipeProgress - delta / pageWidthPx).coerceIn(0f, 1f)
+                },
+                onDragStarted = { onSwipeDragStarted() },
+                onDragStopped = { velocity -> onSwipeSettle(-velocity) },
+            ),
     ) {
-        LazyColumn(
+        NothingPullToRefreshBox(
+            isRefreshing = isHomeRefreshing,
+            onRefresh = {
+                refreshScope.launch {
+                    isHomeRefreshing = true
+                    delay(HomeFakeRefreshMillis)
+                    isHomeRefreshing = false
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
                     translationX = -swipeProgress * size.width
                     alpha = 1f - swipeProgress
                 },
-            contentPadding = PaddingValues(
-                top = 62.dp,
-                bottom = dimensions.navHeight + 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            item(key = "profile", contentType = "header") {
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.xl),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ProfileHeader(state.data.profile, onSettingsClick)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = 62.dp,
+                    bottom = dimensions.navHeight + 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                item(key = "profile", contentType = "header") {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = spacing.xl),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        ProfileHeader(state.data.profile, onSettingsClick)
+                    }
                 }
-            }
-            item(key = "profile-request-gap", contentType = "spacer") {
-                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
-            }
-            item(key = "request", contentType = "request") {
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.xl),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    SignInRequestCard(state.data.signInRequest, onApproveRequest, onDenyRequest)
+                item(key = "profile-request-gap", contentType = "spacer") {
+                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
                 }
-            }
-            item(key = "request-account-gap", contentType = "spacer") {
-                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
-            }
-            item(key = "account", contentType = "account") {
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.xl),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    AccountCard(state.data.account, accountCode, timerMillis, onCopyAccountCode)
+                item(key = "request", contentType = "request") {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = spacing.xl),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SignInRequestCard(state.data.signInRequest, onApproveRequest, onDenyRequest)
+                    }
                 }
-            }
-            item(key = "account-services-gap", contentType = "spacer") {
-                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
-            }
-            item(key = "services", contentType = "services") {
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.xl),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ServicesCard(state.data.services)
+                item(key = "request-account-gap", contentType = "spacer") {
+                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
+                }
+                item(key = "account", contentType = "account") {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = spacing.xl),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AccountCard(state.data.account, accountCode, spentCount, onCopyAccountCode)
+                    }
+                }
+                item(key = "account-services-gap", contentType = "spacer") {
+                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
+                }
+                item(key = "services", contentType = "services") {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = spacing.xl),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        ServicesCard(state.data.services)
+                    }
                 }
             }
         }
+        val historyState = remember { com.cns.accounts.ui.history.HistoryUiState() }
         com.cns.accounts.ui.history.HistoryScreen(
-            state = com.cns.accounts.ui.history.HistoryUiState(),
+            state = historyState,
             modifier = Modifier.graphicsLayer {
                 translationX = (1f - swipeProgress) * size.width
                 alpha = swipeProgress
@@ -188,18 +266,20 @@ fun HomeScreen(
         // active; closing it (the bar's X) just fades it away, revealing whichever tab was
         // showing underneath — Home or History are untouched, not navigated away from.
         if (searchActive || searchAlpha > 0.01f) {
+            val searchResults = remember { com.cns.accounts.data.sampleSearchResults() }
             com.cns.accounts.ui.search.SearchScreen(
                 query = searchQuery,
+                results = searchResults,
                 modifier = Modifier.graphicsLayer { alpha = searchAlpha },
             )
         }
         HomeBottomNavigation(
             selectedTab = selectedTab,
-            onTabSelected = { tab ->
-                selectedTab = tab
-                if (tab == "home") onDestinationSelected(tab)
-            },
-            onSwipeProgress = { swipeProgress = it },
+            onTabSelected = ::selectTab,
+            swipeProgress = swipeProgress,
+            onSwipeDragStarted = onSwipeDragStarted,
+            onSwipeProgressDelta = { delta -> liveSwipeProgress = (liveSwipeProgress + delta).coerceIn(0f, 1f) },
+            onSwipeDragStopped = onSwipeSettle,
             onUserClick = onSettingsClick,
             isSearchActive = searchActive,
             onSearchActiveChange = { searchActive = it },
@@ -290,7 +370,7 @@ private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier
 }
 
 @Composable
-private fun AccountCard(account: Account, code: String, timerMillis: Int, onCopy: () -> Unit) {
+private fun AccountCard(account: Account, code: String, spentCount: Int, onCopy: () -> Unit) {
     val colors = LocalAppColors.current
     // Sized to content, not a fixed height — the exported accountCardHeight token (137dp)
     // undershoots this card's real content (label + code row + timer squares + gaps ≈ 145dp),
@@ -315,7 +395,7 @@ private fun AccountCard(account: Account, code: String, timerMillis: Int, onCopy
                     .height(17.dp)
                     .semantics { role = Role.Image },
             ) {
-                TimerSquares(account.secretLength, timerMillis)
+                TimerSquares(account.secretLength, spentCount)
             }
         }
 
@@ -450,10 +530,9 @@ private fun AnimatedAccountCode(code: String, color: androidx.compose.ui.graphic
 private val TimerSquareAnim = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(durationMillis = 90)
 
 @Composable
-private fun TimerSquares(count: Int, elapsedMillis: Int) {
+private fun TimerSquares(count: Int, spentCount: Int) {
     // Squares are spent right-to-left; the leftmost (index 0) square is red and is the last
     // one spent each 30s cycle, at which point the whole row resets and starts again from the right.
-    val spentCount = ((elapsedMillis + 100) * count / 30_000f).toInt().coerceIn(0, count)
     androidx.compose.foundation.layout.Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(1.dp),

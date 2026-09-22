@@ -2,7 +2,6 @@ package com.cns.accounts.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -28,10 +27,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,13 +73,18 @@ import kotlinx.coroutines.delay
  *
  * The control doubles as a swipe track: dragging anywhere on it slides the active pill 1:1 with
  * the finger (progress 0f = Home, 1f = History) and settles to whichever side it's closer to (or
- * whichever side a fast flick pointed at) with a spring. `onSwipeProgress` mirrors that same
- * progress so a caller can drive a matching page transition.
+ * whichever side a fast flick pointed at) with a spring. The progress/drag callbacks are owned by
+ * the caller (HomeScreen) rather than this control, so a drag on the page background elsewhere
+ * drives the exact same value and this pill tracks it.
  */
 private const val HOME_TAB = "home"
 private const val HISTORY_TAB = "history"
-private const val FLING_VELOCITY_THRESHOLD = 900f
-private val TabSettleSpring = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
+
+// Shared with the page-background swipe in HomeScreen, which drives the exact same progress
+// value the segmented control below does — one flick-vs-drag threshold and one settle feel for
+// both surfaces, so it doesn't matter which one the user actually touches.
+internal const val FLING_VELOCITY_THRESHOLD = 900f
+internal val TabSettleSpring = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
 
 private val SearchExpandSpec = tween<Float>(320, easing = FastOutSlowInEasing)
 
@@ -91,8 +92,11 @@ private val SearchExpandSpec = tween<Float>(320, easing = FastOutSlowInEasing)
 fun HomeBottomNavigation(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
+    swipeProgress: Float,
+    onSwipeDragStarted: () -> Unit,
+    onSwipeProgressDelta: (Float) -> Unit,
+    onSwipeDragStopped: (velocity: Float) -> Unit,
     modifier: Modifier = Modifier,
-    onSwipeProgress: (Float) -> Unit = {},
     onUserClick: () -> Unit = {},
     isSearchActive: Boolean = false,
     onSearchActiveChange: (Boolean) -> Unit = {},
@@ -141,7 +145,10 @@ fun HomeBottomNavigation(
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onTabSelected(tab)
                     },
-                    onSwipeProgress = onSwipeProgress,
+                    progress = swipeProgress,
+                    onDragStarted = onSwipeDragStarted,
+                    onProgressDelta = onSwipeProgressDelta,
+                    onDragStopped = onSwipeDragStopped,
                 )
             }
         }
@@ -280,29 +287,19 @@ private fun NavCircle(icon: TokenIconKind, onClick: (() -> Unit)? = null) {
 private fun SegmentedTabControl(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
-    onSwipeProgress: (Float) -> Unit,
+    progress: Float,
+    onDragStarted: () -> Unit,
+    onProgressDelta: (Float) -> Unit,
+    onDragStopped: (velocity: Float) -> Unit,
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
     val radii = LocalRadii.current
     val density = LocalDensity.current
 
-    // progress: 0f = Home fully active (expanded), 1f = History fully active (expanded).
-    var isDragging by remember { mutableStateOf(false) }
-    var liveProgress by remember { mutableFloatStateOf(if (selectedTab == HOME_TAB) 0f else 1f) }
-    var settledProgress by remember { mutableFloatStateOf(if (selectedTab == HOME_TAB) 0f else 1f) }
-
-    LaunchedEffect(selectedTab) {
-        if (!isDragging) settledProgress = if (selectedTab == HOME_TAB) 0f else 1f
-    }
-
-    val progress by animateFloatAsState(
-        targetValue = if (isDragging) liveProgress else settledProgress,
-        animationSpec = if (isDragging) snap() else TabSettleSpring,
-        label = "nav-tab-progress",
-    )
-    SideEffect { onSwipeProgress(progress) }
-
+    // progress: 0f = Home fully active (expanded), 1f = History fully active (expanded). Owned
+    // by HomeScreen so a drag anywhere on the page background drives this same value — see
+    // HomeScreen's swipe state.
     val dragRangePx = with(density) {
         (dimensions.navSelectedWidth - dimensions.navSelectedInnerHeight).toPx()
     }
@@ -318,24 +315,9 @@ private fun SegmentedTabControl(
             .padding(4.dp)
             .draggable(
                 orientation = Orientation.Horizontal,
-                state = rememberDraggableState { delta ->
-                    liveProgress = (liveProgress + delta / dragRangePx).coerceIn(0f, 1f)
-                },
-                onDragStarted = {
-                    liveProgress = progress
-                    isDragging = true
-                },
-                onDragStopped = { velocity ->
-                    val settleToHistory = when {
-                        velocity > FLING_VELOCITY_THRESHOLD -> true
-                        velocity < -FLING_VELOCITY_THRESHOLD -> false
-                        else -> liveProgress > 0.5f
-                    }
-                    isDragging = false
-                    settledProgress = if (settleToHistory) 1f else 0f
-                    val newTab = if (settleToHistory) HISTORY_TAB else HOME_TAB
-                    if (newTab != selectedTab) onTabSelected(newTab)
-                },
+                state = rememberDraggableState { delta -> onProgressDelta(delta / dragRangePx) },
+                onDragStarted = { onDragStarted() },
+                onDragStopped = { velocity -> onDragStopped(velocity) },
             )
             .semantics { role = Role.Tab },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -446,19 +428,23 @@ private fun TokenMiniDotMark(tint: Color) {
 @Preview
 @Composable
 private fun BottomNavigationPreview() {
-    com.cns.accounts.ui.theme.CNSAccountsTheme { HomeBottomNavigation(HOME_TAB, {}) }
+    com.cns.accounts.ui.theme.CNSAccountsTheme {
+        HomeBottomNavigation(HOME_TAB, {}, swipeProgress = 0f, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
+    }
 }
 
 @Preview(name = "Bottom navigation - history", showBackground = true)
 @Composable
 private fun BottomNavigationHistoryPreview() {
-    com.cns.accounts.ui.theme.CNSAccountsTheme { HomeBottomNavigation(HISTORY_TAB, {}) }
+    com.cns.accounts.ui.theme.CNSAccountsTheme {
+        HomeBottomNavigation(HISTORY_TAB, {}, swipeProgress = 1f, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
+    }
 }
 
 @Preview(name = "Bottom navigation dark", uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun BottomNavigationDarkPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme(darkTheme = true) {
-        HomeBottomNavigation(HOME_TAB, {})
+        HomeBottomNavigation(HOME_TAB, {}, swipeProgress = 0f, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
     }
 }

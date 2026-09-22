@@ -58,14 +58,6 @@ fun TokenIcon(
 
     Canvas(modifier = modifier.size(24.dp)) {
         val stroke = 1.8.dp.toPx()
-        val style = androidx.compose.ui.graphics.Paint().apply {
-            color = tint
-            this.strokeWidth = stroke
-            isAntiAlias = true
-            strokeCap = StrokeCap.Round
-            strokeJoin = StrokeJoin.Round
-            style = androidx.compose.ui.graphics.PaintingStyle.Stroke
-        }
 
         when (kind) {
             TokenIconKind.User -> {
