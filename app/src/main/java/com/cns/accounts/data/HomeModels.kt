@@ -30,8 +30,13 @@ data class Service(
 data class HomeData(
     val profile: Profile = Profile("aaron", "2FA enabled"),
     val signInRequest: SignInRequest = SignInRequest("Firefox on Linux", "now"),
-    val account: Account = Account("Account", "123-123", 17),
+    val account: Account = Account("Account", randomAccountCode(), 17),
     val services: List<Service> = listOf(Service("Sendly", "now")),
 )
 
 fun sampleHomeData() = HomeData()
+
+fun randomAccountCode(): String {
+    fun group() = (0..999).random().toString().padStart(3, '0')
+    return "${group()}-${group()}"
+}

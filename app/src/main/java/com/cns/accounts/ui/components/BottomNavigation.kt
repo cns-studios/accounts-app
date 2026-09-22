@@ -1,9 +1,8 @@
 package com.cns.accounts.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,8 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,12 +33,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import com.cns.accounts.R
 import com.cns.accounts.ui.theme.HomeNavigationText
 import com.cns.accounts.ui.theme.LocalAppColors
@@ -52,18 +59,24 @@ import com.cns.accounts.ui.theme.LocalRadii
  *    active, collapsed to a 46x46 dimmed scattered-dot glyph when inactive)
  * Home is always the left segment, History is always the right segment; only their widths and
  * content (bright label+icon vs. dimmed icon only) change when the active tab changes.
+ *
+ * The control doubles as a swipe track: dragging anywhere on it slides the active pill 1:1 with
+ * the finger (progress 0f = Home, 1f = History) and settles to whichever side it's closer to (or
+ * whichever side a fast flick pointed at) with a spring. `onSwipeProgress` mirrors that same
+ * progress so a caller can drive a matching page transition.
  */
 private const val HOME_TAB = "home"
 private const val HISTORY_TAB = "history"
-private val DRAG_SWITCH_THRESHOLD_PX = 60f
+private const val FLING_VELOCITY_THRESHOLD = 900f
+private val TabSettleSpring = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
 
 @Composable
 fun HomeBottomNavigation(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onSwipeProgress: (Float) -> Unit = {},
 ) {
-    val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
     Row(
         modifier = modifier.width(dimensions.navWidth),
@@ -71,7 +84,11 @@ fun HomeBottomNavigation(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         InertNavCircle(TokenIconKind.User)
-        SegmentedTabControl(selectedTab = selectedTab, onTabSelected = onTabSelected)
+        SegmentedTabControl(
+            selectedTab = selectedTab,
+            onTabSelected = onTabSelected,
+            onSwipeProgress = onSwipeProgress,
+        )
         InertNavCircle(TokenIconKind.Search)
     }
 }
@@ -95,22 +112,34 @@ private fun InertNavCircle(icon: TokenIconKind) {
 private fun SegmentedTabControl(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
+    onSwipeProgress: (Float) -> Unit,
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
     val radii = LocalRadii.current
-    val homeActive = selectedTab == HOME_TAB
+    val density = LocalDensity.current
 
-    val homeWidth by animateDpAsState(
-        targetValue = if (homeActive) dimensions.navSelectedWidth else dimensions.navSelectedInnerHeight,
-        label = "home-tab-width",
-    )
-    val historyWidth by animateDpAsState(
-        targetValue = if (homeActive) dimensions.navSelectedInnerHeight else dimensions.navSelectedWidth,
-        label = "history-tab-width",
-    )
+    // progress: 0f = Home fully active (expanded), 1f = History fully active (expanded).
+    var isDragging by remember { mutableStateOf(false) }
+    var liveProgress by remember { mutableFloatStateOf(if (selectedTab == HOME_TAB) 0f else 1f) }
+    var settledProgress by remember { mutableFloatStateOf(if (selectedTab == HOME_TAB) 0f else 1f) }
 
-    var dragAccumulatedPx by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(selectedTab) {
+        if (!isDragging) settledProgress = if (selectedTab == HOME_TAB) 0f else 1f
+    }
+
+    val progress by animateFloatAsState(
+        targetValue = if (isDragging) liveProgress else settledProgress,
+        animationSpec = if (isDragging) snap() else TabSettleSpring,
+        label = "nav-tab-progress",
+    )
+    SideEffect { onSwipeProgress(progress) }
+
+    val dragRangePx = with(density) {
+        (dimensions.navSelectedWidth - dimensions.navSelectedInnerHeight).toPx()
+    }
+    val homeWidth = lerp(dimensions.navSelectedWidth, dimensions.navSelectedInnerHeight, progress)
+    val historyWidth = lerp(dimensions.navSelectedInnerHeight, dimensions.navSelectedWidth, progress)
 
     Row(
         modifier = Modifier
@@ -121,14 +150,23 @@ private fun SegmentedTabControl(
             .padding(4.dp)
             .draggable(
                 orientation = Orientation.Horizontal,
-                state = rememberDraggableState { delta -> dragAccumulatedPx += delta },
-                onDragStopped = {
-                    if (homeActive && dragAccumulatedPx > DRAG_SWITCH_THRESHOLD_PX) {
-                        onTabSelected(HISTORY_TAB)
-                    } else if (!homeActive && dragAccumulatedPx < -DRAG_SWITCH_THRESHOLD_PX) {
-                        onTabSelected(HOME_TAB)
+                state = rememberDraggableState { delta ->
+                    liveProgress = (liveProgress + delta / dragRangePx).coerceIn(0f, 1f)
+                },
+                onDragStarted = {
+                    liveProgress = progress
+                    isDragging = true
+                },
+                onDragStopped = { velocity ->
+                    val settleToHistory = when {
+                        velocity > FLING_VELOCITY_THRESHOLD -> true
+                        velocity < -FLING_VELOCITY_THRESHOLD -> false
+                        else -> liveProgress > 0.5f
                     }
-                    dragAccumulatedPx = 0f
+                    isDragging = false
+                    settledProgress = if (settleToHistory) 1f else 0f
+                    val newTab = if (settleToHistory) HISTORY_TAB else HOME_TAB
+                    if (newTab != selectedTab) onTabSelected(newTab)
                 },
             )
             .semantics { role = Role.Tab },
@@ -136,15 +174,15 @@ private fun SegmentedTabControl(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TabSegment(
-            route = HOME_TAB,
-            active = homeActive,
+            active = progress < 0.5f,
+            activeFraction = 1f - progress,
             width = homeWidth,
             label = "Home",
             onClick = { onTabSelected(HOME_TAB) },
         ) { tint -> TokenDotMark(tint) }
         TabSegment(
-            route = HISTORY_TAB,
-            active = !homeActive,
+            active = progress >= 0.5f,
+            activeFraction = progress,
             width = historyWidth,
             label = "History",
             onClick = { onTabSelected(HISTORY_TAB) },
@@ -154,9 +192,9 @@ private fun SegmentedTabControl(
 
 @Composable
 private fun TabSegment(
-    route: String,
     active: Boolean,
-    width: androidx.compose.ui.unit.Dp,
+    activeFraction: Float,
+    width: Dp,
     label: String,
     onClick: () -> Unit,
     icon: @Composable (Color) -> Unit,
@@ -164,25 +202,39 @@ private fun TabSegment(
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
     val radii = LocalRadii.current
+    val backgroundColor = lerp(Color.Transparent, colors.background, activeFraction)
+    val tint = lerp(colors.mutedSurface, colors.onSurface, activeFraction)
+    // The icon sits at a fixed offset rather than being centered together with the label, so it
+    // never has to jump to a new position when the label mounts/unmounts — every visual change
+    // here (background, tint, label reveal) is driven continuously by the same `activeFraction`.
+    val iconInset = (dimensions.navSelectedInnerHeight - dimensions.navIconSize) / 2
     Box(
         modifier = Modifier
             .width(width)
             .height(dimensions.navSelectedInnerHeight)
             .clip(RoundedCornerShape(radii.nav))
-            .background(if (active) colors.background else Color.Transparent)
+            .background(backgroundColor)
             .semantics { role = Role.Tab }
             .clickable(enabled = !active) { onClick() },
-        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = iconInset)
+                .size(dimensions.navIconSize),
+            contentAlignment = Alignment.Center,
         ) {
-            icon(if (active) colors.onSurface else colors.mutedSurface)
-            AnimatedVisibility(visible = active, enter = fadeIn(), exit = fadeOut()) {
-                Text(label, color = colors.onSurface, style = HomeNavigationText)
-            }
+            icon(tint)
         }
+        Text(
+            label,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = iconInset + dimensions.navIconSize + 4.dp)
+                .graphicsLayer { alpha = activeFraction },
+            color = colors.onSurface,
+            style = HomeNavigationText,
+        )
     }
 }
 

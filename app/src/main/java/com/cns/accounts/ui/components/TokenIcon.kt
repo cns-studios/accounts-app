@@ -17,7 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.cns.accounts.R
 import com.cns.accounts.ui.theme.LocalAppColors
 
-enum class TokenIconKind { User, Search, Settings, ChevronRight, Dots }
+enum class TokenIconKind { User, Search, Settings, ChevronRight, Dots, LogOut }
 
 @Composable
 fun TokenIcon(
@@ -25,7 +25,7 @@ fun TokenIcon(
     modifier: Modifier = Modifier,
     tint: Color = LocalAppColors.current.onSurface,
 ) {
-    if (kind != TokenIconKind.Dots) {
+    if (kind != TokenIconKind.Dots && kind != TokenIconKind.LogOut) {
         Image(
             painter = painterResource(
                 when (kind) {
@@ -33,7 +33,7 @@ fun TokenIcon(
                     TokenIconKind.Search -> R.drawable.token_search
                     TokenIconKind.Settings -> R.drawable.token_settings
                     TokenIconKind.ChevronRight -> R.drawable.token_chevron
-                    TokenIconKind.Dots -> R.drawable.token_user
+                    TokenIconKind.Dots, TokenIconKind.LogOut -> R.drawable.token_user
                 },
             ),
             contentDescription = kind.name,
@@ -90,6 +90,28 @@ fun TokenIcon(
                     Offset(12f, 19f), Offset(12f, 12f),
                 )
                 points.forEach { drawCircle(tint, radius = 2f * density, center = it * density) }
+            }
+            TokenIconKind.LogOut -> {
+                fun p(x: Float, y: Float) = Offset(x * density, y * density)
+                // history.json (lucidelogout): lucide's "log-out" glyph — a door left open
+                // (rounded-rect missing its right edge) with an arrow pointing through it.
+                val door = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(p(9f, 21f).x, p(9f, 21f).y)
+                    lineTo(p(5f, 21f).x, p(5f, 21f).y)
+                    quadraticBezierTo(p(3f, 21f).x, p(3f, 21f).y, p(3f, 19f).x, p(3f, 19f).y)
+                    lineTo(p(3f, 5f).x, p(3f, 5f).y)
+                    quadraticBezierTo(p(3f, 3f).x, p(3f, 3f).y, p(5f, 3f).x, p(5f, 3f).y)
+                    lineTo(p(9f, 3f).x, p(9f, 3f).y)
+                }
+                val arrow = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(p(16f, 7f).x, p(16f, 7f).y)
+                    lineTo(p(21f, 12f).x, p(21f, 12f).y)
+                    lineTo(p(16f, 17f).x, p(16f, 17f).y)
+                }
+                val strokeStyle = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                drawPath(door, tint, style = strokeStyle)
+                drawPath(arrow, tint, style = strokeStyle)
+                drawLine(tint, p(21f, 12f), p(9f, 12f), stroke, StrokeCap.Round)
             }
         }
     }

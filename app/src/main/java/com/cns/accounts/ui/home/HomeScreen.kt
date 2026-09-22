@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
@@ -20,13 +21,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.togetherWith
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -65,14 +69,19 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { androidx.compose.runtime.mutableStateOf("home") }
-    val showingHistory = selectedTab == "history"
-    var timerSeconds by remember { mutableIntStateOf(0) }
+    var swipeProgress by remember { mutableFloatStateOf(0f) }
+    var timerMillis by remember { mutableIntStateOf(0) }
+    var accountCode by remember { androidx.compose.runtime.mutableStateOf(state.data.account.code) }
     LaunchedEffect(Unit) {
-        var totalSeconds = 0
+        var totalMillis = 0
         while (true) {
-            delay(1000L)
-            totalSeconds += 1
-            timerSeconds = totalSeconds % 30
+            delay(100L)
+            totalMillis += 100
+            val newTimerMillis = totalMillis % 30_000
+            if (newTimerMillis < timerMillis) {
+                accountCode = com.cns.accounts.data.randomAccountCode()
+            }
+            timerMillis = newTimerMillis
         }
     }
     val spacing = LocalSpacing.current
@@ -82,48 +91,57 @@ fun HomeScreen(
             .fillMaxSize()
             .background(LocalAppColors.current.background),
     ) {
-        if (showingHistory) {
-            HistorySurface()
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = spacing.xl,
-                    end = spacing.xl,
-                    top = 62.dp,
-                    bottom = dimensions.navHeight + 19.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
-                item(key = "profile", contentType = "header") {
-                    ProfileHeader(state.data.profile, onSettingsClick)
-                }
-                item(key = "profile-request-gap", contentType = "spacer") {
-                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
-                }
-                item(key = "request", contentType = "request") {
-                    SignInRequestCard(state.data.signInRequest, onApproveRequest, onDenyRequest)
-                }
-                item(key = "request-account-gap", contentType = "spacer") {
-                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
-                }
-                item(key = "account", contentType = "account") {
-                    AccountCard(state.data.account, timerSeconds, onCopyAccountCode)
-                }
-                item(key = "account-services-gap", contentType = "spacer") {
-                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
-                }
-                item(key = "services", contentType = "services") {
-                    ServicesCard(state.data.services)
-                }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = -swipeProgress * size.width
+                    alpha = 1f - swipeProgress
+                },
+            contentPadding = PaddingValues(
+                start = spacing.xl,
+                end = spacing.xl,
+                top = 62.dp,
+                bottom = dimensions.navHeight + 19.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            item(key = "profile", contentType = "header") {
+                ProfileHeader(state.data.profile, onSettingsClick)
+            }
+            item(key = "profile-request-gap", contentType = "spacer") {
+                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
+            }
+            item(key = "request", contentType = "request") {
+                SignInRequestCard(state.data.signInRequest, onApproveRequest, onDenyRequest)
+            }
+            item(key = "request-account-gap", contentType = "spacer") {
+                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
+            }
+            item(key = "account", contentType = "account") {
+                AccountCard(state.data.account, accountCode, timerMillis, onCopyAccountCode)
+            }
+            item(key = "account-services-gap", contentType = "spacer") {
+                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
+            }
+            item(key = "services", contentType = "services") {
+                ServicesCard(state.data.services)
             }
         }
+        com.cns.accounts.ui.history.HistoryScreen(
+            state = com.cns.accounts.ui.history.HistoryUiState(),
+            modifier = Modifier.graphicsLayer {
+                translationX = (1f - swipeProgress) * size.width
+                alpha = swipeProgress
+            },
+        )
         HomeBottomNavigation(
             selectedTab = selectedTab,
             onTabSelected = { tab ->
                 selectedTab = tab
                 if (tab == "home") onDestinationSelected(tab)
             },
+            onSwipeProgress = { swipeProgress = it },
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomCenter)
                 .padding(bottom = 19.dp),
@@ -138,11 +156,11 @@ private fun SignInRequestCard(
     onDeny: () -> Unit,
 ) {
     val colors = LocalAppColors.current
+    // Sized to content (no fixed card height) so the bottom gap below the buttons is exactly
+    // the padding value below, matching the left/right inset instead of leftover centering slack.
     AppCard(
         color = colors.accent,
-        modifier = Modifier
-            .height(154.dp)
-            .semantics { role = Role.Button },
+        modifier = Modifier.semantics { role = Role.Button },
     ) {
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
@@ -151,51 +169,66 @@ private fun SignInRequestCard(
                     start = LocalSpacing.current.sm,
                     end = LocalSpacing.current.sm,
                     top = LocalSpacing.current.md,
-                    bottom = LocalSpacing.current.sm
+                    bottom = LocalSpacing.current.sm,
                 ),
+            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.lg),
         ) {
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = LocalSpacing.current.sm),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(stringResource(R.string.sign_in_request), color = colors.onSurface, style = RequestTitleText)
-                Text(request.timeLabel, color = colors.onSurface, style = RequestMetaText)
+            androidx.compose.foundation.layout.Column {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = LocalSpacing.current.sm),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(stringResource(R.string.sign_in_request), color = colors.onSurface, style = RequestTitleText)
+                    Text(request.timeLabel, color = colors.onSurface, style = RequestMetaText)
+                }
+                Text(request.device, modifier = Modifier.padding(horizontal = LocalSpacing.current.sm), color = colors.onSurface, style = RequestMetaText)
             }
-            Text(request.device, modifier = Modifier.padding(horizontal = LocalSpacing.current.sm), color = colors.onSurface, style = RequestMetaText)
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(LocalSpacing.current.lg))
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LocalSpacing.current.sm),
             ) {
                 RequestButton(stringResource(R.string.deny), onDeny, Modifier.weight(1f))
-                RequestButton(stringResource(R.string.allow), onApprove, Modifier.weight(1f))
+                RequestButton(stringResource(R.string.allow), onApprove, Modifier.weight(1f), outlined = true)
             }
         }
     }
 }
 
 @Composable
-private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, outlined: Boolean = false) {
     Text(
         label,
         modifier = modifier
             .height(LocalDimensions.current.actionHeight)
             .clip(RoundedCornerShape(LocalDimensions.current.requestButtonRadius))
-            .background(LocalAppColors.current.mutedSurface)
+            .then(
+                if (outlined) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        shape = RoundedCornerShape(LocalDimensions.current.requestButtonRadius),
+                    )
+                } else {
+                    Modifier.background(LocalAppColors.current.mutedSurface)
+                },
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 8.dp),
         textAlign = TextAlign.Center,
-        color = LocalAppColors.current.onLightSurface,
+        color = if (outlined) androidx.compose.ui.graphics.Color.White else LocalAppColors.current.onLightSurface,
         style = RequestMetaText,
     )
 }
 
 @Composable
-private fun AccountCard(account: Account, timerSeconds: Int, onCopy: () -> Unit) {
+private fun AccountCard(account: Account, code: String, timerMillis: Int, onCopy: () -> Unit) {
     val colors = LocalAppColors.current
-    AppCard(modifier = Modifier.height(173.dp)) {
+    // Sized to content, not a fixed height — the exported accountCardHeight token (137dp)
+    // undershoots this card's real content (label + code row + timer squares + gaps ≈ 145dp),
+    // which made AppCard's rounded-corner clip cut the bottom off the timer squares row.
+    AppCard {
         androidx.compose.foundation.layout.Column(
             modifier = Modifier.padding(LocalSpacing.current.md),
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
@@ -204,8 +237,9 @@ private fun AccountCard(account: Account, timerSeconds: Int, onCopy: () -> Unit)
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(account.code, color = colors.onSurface, style = AccountCodeText)
+                AnimatedAccountCode(code, color = colors.onSurface)
                 Text(
                     stringResource(R.string.copy),
                     modifier = Modifier
@@ -224,7 +258,7 @@ private fun AccountCard(account: Account, timerSeconds: Int, onCopy: () -> Unit)
                     .height(17.dp)
                     .semantics { role = Role.Image },
             ) {
-                TimerSquares(account.secretLength, timerSeconds)
+                TimerSquares(account.secretLength, timerMillis)
             }
         }
 
@@ -285,38 +319,52 @@ private fun HomeScreenPreview() {
 }
 
 @Composable
-private fun TimerSquares(count: Int, elapsedSeconds: Int) {
-    val grayCount = ((count - 1) * elapsedSeconds / 30f).toInt()
+private fun AnimatedAccountCode(code: String, color: androidx.compose.ui.graphics.Color) {
+    androidx.compose.foundation.layout.Row {
+        code.forEachIndexed { index, char ->
+            androidx.compose.animation.AnimatedContent(
+                targetState = char,
+                transitionSpec = {
+                    (androidx.compose.animation.slideInVertically(
+                        animationSpec = androidx.compose.animation.core.tween(320),
+                    ) { height -> height } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320)))
+                        .togetherWith(
+                            androidx.compose.animation.slideOutVertically(
+                                animationSpec = androidx.compose.animation.core.tween(320),
+                            ) { height -> -height } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(320)),
+                        )
+                },
+                label = "account-code-char-$index",
+            ) { targetChar ->
+                Text(targetChar.toString(), color = color, style = AccountCodeText)
+            }
+        }
+    }
+}
+
+private val TimerSquareAnim = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(durationMillis = 90)
+
+@Composable
+private fun TimerSquares(count: Int, elapsedMillis: Int) {
+    // Squares are spent right-to-left; the leftmost (index 0) square is red and is the last
+    // one spent each 30s cycle, at which point the whole row resets and starts again from the right.
+    val spentCount = ((elapsedMillis + 100) * count / 30_000f).toInt().coerceIn(0, count)
     androidx.compose.foundation.layout.Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
     ) {
       repeat(count) { index ->
-        val isGray = index >= count - grayCount
-        val targetColor = when {
-            index == 0 -> LocalAppColors.current.accent
-            isGray -> LocalAppColors.current.mutedSurface
-            else -> androidx.compose.ui.graphics.Color.White
-        }
-        val color by animateColorAsState(targetColor, label = "timer-square-$index")
+        val isSpent = index >= count - spentCount
+        val defaultColor = if (index == 0) LocalAppColors.current.accent else androidx.compose.ui.graphics.Color.White
+        val targetColor = if (isSpent) LocalAppColors.current.timerSpent else defaultColor
+        val color by animateColorAsState(targetColor, animationSpec = TimerSquareAnim, label = "timer-square-$index")
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
                 .size(17.dp)
-                .weight(1f)
                 .background(color),
         )
       }
 
-    }
-}
-
-@Composable
-private fun HistorySurface() {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize().background(LocalAppColors.current.background),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("History", color = LocalAppColors.current.onBackground)
     }
 }
 
@@ -335,7 +383,7 @@ private fun HomeScreenDarkPreview() {
     }
 }
 
-@Preview(name = "Sign-in request card", showBackground = true, widthDp = 340, heightDp = 154)
+@Preview(name = "Sign-in request card", showBackground = true, widthDp = 340, heightDp = 146)
 @Composable
 private fun SignInRequestCardPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
@@ -343,11 +391,12 @@ private fun SignInRequestCardPreview() {
     }
 }
 
-@Preview(name = "Account card", showBackground = true, widthDp = 340, heightDp = 173)
+@Preview(name = "Account card", showBackground = true, widthDp = 340, heightDp = 145)
 @Composable
 private fun AccountCardPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        AccountCard(HomeUiState().data.account, 0, {})
+        val account = HomeUiState().data.account
+        AccountCard(account, account.code, 0, {})
     }
 }
 

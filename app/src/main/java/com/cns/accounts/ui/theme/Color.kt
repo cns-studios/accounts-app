@@ -18,6 +18,10 @@ val OnDark = Color(0xFFFFFFFF)
 val OnLight = Color(0xFF000000)
 // token.json: rgba(217, 217, 217, 1)
 val MutedLight = Color(0xFFD9D9D9)
+// timer square "spent" color
+val TimerSpent = Color(0xFF616161)
+// history.json: rgba(118, 118, 118, 1)
+val MutedText = Color(0xFF767676)
 
 data class AppColors(
     val background: Color = Ink,
@@ -29,4 +33,6 @@ data class AppColors(
     val onSurface: Color = OnDark,
     val onLightSurface: Color = OnLight,
     val mutedSurface: Color = MutedLight,
+    val timerSpent: Color = TimerSpent,
+    val mutedText: Color = MutedText,
 )
