@@ -24,6 +24,10 @@ android {
             optimization {
                 enable = true
             }
+            // Debug-signed so the release variant installs straight from Android Studio for
+            // performance testing (debug builds are far slower in Compose). Swap for a real
+            // upload key before publishing.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

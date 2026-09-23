@@ -92,7 +92,9 @@ private val SearchExpandSpec = tween<Float>(320, easing = FastOutSlowInEasing)
 fun HomeBottomNavigation(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
-    swipeProgress: Float,
+    // A lambda (not a Float) so a swipe only recomposes the tab pill that actually reads it,
+    // not this whole nav bar and its caller on every frame.
+    swipeProgress: () -> Float,
     onSwipeDragStarted: () -> Unit,
     onSwipeProgressDelta: (Float) -> Unit,
     onSwipeDragStopped: (velocity: Float) -> Unit,
@@ -287,7 +289,7 @@ private fun NavCircle(icon: TokenIconKind, onClick: (() -> Unit)? = null) {
 private fun SegmentedTabControl(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
-    progress: Float,
+    progress: () -> Float,
     onDragStarted: () -> Unit,
     onProgressDelta: (Float) -> Unit,
     onDragStopped: (velocity: Float) -> Unit,
@@ -296,6 +298,7 @@ private fun SegmentedTabControl(
     val dimensions = LocalDimensions.current
     val radii = LocalRadii.current
     val density = LocalDensity.current
+    val progress = progress()
 
     // progress: 0f = Home fully active (expanded), 1f = History fully active (expanded). Owned
     // by HomeScreen so a drag anywhere on the page background drives this same value — see
@@ -429,7 +432,7 @@ private fun TokenMiniDotMark(tint: Color) {
 @Composable
 private fun BottomNavigationPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        HomeBottomNavigation(HOME_TAB, {}, swipeProgress = 0f, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
+        HomeBottomNavigation(HOME_TAB, {}, swipeProgress = { 0f }, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
     }
 }
 
@@ -437,7 +440,7 @@ private fun BottomNavigationPreview() {
 @Composable
 private fun BottomNavigationHistoryPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        HomeBottomNavigation(HISTORY_TAB, {}, swipeProgress = 1f, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
+        HomeBottomNavigation(HISTORY_TAB, {}, swipeProgress = { 1f }, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
     }
 }
 
@@ -445,6 +448,6 @@ private fun BottomNavigationHistoryPreview() {
 @Composable
 private fun BottomNavigationDarkPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme(darkTheme = true) {
-        HomeBottomNavigation(HOME_TAB, {}, swipeProgress = 0f, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
+        HomeBottomNavigation(HOME_TAB, {}, swipeProgress = { 0f }, onSwipeDragStarted = {}, onSwipeProgressDelta = {}, onSwipeDragStopped = {})
     }
 }

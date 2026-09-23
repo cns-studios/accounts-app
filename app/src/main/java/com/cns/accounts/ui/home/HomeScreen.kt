@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,7 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -96,24 +97,24 @@ fun HomeScreen(
     // Home/history swipe: a drag on EITHER the segmented nav pill or the page background below
     // drives this same liveSwipeProgress/isSwipeDragging pair — see onSwipeDragStarted/
     // onSwipeSettle — so it doesn't matter which surface the user actually touches, and
-    // settledSwipeProgress is where it springs to once released (or a tab is tapped directly).
+    // settleProgress springs from wherever the drag was released (or a tab is tapped directly).
+    // None of these are read during HomeScreen's composition, only via the swipeProgress lambda
+    // from graphicsLayer/the nav pill, so a swipe or settle animation redraws the two pages
+    // every frame instead of recomposing the whole screen (both pages included) every frame.
     var isSwipeDragging by remember { androidx.compose.runtime.mutableStateOf(false) }
     var liveSwipeProgress by remember { mutableFloatStateOf(0f) }
-    var settledSwipeProgress by remember { mutableFloatStateOf(0f) }
+    val settleProgress = remember { Animatable(0f) }
+    val swipeScope = rememberCoroutineScope()
+    val swipeProgress: () -> Float = { if (isSwipeDragging) liveSwipeProgress else settleProgress.value }
     LaunchedEffect(selectedTab) {
-        if (!isSwipeDragging) settledSwipeProgress = if (selectedTab == "home") 0f else 1f
+        if (!isSwipeDragging) settleProgress.animateTo(if (selectedTab == "home") 0f else 1f, TabSettleSpring)
     }
-    val swipeProgress by animateFloatAsState(
-        targetValue = if (isSwipeDragging) liveSwipeProgress else settledSwipeProgress,
-        animationSpec = if (isSwipeDragging) snap() else TabSettleSpring,
-        label = "page-swipe-progress",
-    )
     fun selectTab(tab: String) {
         selectedTab = tab
         if (tab == "home") onDestinationSelected(tab)
     }
     val onSwipeDragStarted: () -> Unit = {
-        liveSwipeProgress = swipeProgress
+        liveSwipeProgress = swipeProgress()
         isSwipeDragging = true
     }
     val onSwipeSettle: (Float) -> Unit = { velocity ->
@@ -122,8 +123,11 @@ fun HomeScreen(
             velocity < -FLING_VELOCITY_THRESHOLD -> false
             else -> liveSwipeProgress > 0.5f
         }
-        isSwipeDragging = false
-        settledSwipeProgress = if (settleToHistory) 1f else 0f
+        swipeScope.launch {
+            settleProgress.snapTo(liveSwipeProgress)
+            isSwipeDragging = false
+            settleProgress.animateTo(if (settleToHistory) 1f else 0f, TabSettleSpring)
+        }
         val newTab = if (settleToHistory) "history" else "home"
         if (newTab != selectedTab) selectTab(newTab)
     }
@@ -138,11 +142,14 @@ fun HomeScreen(
     var searchQuery by remember { androidx.compose.runtime.mutableStateOf("") }
     var isHomeRefreshing by remember { androidx.compose.runtime.mutableStateOf(false) }
     val refreshScope = rememberCoroutineScope()
-    val searchAlpha by animateFloatAsState(
+    val searchAlpha = animateFloatAsState(
         targetValue = if (searchActive) 1f else 0f,
         animationSpec = tween(280),
         label = "search-overlay-alpha",
     )
+    // Only the visible/hidden flip is read during composition; the per-frame alpha itself is
+    // read in graphicsLayer, so the fade doesn't recompose the whole screen every frame.
+    val searchOverlayShown by remember { derivedStateOf { searchAlpha.value > 0.01f } }
     val haptic = LocalHapticFeedback.current
     val secretLength = state.data.account.secretLength
     LaunchedEffect(Unit) {
@@ -191,8 +198,9 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = -swipeProgress * size.width
-                    alpha = 1f - swipeProgress
+                    val progress = swipeProgress()
+                    translationX = -progress * size.width
+                    alpha = 1f - progress
                 },
         ) {
             LazyColumn(
@@ -258,19 +266,20 @@ fun HomeScreen(
         com.cns.accounts.ui.history.HistoryScreen(
             state = historyState,
             modifier = Modifier.graphicsLayer {
-                translationX = (1f - swipeProgress) * size.width
-                alpha = swipeProgress
+                val progress = swipeProgress()
+                translationX = (1f - progress) * size.width
+                alpha = progress
             },
         )
         // search.tokens.json: an opaque full-screen overlay above Home/History while search is
         // active; closing it (the bar's X) just fades it away, revealing whichever tab was
         // showing underneath — Home or History are untouched, not navigated away from.
-        if (searchActive || searchAlpha > 0.01f) {
+        if (searchActive || searchOverlayShown) {
             val searchResults = remember { com.cns.accounts.data.sampleSearchResults() }
             com.cns.accounts.ui.search.SearchScreen(
                 query = searchQuery,
                 results = searchResults,
-                modifier = Modifier.graphicsLayer { alpha = searchAlpha },
+                modifier = Modifier.graphicsLayer { alpha = searchAlpha.value },
             )
         }
         HomeBottomNavigation(
