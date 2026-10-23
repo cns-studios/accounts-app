@@ -1,8 +1,5 @@
 package com.cns.accounts.navigation
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,10 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
@@ -99,7 +94,6 @@ private fun AppNavGraph(container: AppContainer) {
     val navController = rememberNavController()
     val viewModel = containerViewModel { c, _ -> HomeViewModel(c) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val defaultAuthenticatorLabel = stringResource(R.string.authenticator_default_label)
     NavHost(
         navController = navController,
         startDestination = "home",
@@ -138,11 +132,11 @@ private fun AppNavGraph(container: AppContainer) {
                 onLoadMoreHistory = viewModel::loadMoreHistory,
                 onApproveRequest = viewModel::approveRequest,
                 onDenyRequest = viewModel::denyRequest,
-                onAddAuthenticator = viewModel::showAddAuthenticator,
-                onRemoveAuthenticator = viewModel::showRemoveAuthenticator,
+                onSetUpTwoFactor = viewModel::setUpTwoFactor,
+                onTransferTwoFactor = viewModel::showTransferTwoFactor,
                 onServiceClick = viewModel::showDisconnectApp,
                 onDialogFieldChange = viewModel::updateDialogField,
-                onDialogConfirm = { viewModel.confirmDialog(defaultAuthenticatorLabel) },
+                onDialogConfirm = viewModel::confirmDialog,
                 onDialogDismiss = viewModel::dismissDialog,
             )
         }
@@ -152,13 +146,12 @@ private fun AppNavGraph(container: AppContainer) {
     }
 }
 
-/** Settings plus the platform pieces its actions need: photo picker, biometric prompt, intents. */
+/** Settings plus the platform pieces its actions need: photo picker and biometric prompt. */
 @Composable
 private fun SettingsRoute(container: AppContainer, onBack: () -> Unit) {
     val viewModel = containerViewModel { c, application -> SettingsViewModel(c, application) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.uploadAvatar(uri)
     }
@@ -190,13 +183,5 @@ private fun SettingsRoute(container: AppContainer, onBack: () -> Unit) {
         onDialogConfirm = viewModel::confirmDialog,
         onDialogDismiss = viewModel::dismissDialog,
         onPickAvatar = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-        onOpenAuthenticatorApp = { setup ->
-            try {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(setup.otpauthUri)))
-            } catch (_: ActivityNotFoundException) {
-                clipboard.setText(AnnotatedString(setup.secret))
-                container.messages.show(R.string.no_authenticator_app)
-            }
-        },
     )
 }

@@ -23,7 +23,8 @@ sealed interface RequestBody {
     ) : RequestBody
 }
 
-class HttpResponse(val status: Int, val body: String) {
+/** [serverTimeMillis] is the response's `Date` header, when the server sent one. */
+class HttpResponse(val status: Int, val body: String, val serverTimeMillis: Long? = null) {
     val isSuccessful: Boolean get() = status in 200..299
 
     fun json(): JSONObject = if (body.isBlank()) JSONObject() else try {
@@ -71,7 +72,7 @@ class HttpTransport(private val baseUrl: String = BuildConfig.CNS_API_BASE_URL) 
             val status = connection.responseCode
             val stream = if (status >= 400) connection.errorStream else connection.inputStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            HttpResponse(status, text)
+            HttpResponse(status, text, connection.date.takeIf { it > 0 })
         } finally {
             connection.disconnect()
         }

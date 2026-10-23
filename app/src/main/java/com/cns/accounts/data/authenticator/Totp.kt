@@ -1,6 +1,5 @@
 package com.cns.accounts.data.authenticator
 
-import android.net.Uri
 import java.nio.ByteBuffer
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -45,27 +44,3 @@ object Totp {
         return out.toByteArray().takeIf { it.isNotEmpty() }
     }
 }
-
-/**
- * Parses what a user can paste into the "add authenticator" dialog: either a raw base32 key or
- * an `otpauth://totp/Issuer:account?secret=...&issuer=...` URI (what a setup QR code encodes).
- */
-fun parseAuthenticatorInput(input: String, fallbackLabel: String): AuthenticatorEntry? {
-    val trimmed = input.trim()
-    if (trimmed.startsWith("otpauth://", ignoreCase = true)) {
-        val uri = Uri.parse(trimmed)
-        if (!uri.host.equals("totp", ignoreCase = true)) return null
-        val secret = uri.getQueryParameter("secret") ?: return null
-        if (Totp.decodeBase32(secret) == null) return null
-        val path = uri.path?.trimStart('/').orEmpty()
-        val issuer = uri.getQueryParameter("issuer") ?: path.substringBefore(':', "").takeIf { it.isNotBlank() }
-        val account = path.substringAfter(':')
-        val label = listOfNotNull(issuer, account.takeIf { it.isNotBlank() }).joinToString(" · ").ifBlank { fallbackLabel }
-        return AuthenticatorEntry(label = label, secret = secret.uppercase(), isCnsAccount = issuer == CnsIssuer)
-    }
-    if (Totp.decodeBase32(trimmed) == null) return null
-    return AuthenticatorEntry(label = fallbackLabel, secret = trimmed.uppercase().filterNot { it == ' ' }, isCnsAccount = false)
-}
-
-/** auth-v2 issues its TOTP keys with this issuer (see `twofa.go` / Setup2FA). */
-const val CnsIssuer = "CNS Studios"

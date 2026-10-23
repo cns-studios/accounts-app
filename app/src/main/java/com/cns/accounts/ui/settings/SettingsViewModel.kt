@@ -13,8 +13,7 @@ import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
 import com.cns.accounts.data.UnsupportedFeatureException
 import com.cns.accounts.data.UserMessage
-import com.cns.accounts.data.authenticator.AuthenticatorEntry
-import com.cns.accounts.data.authenticator.CnsIssuer
+import com.cns.accounts.data.authenticator.TwoFactorState
 import com.cns.accounts.data.securityStatus
 import com.cns.accounts.data.toUserMessage
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +28,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
 /**
- * "Your Account": profile edits, 2FA, password, avatar, sign-out and deletion against auth-v2,
+ * "Your Account": profile edits, 2FA (through [AppContainer.twoFactor]), password, avatar, sign-out and deletion against auth-v2,
  * plus the device-local biometric lock. Strong account protection, "require security app" and
  * the recovery phrase have no backend yet; their controls report that instead of pretending.
  */
@@ -38,26 +37,32 @@ class SettingsViewModel(
     private val application: Application,
 ) : ViewModel() {
     private val account = container.account
-    private val authenticator = container.authenticator
+    private val twoFactorManager = container.twoFactor
     private val messages = container.messages
     private val dialog = MutableStateFlow<SettingsDialog?>(null)
+    private val enablingTwoFactor = MutableStateFlow(false)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         account.user,
-        authenticator.entry,
+        twoFactorManager.state,
         container.preferences.biometricUnlock,
         dialog,
-    ) { user, key, biometric, dialog ->
+        enablingTwoFactor,
+    ) { user, twoFactorState, biometric, dialog, enabling ->
         val twoFactor = user?.totpEnabled == true
         SettingsUiState(
             data = SettingsData(
                 profile = Profile(user?.username.orEmpty(), twoFactor, user?.avatarUrl),
-                security = securityStatus(twoFactorEnabled = twoFactor, authenticatorOnDevice = key?.isCnsAccount == true),
-                toggles = SettingsToggles(biometricUnlock = biometric, twoFactorAuthentication = twoFactor),
+                security = securityStatus(twoFactorEnabled = twoFactor, authenticatorOnDevice = twoFactorState is TwoFactorState.Active),
+                // Shown on while it is being turned on, so the toggle doesn't bounce back meanwhile.
+                toggles = SettingsToggles(biometricUnlock = biometric, twoFactorAuthentication = twoFactor || enabling),
             ),
             dialog = dialog,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    /** Whether 2FA codes can come from this device, so dialogs needn't ask for one. */
+    private val codeOnDevice get() = twoFactorManager.state.value is TwoFactorState.Active
 
     init {
         viewModelScope.launch { runCatching { account.refreshProfile() } }
@@ -69,7 +74,7 @@ class SettingsViewModel(
     fun setBiometricUnlock(enabled: Boolean) = container.preferences.setBiometricUnlock(enabled)
 
     fun setTwoFactorAuthentication(enabled: Boolean) {
-        if (enabled) startTwoFactorSetup() else openDialog(SettingsDialogKind.DisableTwoFactor)
+        if (enabled) enableTwoFactor() else openDialog(SettingsDialogKind.DisableTwoFactor)
     }
 
     fun setStrongAccountProtection(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
@@ -81,16 +86,15 @@ class SettingsViewModel(
     // --- dialogs ---
 
     fun openDialog(kind: SettingsDialogKind) {
-        val code = authenticator.currentCnsCode()
+        // A code field only when the account needs one and this device can't supply it.
+        val askForCode = uiState.value.data.profile.twoFactorEnabled && !codeOnDevice
         val values = when (kind) {
             SettingsDialogKind.EditUsername -> listOf(uiState.value.data.profile.name, "")
-            SettingsDialogKind.DisableTwoFactor -> listOf("", code.orEmpty())
+            SettingsDialogKind.DisableTwoFactor, SettingsDialogKind.DeleteAccount -> if (askForCode) listOf("", "") else listOf("")
             SettingsDialogKind.ChangePassword -> listOf("", "", "")
-            SettingsDialogKind.DeleteAccount ->
-                if (uiState.value.data.toggles.twoFactorAuthentication) listOf("", code.orEmpty()) else listOf("")
             else -> emptyList()
         }
-        dialog.value = SettingsDialog(kind, values, prefilledCode = code)
+        dialog.value = SettingsDialog(kind, values)
     }
 
     /** "Configure 2FA" in the profile menu: set it up when off, turn it off when on. */
@@ -120,17 +124,14 @@ class SettingsViewModel(
                 }
             }
             SettingsDialogKind.RemoveAvatar -> run(R.string.avatar_removed) { account.deleteAvatar() }
-            SettingsDialogKind.ConfigureTwoFactor -> startTwoFactorSetup()
-            SettingsDialogKind.SetupTwoFactor -> requireFilled(values) { confirmTwoFactorSetup(current, freshCode(current, values[0])) }
+            SettingsDialogKind.ConfigureTwoFactor -> run(R.string.two_factor_on) { twoFactorManager.enable() }
             SettingsDialogKind.DisableTwoFactor -> requireFilled(values) {
-                run(R.string.two_factor_off) {
-                    account.disableTwoFactor(password = current.values[0], code = freshCode(current, values[1]))
-                    // The key is dead server-side now; don't leave a card generating useless codes.
-                    if (authenticator.entry.value?.isCnsAccount == true) authenticator.remove()
-                }
+                run(R.string.two_factor_off) { twoFactorManager.disable(password = current.values[0], code = values.getOrElse(1) { "" }) }
             }
             SettingsDialogKind.DeleteAccount -> requireFilled(values) {
-                run(successMessage = null) { account.deleteAccount(password = current.values[0], code = freshCode(current, values.getOrElse(1) { "" })) }
+                run(successMessage = null) {
+                    account.deleteAccount(password = current.values[0], code = values.getOrNull(1) ?: twoFactorManager.currentCode().orEmpty())
+                }
             }
             // The "Choose Photo" button launches the system photo picker from the screen; the
             // result comes back through uploadAvatar().
@@ -138,45 +139,17 @@ class SettingsViewModel(
         }
     }
 
-    // --- 2FA setup ---
+    // --- 2FA ---
 
-    private fun startTwoFactorSetup() {
-        dialog.value = (dialog.value ?: SettingsDialog(SettingsDialogKind.ConfigureTwoFactor)).copy(isBusy = true, error = null)
+    /** The toggle: turn 2FA on right away, with this app as the authenticator. */
+    private fun enableTwoFactor() {
+        if (enablingTwoFactor.value) return
+        enablingTwoFactor.value = true
         viewModelScope.launch {
-            runCatching { account.startTwoFactorSetup() }
-                .onSuccess { setup ->
-                    // Use this app as the authenticator when its card is free (or already holds
-                    // an old CNS key); never overwrite a key the user added for something else.
-                    val existing = authenticator.entry.value
-                    val storeLocally = existing == null || existing.isCnsAccount
-                    val code = if (storeLocally) {
-                        AuthenticatorEntry(label = "$CnsIssuer · ${uiState.value.data.profile.name}", secret = setup.secret, isCnsAccount = true)
-                            .codeAt(System.currentTimeMillis())
-                    } else {
-                        null
-                    }
-                    dialog.value = SettingsDialog(
-                        kind = SettingsDialogKind.SetupTwoFactor,
-                        values = listOf(code.orEmpty()),
-                        setup = setup,
-                        keyStoredOnDevice = storeLocally,
-                        prefilledCode = code,
-                    )
-                }
-                .onFailure { error ->
-                    dialog.value = null
-                    messages.show(error)
-                }
-        }
-    }
-
-    private fun confirmTwoFactorSetup(current: SettingsDialog, code: String) {
-        val setup = current.setup ?: return
-        run(R.string.two_factor_on) {
-            account.confirmTwoFactor(code)
-            if (current.keyStoredOnDevice) {
-                authenticator.save(AuthenticatorEntry("$CnsIssuer · ${uiState.value.data.profile.name}", setup.secret, isCnsAccount = true))
-            }
+            runCatching { twoFactorManager.enable() }
+                .onSuccess { messages.show(R.string.two_factor_on) }
+                .onFailure(messages::show)
+            enablingTwoFactor.value = false
         }
     }
 
@@ -226,16 +199,6 @@ class SettingsViewModel(
     }
 
     // --- plumbing ---
-
-    /** The entered code, or a current one if the user kept the pre-filled code (see [SettingsDialog.prefilledCode]). */
-    private fun freshCode(dialog: SettingsDialog, entered: String): String {
-        if (dialog.prefilledCode == null || entered != dialog.prefilledCode) return entered
-        val now = System.currentTimeMillis()
-        val pendingSetupCode = dialog.setup?.takeIf { dialog.keyStoredOnDevice }?.let {
-            AuthenticatorEntry("", it.secret, isCnsAccount = true).codeAt(now)
-        }
-        return pendingSetupCode ?: authenticator.currentCnsCode() ?: entered
-    }
 
     private inline fun requireFilled(values: List<String>, action: () -> Unit) {
         if (values.any { it.isBlank() }) fail(UserMessage(resId = R.string.fill_all_fields)) else action()

@@ -5,8 +5,11 @@ dashboard in `accounts/` uses; `auth/main` is the older v1 surface). Contracts:
 `accounts/API_REFERENCE.md` and `auth` @ `auth-v2`.
 
 Base URL: `BuildConfig.CNS_API_BASE_URL`, default `https://api.cns-studios.com`, overridable with
-`-PcnsApiBaseUrl=...` (e.g. `http://10.0.2.2:3845` for a local auth-v2 from the emulator — plain
-http additionally needs a network security config). `-PcnsAccountsWebUrl` sets the sign-up link.
+`-PcnsApiBaseUrl=...`. `-PcnsAccountsWebUrl` sets the sign-up link. A build with any other base
+URL gets the application id `com.cns.accounts.local`, so it installs next to the real app and
+never shares its session or 2FA keys. Debug builds allow plain http to `localhost` and
+`10.0.2.2` only. For a local auth-v2: `adb reverse tcp:3845 tcp:3845` and
+`-PcnsApiBaseUrl=http://localhost:3845`.
 
 ## Session
 
@@ -40,14 +43,20 @@ http additionally needs a network security config). `-PcnsAccountsWebUrl` sets t
 
 ## Device-local features (no API needed)
 
-- **Account code card** = standalone TOTP authenticator (one key, Keystore-encrypted). "Add"
-  accepts a base32 key or an `otpauth://` link; long-press removes it. Codes are RFC 6238
-  (SHA1/6/30s) and align to wall-clock periods like any authenticator.
-  When 2FA is enabled from the app and the card is free (or already holds a CNS key), the new
-  CNS key is stored there, so the confirm code is pre-filled; the 2FA code fields in sign-in,
-  disable 2FA and delete account are pre-filled from it too. A card holding a non-CNS key is
-  never overwritten — the setup dialog then shows the key and an "open in authenticator app" link.
-  Turning 2FA off removes the (now dead) CNS key from the card.
+- **Account code card** = this app is the CNS account's authenticator (`TwoFactorManager`).
+  Keys are Keystore-encrypted, one per account that enabled 2FA here. The card has three states:
+  - *2FA off* → "Set Up": `/api/me/mfa/setup`, then `/confirm` with a code the app generates
+    from the new key itself (nothing to type); the key stays on the device.
+  - *2FA on, key here* → the live code (RFC 6238, SHA1/6/30s, wall-clock periods). Copy puts it
+    on the clipboard flagged sensitive.
+  - *2FA on, key elsewhere* (another device, another authenticator, or this key was replaced)
+    → "Transfer to this device": password + a code from the other device →
+    `/mfa/disable`, then setup/confirm here. auth-v2 can't rotate a key in place, so 2FA is
+    briefly off in between; if the second half fails the app says so and Set Up finishes it.
+  A replaced key is detected from the activity feed (a `2fa_enabled` event later than this
+  key's enrollment, compared in server time) since auth-v2 exposes no key id. Turning 2FA off
+  anywhere drops the key on the next profile load. Disable 2FA / delete account / sign-in use
+  the device's code instead of asking for one when the key is here.
 - **Biometric unlock**: app lock on cold start and after 30s in the background
   (biometric or device credential).
 - **Security center**: computed on device — 2FA on, password (always), App = this device holds
@@ -77,8 +86,10 @@ requires the password; delete requires password + code.
   connected), and a disconnected app reappears on the next refresh until auth reports
   `is_revoked` as "every session revoked" and `last_used` as the newest.
 
-## Not verified here
+## Verification
 
-Signed-in flows were not run against a live backend from this machine (no test account). The
-TOTP implementation is unit-tested against the RFC 6238 vectors (`TotpTest`); sign-in screen and
-its validation were checked on an emulator.
+Run on an emulator against a local auth-v2 (`git archive auth-v2`, docker compose, a test
+user): sign-in, Set Up, the codes accepted by auth for sign-in and disable, the "another device"
+state after a key change made through the API, Transfer, and the card falling back to Set Up
+after 2FA was turned off elsewhere. Unit tests: `TotpTest` (RFC 6238 vectors) and
+`TwoFactorStateTest` (card state / replaced-key detection).

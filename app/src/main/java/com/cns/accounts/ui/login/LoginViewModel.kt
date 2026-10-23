@@ -98,12 +98,9 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    // Only use the device key when it was set up for this username (its label ends with it).
-    private fun deviceCode(username: String): String? {
-        val entry = container.authenticator.entry.value ?: return null
-        if (!entry.label.endsWith(username.trim(), ignoreCase = true)) return null
-        return container.authenticator.currentCnsCode()
-    }
+    // Only from a key this device holds for this very account.
+    private fun deviceCode(username: String): String? =
+        container.authenticator.entryForUsername(username)?.codeAt(System.currentTimeMillis())
 
     private fun fail(error: Throwable, wrongCredentials: Int) {
         // auth-v2's mobile endpoints answer every rejected sign-in with a generic 401.

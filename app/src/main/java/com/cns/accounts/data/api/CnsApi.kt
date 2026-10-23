@@ -59,8 +59,10 @@ class CnsApi(
         return MfaSetup(secret = json.optString("secret"), otpauthUri = json.optString("otpauth_uri"))
     }
 
-    suspend fun confirmTwoFactor(code: String) {
-        authed("POST", "/api/me/mfa/confirm", JSONObject().put("code", code))
+    /** Returns the server's time of the confirmation (falls back to the device clock). */
+    suspend fun confirmTwoFactor(code: String): Long {
+        val response = authedResponse("POST", "/api/me/mfa/confirm", RequestBody.Json(JSONObject().put("code", code)))
+        return response.serverTimeMillis ?: System.currentTimeMillis()
     }
 
     suspend fun disableTwoFactor(password: String, code: String) {
@@ -90,8 +92,11 @@ class CnsApi(
     private suspend fun authed(method: String, path: String, json: JSONObject) =
         authed(method, path, RequestBody.Json(json))
 
+    private suspend fun authed(method: String, path: String, body: RequestBody? = null): JSONObject =
+        authedResponse(method, path, body).json()
+
     /** Bearer call with one transparent refresh-and-retry when the access token is rejected. */
-    private suspend fun authed(method: String, path: String, body: RequestBody? = null): JSONObject {
+    private suspend fun authedResponse(method: String, path: String, body: RequestBody? = null): HttpResponse {
         var token = session.accessToken()
         var response = transport.execute(method, path, body, bearerToken = token)
         if (response.status == 401) {
@@ -99,7 +104,7 @@ class CnsApi(
             response = transport.execute(method, path, body, bearerToken = token)
         }
         if (!response.isSuccessful) throw ApiException.from(response)
-        return response.json()
+        return response
     }
 
     private fun encodePath(segment: String): String = java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")

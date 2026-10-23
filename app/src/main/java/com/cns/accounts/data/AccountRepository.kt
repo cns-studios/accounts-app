@@ -5,7 +5,6 @@ import com.cns.accounts.data.api.AccountUser
 import com.cns.accounts.data.api.ActivityEntry
 import com.cns.accounts.data.api.CnsApi
 import com.cns.accounts.data.api.ConnectedApp
-import com.cns.accounts.data.api.MfaSetup
 import com.cns.accounts.data.session.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +41,7 @@ class AccountRepository(
     private val _activity = MutableStateFlow(ActivityFeed())
     val activity: StateFlow<ActivityFeed> = _activity.asStateFlow()
 
-    suspend fun refreshProfile() = setUser(api.me())
+    suspend fun refreshProfile(): AccountUser = api.me().also(::setUser)
 
     /** Seeds the profile from the sign-in response so Home has a name before its first refresh. */
     fun onSignedIn(user: AccountUser?) {
@@ -84,16 +83,14 @@ class AccountRepository(
     suspend fun changePassword(currentPassword: String, newPassword: String) =
         api.changePassword(currentPassword, newPassword)
 
-    suspend fun startTwoFactorSetup(): MfaSetup = api.setupTwoFactor()
-
-    suspend fun confirmTwoFactor(code: String) {
-        api.confirmTwoFactor(code)
-        _user.value?.let { setUser(it.copy(totpEnabled = true)) }
+    /** Reflects a 2FA change made through [com.cns.accounts.data.authenticator.TwoFactorManager] without a reload. */
+    fun markTwoFactor(enabled: Boolean) {
+        _user.value?.let { setUser(it.copy(totpEnabled = enabled)) }
     }
 
     suspend fun disableTwoFactor(password: String, code: String) {
         api.disableTwoFactor(password, code)
-        _user.value?.let { setUser(it.copy(totpEnabled = false)) }
+        markTwoFactor(enabled = false)
     }
 
     suspend fun uploadAvatar(bytes: ByteArray, contentType: String) {

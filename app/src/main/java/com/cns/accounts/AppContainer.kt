@@ -8,6 +8,7 @@ import com.cns.accounts.data.UserMessages
 import com.cns.accounts.data.api.CnsApi
 import com.cns.accounts.data.api.HttpTransport
 import com.cns.accounts.data.authenticator.AuthenticatorStore
+import com.cns.accounts.data.authenticator.TwoFactorManager
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.data.session.SecureStore
 import com.cns.accounts.data.session.SessionManager
@@ -31,6 +32,7 @@ class AppContainer(context: Context) {
     val api = CnsApi(transport, session)
     val account = AccountRepository(context, api, session)
     val authenticator = AuthenticatorStore(secureStore)
+    val twoFactor = TwoFactorManager(api, account, authenticator, appScope)
     val preferences = AppPreferences(context)
     val signInRequests = SignInRequests()
     val messages = UserMessages()
@@ -38,20 +40,14 @@ class AppContainer(context: Context) {
 
     init {
         // Whatever ended the session (sign-out, account deletion, a refresh token the server
-        // rejected), forget the account data. The authenticator key stays: it is not tied to
-        // the session.
+        // rejected), forget the account data. Authenticator keys stay: they belong to the
+        // account, not the session, and are needed to sign back in.
         appScope.launch {
             session.authState.drop(1).filter { it == AuthState.SignedOut }.collect {
                 account.clear()
             }
         }
-        // 2FA turned off elsewhere (web, another device) kills the stored CNS key server-side;
-        // drop it once the account says so instead of showing codes that no longer work.
-        appScope.launch {
-            account.user.collect { user ->
-                if (user != null && !user.totpEnabled && authenticator.entry.value?.isCnsAccount == true) authenticator.remove()
-            }
-        }
+
     }
 }
 

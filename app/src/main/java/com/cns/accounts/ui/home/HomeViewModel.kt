@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cns.accounts.AppContainer
 import com.cns.accounts.R
-import com.cns.accounts.data.Account
 import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.HomeData
 import com.cns.accounts.data.Profile
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.api.ActivityEntry
-import com.cns.accounts.data.authenticator.parseAuthenticatorInput
+import com.cns.accounts.data.UserMessage
+import com.cns.accounts.data.authenticator.TwoFactorMoveIncompleteException
+import com.cns.accounts.data.toUserMessage
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.ui.history.HistoryUiState
 import com.cns.accounts.ui.history.isUserFacingEvent
@@ -27,8 +28,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Home + History (they share one screen and swipe between each other): the profile header,
- * the authenticator card, connected apps and the activity feed, all from [AppContainer.account]
- * and [AppContainer.authenticator].
+ * the 2FA card, connected apps and the activity feed, all from [AppContainer.account] and
+ * [AppContainer.twoFactor].
  */
 class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val account = container.account
@@ -40,15 +41,13 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val homeData = combine(
         account.user,
         account.connectedApps,
-        container.authenticator.entry,
+        container.twoFactor.state,
         container.signInRequests.pending,
-    ) { user, apps, authenticator, request ->
+    ) { user, apps, twoFactor, request ->
         HomeData(
             profile = Profile(user?.username.orEmpty(), user?.totpEnabled == true, user?.avatarUrl),
             signInRequest = request,
-            // A CNS key is only live while the account has 2FA on; once it was turned off
-            // (here, on the web or on another device) its codes are useless, so don't show them.
-            account = authenticator?.takeUnless { it.isCnsAccount && user?.totpEnabled != true }?.let { Account(it.label, it.secret) },
+            twoFactor = twoFactor,
             services = apps?.map { Service(it.clientId, it.name, it.lastUsed) },
         )
     }
@@ -65,6 +64,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             isRefreshing = local.isRefreshing,
             selectedDestination = local.selectedDestination,
             dialog = local.dialog,
+            isSettingUpTwoFactor = local.isSettingUpTwoFactor,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -122,39 +122,66 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    // --- authenticator card ---
+    // --- 2FA card ---
 
-    fun showAddAuthenticator() = local.update { it.copy(dialog = HomeDialog.AddAuthenticator()) }
-    fun showRemoveAuthenticator() = local.update { it.copy(dialog = HomeDialog.RemoveAuthenticator) }
-
-    fun updateDialogField(index: Int, value: String) = local.update { state ->
-        val dialog = state.dialog as? HomeDialog.AddAuthenticator ?: return@update state
-        state.copy(dialog = if (index == 0) dialog.copy(key = value, invalid = false) else dialog.copy(label = value))
+    /** "Set Up": turns 2FA on with this app as the authenticator, no code to type. */
+    fun setUpTwoFactor() {
+        if (local.value.isSettingUpTwoFactor) return
+        local.update { it.copy(isSettingUpTwoFactor = true) }
+        viewModelScope.launch {
+            runCatching { container.twoFactor.enable() }
+                .onSuccess { messages.show(R.string.two_factor_on) }
+                .onFailure(messages::show)
+            local.update { it.copy(isSettingUpTwoFactor = false) }
+        }
     }
 
-    fun confirmDialog(defaultLabel: String) {
+    fun showTransferTwoFactor() = local.update { it.copy(dialog = HomeDialog.TransferTwoFactor()) }
+
+    fun updateDialogField(index: Int, value: String) = local.update { state ->
+        val dialog = state.dialog as? HomeDialog.TransferTwoFactor ?: return@update state
+        state.copy(dialog = if (index == 0) dialog.copy(password = value, error = null) else dialog.copy(code = value, error = null))
+    }
+
+    fun confirmDialog() {
         when (val dialog = local.value.dialog) {
-            is HomeDialog.AddAuthenticator -> {
-                val entry = parseAuthenticatorInput(dialog.key, fallbackLabel = defaultLabel)
-                if (entry == null) {
-                    local.update { it.copy(dialog = dialog.copy(invalid = true)) }
-                    return
-                }
-                container.authenticator.save(dialog.label.trim().takeIf { it.isNotEmpty() }?.let { entry.copy(label = it) } ?: entry)
-                dismissDialog()
-                messages.show(R.string.authenticator_added)
-            }
-            HomeDialog.RemoveAuthenticator -> {
-                container.authenticator.remove()
-                dismissDialog()
-            }
+            is HomeDialog.TransferTwoFactor -> transferTwoFactor(dialog)
             is HomeDialog.DisconnectApp -> disconnect(dialog)
             null -> Unit
         }
     }
 
     fun dismissDialog() = local.update { state ->
-        if ((state.dialog as? HomeDialog.DisconnectApp)?.isBusy == true) state else state.copy(dialog = null)
+        val busy = when (val dialog = state.dialog) {
+            is HomeDialog.DisconnectApp -> dialog.isBusy
+            is HomeDialog.TransferTwoFactor -> dialog.isBusy
+            null -> false
+        }
+        if (busy) state else state.copy(dialog = null)
+    }
+
+    private fun transferTwoFactor(dialog: HomeDialog.TransferTwoFactor) {
+        if (dialog.isBusy) return
+        if (dialog.password.isEmpty() || dialog.code.length != 6) {
+            local.update { it.copy(dialog = dialog.copy(error = UserMessage(resId = R.string.fill_all_fields))) }
+            return
+        }
+        local.update { it.copy(dialog = dialog.copy(isBusy = true, error = null)) }
+        viewModelScope.launch {
+            runCatching { container.twoFactor.transferHere(dialog.password, dialog.code) }
+                .onSuccess {
+                    local.update { it.copy(dialog = null) }
+                    messages.show(R.string.two_factor_transferred)
+                }
+                .onFailure { error ->
+                    if (error is TwoFactorMoveIncompleteException) {
+                        local.update { it.copy(dialog = null) }
+                        messages.show(R.string.two_factor_transfer_incomplete)
+                    } else {
+                        local.update { it.copy(dialog = dialog.copy(isBusy = false, error = error.toUserMessage())) }
+                    }
+                }
+        }
     }
 
     // --- connected apps ---
@@ -183,5 +210,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val isRefreshingHistory: Boolean = false,
         val selectedDestination: String = "home",
         val dialog: HomeDialog? = null,
+        val isSettingUpTwoFactor: Boolean = false,
     )
 }

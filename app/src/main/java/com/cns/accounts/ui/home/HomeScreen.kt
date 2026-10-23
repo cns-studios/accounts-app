@@ -49,12 +49,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.sp
@@ -64,15 +63,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import com.cns.accounts.R
-import com.cns.accounts.data.Account
 import com.cns.accounts.data.SearchResultKind
 import com.cns.accounts.data.SignInRequest
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.TimerSquareCount
 import com.cns.accounts.data.authenticator.Totp
+import com.cns.accounts.data.authenticator.TwoFactorState
 import com.cns.accounts.data.sampleHomeData
 import com.cns.accounts.ui.components.ActionDialog
 import com.cns.accounts.ui.components.DialogField
+import com.cns.accounts.ui.components.FieldKind
 import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.ui.components.AppCard
 import com.cns.accounts.ui.components.FLING_VELOCITY_THRESHOLD
@@ -101,8 +101,8 @@ fun HomeScreen(
     onLoadMoreHistory: () -> Unit,
     onApproveRequest: () -> Unit,
     onDenyRequest: () -> Unit,
-    onAddAuthenticator: () -> Unit,
-    onRemoveAuthenticator: () -> Unit,
+    onSetUpTwoFactor: () -> Unit,
+    onTransferTwoFactor: () -> Unit,
     onServiceClick: (Service) -> Unit,
     onDialogFieldChange: (Int, String) -> Unit,
     onDialogConfirm: () -> Unit,
@@ -153,10 +153,11 @@ fun HomeScreen(
     // than on every 100ms tick — the ticks themselves still run every 100ms internally (for code
     // rotation + exact timing), they just don't all trigger recomposition of the account card.
     var spentCount by remember { mutableIntStateOf(0) }
-    val account = state.data.account
-    val secretBytes = remember(account?.secret) { account?.secret?.let(Totp::decodeBase32) }
+    val twoFactor = state.data.twoFactor
+    val secret = (twoFactor as? TwoFactorState.Active)?.secret
+    val secretBytes = remember(secret) { secret?.let(Totp::decodeBase32) }
     var accountCode by remember(secretBytes) {
-        androidx.compose.runtime.mutableStateOf(secretBytes?.let { formatAccountCode(Totp.code(it, System.currentTimeMillis())) } ?: PlaceholderAccountCode)
+        androidx.compose.runtime.mutableStateOf(secretBytes?.let { formatAccountCode(Totp.code(it, System.currentTimeMillis())) }.orEmpty())
     }
     var searchActive by remember { androidx.compose.runtime.mutableStateOf(false) }
     var searchQuery by remember { androidx.compose.runtime.mutableStateOf("") }
@@ -169,10 +170,11 @@ fun HomeScreen(
     // read in graphicsLayer, so the fade doesn't recompose the whole screen every frame.
     val searchOverlayShown by remember { derivedStateOf { searchAlpha.value > 0.01f } }
     val haptic = LocalHapticFeedback.current
-    val secretLength = account?.secretLength ?: TimerSquareCount
+    val secretLength = TimerSquareCount
     // TOTP periods are aligned to wall-clock 30s boundaries, so the timer squares are too: the
     // code flips exactly when the row resets, matching any other authenticator app.
-    LaunchedEffect(secretBytes, secretLength) {
+    LaunchedEffect(secretBytes) {
+        if (secretBytes == null) return@LaunchedEffect
         var lastPeriod = System.currentTimeMillis() / Totp.PeriodMillis
         while (true) {
             delay(100L)
@@ -267,7 +269,7 @@ fun HomeScreen(
                             .padding(horizontal = spacing.xl),
                         contentAlignment = Alignment.Center,
                     ) {
-                        AccountCard(account, accountCode, spentCount, onAdd = onAddAuthenticator, onLongPress = onRemoveAuthenticator)
+                        AccountCard(twoFactor, accountCode, spentCount, state.isSettingUpTwoFactor, onSetUp = onSetUpTwoFactor, onTransfer = onTransferTwoFactor)
                     }
                 }
                 item(key = "account-services-gap", contentType = "spacer") {
@@ -342,23 +344,17 @@ private fun HomeDialogHost(
     onDismiss: () -> Unit,
 ) {
     when (dialog) {
-        is HomeDialog.AddAuthenticator -> ActionDialog(
-            title = stringResource(R.string.add_authenticator_title),
-            subtitle = stringResource(R.string.add_authenticator_subtitle),
-            primaryButtonLabel = stringResource(R.string.add),
+        is HomeDialog.TransferTwoFactor -> ActionDialog(
+            title = stringResource(R.string.transfer_2fa_title),
+            subtitle = stringResource(R.string.transfer_2fa_subtitle),
+            primaryButtonLabel = stringResource(R.string.transfer),
             fields = listOf(
-                DialogField(stringResource(R.string.authenticator_key_placeholder), dialog.key),
-                DialogField(stringResource(R.string.authenticator_label_placeholder), dialog.label),
+                DialogField(stringResource(R.string.password_placeholder), dialog.password, FieldKind.Password),
+                DialogField(stringResource(R.string.transfer_2fa_code_placeholder), dialog.code, FieldKind.Code),
             ),
             onFieldChange = onFieldChange,
-            errorText = if (dialog.invalid) stringResource(R.string.authenticator_invalid) else null,
-            onDismissRequest = onDismiss,
-            onPrimaryAction = onConfirm,
-        )
-        HomeDialog.RemoveAuthenticator -> ActionDialog(
-            title = stringResource(R.string.remove_authenticator_title),
-            subtitle = stringResource(R.string.remove_authenticator_subtitle),
-            primaryButtonLabel = stringResource(R.string.remove),
+            errorText = dialog.error?.resolve(LocalContext.current),
+            isBusy = dialog.isBusy,
             onDismissRequest = onDismiss,
             onPrimaryAction = onConfirm,
         )
@@ -451,90 +447,104 @@ private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier
     )
 }
 
-private const val PlaceholderAccountCode = "\u2022\u2022\u2022-\u2022\u2022\u2022"
-
 private fun formatAccountCode(code: String) = "${code.take(3)}-${code.drop(3)}"
 
 /**
- * The standalone authenticator: the current TOTP code for the key stored on this device (see
- * AuthenticatorStore). With no key yet it shows a placeholder and an "Add" button; a long press
- * on a configured card offers to remove the key.
+ * The account's authenticator: this app holds the CNS account's TOTP key (see TwoFactorManager)
+ * and shows its current code with the 30s timer row. Without a key here the card says why — 2FA
+ * is off ("Set Up" turns it on with this app as the authenticator) or it lives on another device
+ * ("Transfer" moves it here) — and hides the code and timer.
  */
 @Composable
-private fun AccountCard(account: Account?, code: String, spentCount: Int, onAdd: () -> Unit, onLongPress: () -> Unit) {
+private fun AccountCard(
+    state: TwoFactorState,
+    code: String,
+    spentCount: Int,
+    isSettingUp: Boolean,
+    onSetUp: () -> Unit,
+    onTransfer: () -> Unit,
+) {
     val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
     // Sized to content, not a fixed height — the exported accountCardHeight token (137dp)
     // undershoots this card's real content (label + code row + timer squares + gaps ≈ 145dp),
     // which made AppCard's rounded-corner clip cut the bottom off the timer squares row.
-    AppCard(
-        modifier = if (account == null) Modifier else Modifier
-            .clip(RoundedCornerShape(LocalRadii.current.card))
-            .combinedClickable(
-                onClick = {},
-                onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onLongPress()
-                },
-            ),
-    ) {
+    AppCard {
         androidx.compose.foundation.layout.Column(
             modifier = Modifier.padding(LocalSpacing.current.md),
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
         ) {
             Text(
-                account?.label ?: stringResource(R.string.authenticator_default_label),
+                stringResource(R.string.authenticator_default_label),
                 color = colors.onSurface,
                 style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnimatedAccountCode(code, color = if (account == null) colors.mutedText else colors.onSurface)
-                if (account == null) {
-                    AddKeyButton(onClick = onAdd)
-                } else {
-                    CopyCodeButton(code = code.filter(Char::isDigit))
+            when (state) {
+                is TwoFactorState.Active -> {
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AnimatedAccountCode(code, color = colors.onSurface)
+                        CopyCodeButton(code = code.filter(Char::isDigit))
+                    }
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(17.dp)
+                            .semantics { role = Role.Image },
+                    ) {
+                        TimerSquares(TimerSquareCount, spentCount)
+                    }
+                }
+                TwoFactorState.Elsewhere -> {
+                    Text(stringResource(R.string.two_factor_elsewhere), color = colors.mutedText, style = RequestMetaText)
+                    CardWideButton(stringResource(R.string.transfer_2fa_here), isBusy = false, onClick = onTransfer)
+                }
+                TwoFactorState.NotSetUp, TwoFactorState.Unknown -> {
+                    Text(stringResource(R.string.two_factor_not_set_up), color = colors.mutedText, style = RequestMetaText)
+                    CardWideButton(
+                        stringResource(R.string.set_up),
+                        isBusy = isSettingUp,
+                        enabled = state == TwoFactorState.NotSetUp,
+                        onClick = onSetUp,
+                    )
                 }
             }
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(17.dp)
-                    .semantics { role = Role.Image },
-            ) {
-                TimerSquares(account?.secretLength ?: TimerSquareCount, spentCount)
-            }
         }
-
     }
 }
 
 @Composable
-private fun AddKeyButton(onClick: () -> Unit) {
+private fun CardWideButton(label: String, isBusy: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
     val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
+            .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(LocalDimensions.current.copyRadius))
             .background(colors.background)
-            .clickable {
+            .clickable(enabled = enabled && !isBusy) {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = 35.dp, vertical = 13.dp),
+            .semantics { role = Role.Button },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            stringResource(R.string.add),
-            color = colors.onSurface,
-            style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp),
-        )
+        if (isBusy) {
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = colors.onSurface,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(
+                label,
+                color = if (enabled) colors.onSurface else colors.mutedText,
+                style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp),
+            )
+        }
     }
 }
 
@@ -544,7 +554,7 @@ private const val CopyConfirmationMillis = 1400L
 private fun CopyCodeButton(code: String) {
     val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
-    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var copied by remember { androidx.compose.runtime.mutableStateOf(false) }
     androidx.compose.foundation.layout.Box(
@@ -553,8 +563,8 @@ private fun CopyCodeButton(code: String) {
             .clip(RoundedCornerShape(LocalDimensions.current.copyRadius))
             .background(colors.background)
             .clickable(enabled = !copied) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                clipboard.setText(AnnotatedString(code))
+                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                copySensitive(context, code)
                 copied = true
                 scope.launch {
                     delay(CopyConfirmationMillis)
@@ -583,6 +593,20 @@ private fun CopyCodeButton(code: String) {
             }
         }
     }
+}
+
+/**
+ * Copies a 2FA code flagged as sensitive, so Android hides it from the clipboard preview and
+ * keyboard suggestions (and, from Android 13, from the "copied" overlay) like a password.
+ */
+private fun copySensitive(context: android.content.Context, code: String) {
+    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java) ?: return
+    val clip = android.content.ClipData.newPlainText(context.getString(R.string.authenticator_default_label), code)
+    clip.description.extras = android.os.PersistableBundle().apply {
+        // ClipDescription.EXTRA_IS_SENSITIVE (API 33); older releases read the same key.
+        putBoolean("android.content.extra.IS_SENSITIVE", true)
+    }
+    clipboard.setPrimaryClip(clip)
 }
 
 /**
@@ -660,8 +684,8 @@ private fun HomeScreenPreview() {
             onLoadMoreHistory = {},
             onApproveRequest = {},
             onDenyRequest = {},
-            onAddAuthenticator = {},
-            onRemoveAuthenticator = {},
+            onSetUpTwoFactor = {},
+            onTransferTwoFactor = {},
             onServiceClick = {},
             onDialogFieldChange = { _, _ -> },
             onDialogConfirm = {},
@@ -732,8 +756,8 @@ private fun HomeScreenDarkPreview() {
             onLoadMoreHistory = {},
             onApproveRequest = {},
             onDenyRequest = {},
-            onAddAuthenticator = {},
-            onRemoveAuthenticator = {},
+            onSetUpTwoFactor = {},
+            onTransferTwoFactor = {},
             onServiceClick = {},
             onDialogFieldChange = { _, _ -> },
             onDialogConfirm = {},
@@ -754,7 +778,15 @@ private fun SignInRequestCardPreview() {
 @Composable
 private fun AccountCardPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        AccountCard(sampleHomeData().account, "123-456", 0, onAdd = {}, onLongPress = {})
+        AccountCard(sampleHomeData().twoFactor, "123-456", 0, isSettingUp = false, onSetUp = {}, onTransfer = {})
+    }
+}
+
+@Preview(name = "Account card, not set up", showBackground = true, widthDp = 340, heightDp = 145)
+@Composable
+private fun AccountCardNotSetUpPreview() {
+    com.cns.accounts.ui.theme.CNSAccountsTheme {
+        AccountCard(TwoFactorState.NotSetUp, "", 0, isSettingUp = false, onSetUp = {}, onTransfer = {})
     }
 }
 

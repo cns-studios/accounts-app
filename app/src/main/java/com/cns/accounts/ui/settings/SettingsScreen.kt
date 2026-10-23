@@ -78,7 +78,6 @@ import com.cns.accounts.data.SecurityFactor
 import com.cns.accounts.data.SecurityStatus
 import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
-import com.cns.accounts.data.api.MfaSetup
 import com.cns.accounts.data.sampleSettingsData
 import com.cns.accounts.ui.components.ActionDialog
 import com.cns.accounts.ui.components.AvatarImage
@@ -123,7 +122,6 @@ fun SettingsScreen(
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
     onPickAvatar: () -> Unit,
-    onOpenAuthenticatorApp: (MfaSetup) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
@@ -190,7 +188,6 @@ fun SettingsScreen(
         onConfirm = onDialogConfirm,
         onDismiss = onDialogDismiss,
         onPickAvatar = onPickAvatar,
-        onOpenAuthenticatorApp = onOpenAuthenticatorApp,
     )
 }
 
@@ -655,7 +652,6 @@ private fun SettingsDialogHost(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     onPickAvatar: () -> Unit,
-    onOpenAuthenticatorApp: (MfaSetup) -> Unit,
 ) {
     if (dialog == null) return
     val context = LocalContext.current
@@ -696,41 +692,30 @@ private fun SettingsDialogHost(
         SettingsDialogKind.ConfigureTwoFactor -> ActionDialog(
             title = stringResource(R.string.configure_2fa),
             subtitle = stringResource(R.string.configure_2fa_dialog_subtitle),
-            primaryButtonLabel = stringResource(R.string.continue_action),
+            primaryButtonLabel = stringResource(R.string.set_up),
             errorText = error,
             isBusy = dialog.isBusy,
             onDismissRequest = onDismiss,
             onPrimaryAction = onConfirm,
         )
-        SettingsDialogKind.SetupTwoFactor -> {
-            val setup = dialog.setup
+        SettingsDialogKind.DisableTwoFactor -> {
+            val needsCode = dialog.values.size > 1
             ActionDialog(
-                title = stringResource(R.string.setup_2fa_title),
-                subtitle = stringResource(if (dialog.keyStoredOnDevice) R.string.setup_2fa_subtitle_local else R.string.setup_2fa_subtitle_manual),
-                primaryButtonLabel = stringResource(R.string.enable),
-                // Grouped in fours like most authenticators display keys, to make typing it easier.
-                detail = setup?.secret?.takeUnless { dialog.keyStoredOnDevice }?.chunked(4)?.joinToString(" "),
-                fields = fields(R.string.code_placeholder to FieldKind.Code),
+                title = stringResource(R.string.disable_2fa_title),
+                subtitle = stringResource(if (needsCode) R.string.disable_2fa_subtitle else R.string.disable_2fa_subtitle_on_device),
+                primaryButtonLabel = stringResource(R.string.turn_off),
+                fields = if (needsCode) {
+                    fields(R.string.current_password_placeholder to FieldKind.Password, R.string.code_placeholder to FieldKind.Code)
+                } else {
+                    fields(R.string.current_password_placeholder to FieldKind.Password)
+                },
                 onFieldChange = onFieldChange,
                 errorText = error,
                 isBusy = dialog.isBusy,
-                secondaryButtonLabel = if (setup != null && !dialog.keyStoredOnDevice) stringResource(R.string.open_authenticator_app) else null,
-                onSecondaryAction = { setup?.let(onOpenAuthenticatorApp) },
                 onDismissRequest = onDismiss,
                 onPrimaryAction = onConfirm,
             )
         }
-        SettingsDialogKind.DisableTwoFactor -> ActionDialog(
-            title = stringResource(R.string.disable_2fa_title),
-            subtitle = stringResource(R.string.disable_2fa_subtitle),
-            primaryButtonLabel = stringResource(R.string.turn_off),
-            fields = fields(R.string.current_password_placeholder to FieldKind.Password, R.string.code_placeholder to FieldKind.Code),
-            onFieldChange = onFieldChange,
-            errorText = error,
-            isBusy = dialog.isBusy,
-            onDismissRequest = onDismiss,
-            onPrimaryAction = onConfirm,
-        )
         SettingsDialogKind.ChangePassword -> ActionDialog(
             title = stringResource(R.string.change_password),
             subtitle = stringResource(R.string.change_password_dialog_subtitle),
@@ -790,7 +775,6 @@ private fun SettingsScreenPreview() {
             onDialogConfirm = {},
             onDialogDismiss = {},
             onPickAvatar = {},
-            onOpenAuthenticatorApp = {},
         )
     }
 }
@@ -818,7 +802,6 @@ private fun SettingsScreenDarkPreview() {
             onDialogConfirm = {},
             onDialogDismiss = {},
             onPickAvatar = {},
-            onOpenAuthenticatorApp = {},
         )
     }
 }
