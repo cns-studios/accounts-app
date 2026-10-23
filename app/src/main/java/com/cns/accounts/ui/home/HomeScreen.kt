@@ -64,6 +64,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import com.cns.accounts.R
 import com.cns.accounts.data.SearchResultKind
+import com.cns.accounts.ui.search.SettingsResultPrefix
 import com.cns.accounts.data.SignInRequest
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.TimerSquareCount
@@ -96,6 +97,7 @@ fun HomeScreen(
     state: HomeUiState,
     onDestinationSelected: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onOpenSetting: (String) -> Unit,
     onRefresh: () -> Unit,
     onRefreshHistory: () -> Unit,
     onLoadMoreHistory: () -> Unit,
@@ -310,6 +312,7 @@ fun HomeScreen(
                     searchQuery = ""
                     when (result.kind) {
                         SearchResultKind.Activity -> selectTab("history")
+                        SearchResultKind.Settings -> onOpenSetting(result.id.removePrefix(SettingsResultPrefix))
                         else -> onSettingsClick()
                     }
                 },
@@ -679,6 +682,7 @@ private fun HomeScreenPreview() {
             state = HomeUiState(data = sampleHomeData()),
             onDestinationSelected = {},
             onSettingsClick = {},
+            onOpenSetting = {},
             onRefresh = {},
             onRefreshHistory = {},
             onLoadMoreHistory = {},
@@ -751,6 +755,7 @@ private fun HomeScreenDarkPreview() {
             state = HomeUiState(data = sampleHomeData()),
             onDestinationSelected = {},
             onSettingsClick = {},
+            onOpenSetting = {},
             onRefresh = {},
             onRefreshHistory = {},
             onLoadMoreHistory = {},

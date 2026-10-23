@@ -42,7 +42,7 @@ fun rememberSearchResults(query: String, activity: List<HistoryEvent>): List<Sea
         SettingsEntries.map { entry ->
             val description = context.getString(entry.description)
             IndexedResult(
-                SearchResult("settings-${entry.id}", SearchResultKind.Settings, settingsTitle, description),
+                SearchResult("$SettingsResultPrefix${entry.id}", SearchResultKind.Settings, settingsTitle, description),
                 haystack = "$description ${entry.keywords}".lowercase(),
             )
         }
@@ -63,3 +63,6 @@ fun rememberSearchResults(query: String, activity: List<HistoryEvent>): List<Sea
 }
 
 private const val MaxResults = 30
+
+/** Settings results are ids "settings-<entry id>"; the entry id is what Settings highlights. */
+const val SettingsResultPrefix = "settings-"

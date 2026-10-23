@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +39,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import com.cns.accounts.R
 import com.cns.accounts.data.SecurityFactor
@@ -122,10 +125,17 @@ fun SettingsScreen(
     onDialogDismiss: () -> Unit,
     onPickAvatar: () -> Unit,
     modifier: Modifier = Modifier,
+    highlight: String? = null,
 ) {
     val colors = LocalAppColors.current
     val spacing = LocalSpacing.current
     val data = state.data
+    // Opened from a search result: scroll to that setting; its row flashes (searchHighlight).
+    val target = remember(highlight) { SettingsTarget.fromId(highlight) }
+    val listState = rememberLazyListState()
+    LaunchedEffect(target) {
+        target?.let { listState.animateScrollToItem(it.itemIndex) }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -134,16 +144,20 @@ fun SettingsScreen(
     ) {
         SettingsHeader(onBack = onBack, modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.lg))
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = spacing.xl,
                 end = spacing.xl,
+                // Room above the first row for a highlight drawn around it.
+                top = spacing.sm,
                 bottom = spacing.xl,
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.section),
         ) {
             item(key = "profile") {
                 ProfileRow(
+                    modifier = Modifier.searchHighlight(target == SettingsTarget.Username || target == SettingsTarget.Avatar),
                     data = data,
                     onEditUsername = onEditUsername,
                     onChangeAvatar = onChangeAvatar,
@@ -152,10 +166,11 @@ fun SettingsScreen(
                 )
             }
             item(key = "security") {
-                SecurityCenterCard(data.security)
+                SecurityCenterCard(data.security, Modifier.searchHighlight(target == SettingsTarget.SecurityCenter))
             }
             item(key = "toggles") {
                 ToggleGroup(
+                    target = target,
                     toggles = data.toggles,
                     onToggleBiometricUnlock = onToggleBiometricUnlock,
                     onToggleNotifications = onToggleNotifications,
@@ -173,13 +188,21 @@ fun SettingsScreen(
                         text = stringResource(R.string.change_password),
                         onClick = onChangePassword,
                         secondary = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .searchHighlight(target == SettingsTarget.Password),
                     )
-                    ActionButton(text = stringResource(R.string.log_out), onClick = onLogOut, modifier = Modifier.weight(1f))
+                    ActionButton(
+                        text = stringResource(R.string.log_out),
+                        onClick = onLogOut,
+                        modifier = Modifier
+                            .weight(1f)
+                            .searchHighlight(target == SettingsTarget.LogOut),
+                    )
                 }
             }
             item(key = "delete-account") {
-                DeleteAccountCard(onDeleteAccount = onDeleteAccount)
+                DeleteAccountCard(onDeleteAccount = onDeleteAccount, modifier = Modifier.searchHighlight(target == SettingsTarget.Delete))
             }
             item(key = "bottom-inset") {
                 Box(modifier = Modifier.navigationBarsPadding())
@@ -224,6 +247,7 @@ private fun SettingsHeader(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ProfileRow(
+    modifier: Modifier,
     data: SettingsData,
     onEditUsername: () -> Unit,
     onChangeAvatar: () -> Unit,
@@ -235,7 +259,7 @@ private fun ProfileRow(
     val haptic = LocalHapticFeedback.current
     var menuExpanded by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -311,10 +335,10 @@ private fun ProfileRow(
 }
 
 @Composable
-private fun SecurityCenterCard(security: SecurityStatus) {
+private fun SecurityCenterCard(security: SecurityStatus, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .border(2.dp, colors.elevatedSurface, RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
@@ -370,6 +394,7 @@ private fun SecurityFactorBar(factor: SecurityFactor, modifier: Modifier = Modif
 
 @Composable
 private fun ToggleGroup(
+    target: SettingsTarget?,
     toggles: SettingsToggles,
     onToggleBiometricUnlock: (Boolean) -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
@@ -380,24 +405,28 @@ private fun ToggleGroup(
     val colors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         ToggleRow(
+            modifier = Modifier.searchHighlight(target == SettingsTarget.Biometric),
             label = stringResource(R.string.biometric_unlock),
             checked = toggles.biometricUnlock,
             onCheckedChange = onToggleBiometricUnlock,
         )
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         ToggleRow(
+            modifier = Modifier.searchHighlight(target == SettingsTarget.Notifications),
             label = stringResource(R.string.notifications),
             checked = toggles.notifications,
             onCheckedChange = onToggleNotifications,
         )
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         ToggleRow(
+            modifier = Modifier.searchHighlight(target == SettingsTarget.TwoFactor),
             label = stringResource(R.string.two_factor_authentication),
             checked = toggles.twoFactorAuthentication,
             onCheckedChange = onToggleTwoFactorAuthentication,
         )
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         ToggleRow(
+            modifier = Modifier.searchHighlight(target == SettingsTarget.SecurityApp),
             label = stringResource(R.string.require_security_app),
             helpContentDescription = stringResource(R.string.require_security_app_help),
             helpHint = stringResource(R.string.require_security_app_hint),
@@ -406,7 +435,9 @@ private fun ToggleGroup(
         )
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .searchHighlight(target == SettingsTarget.RecoveryPhrase)
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -429,6 +460,7 @@ private fun ToggleGroup(
 
 @Composable
 private fun ToggleRow(
+    modifier: Modifier,
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -437,7 +469,7 @@ private fun ToggleRow(
 ) {
     val colors = LocalAppColors.current
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -567,15 +599,21 @@ private fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier =
         },
         contentPadding = PaddingValues(horizontal = 12.dp),
     ) {
-        Text(text, style = RequestMetaText, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        // Two buttons share a row, so a long label shrinks to fit instead of being cut off.
+        androidx.compose.foundation.text.BasicText(
+            text,
+            style = RequestMetaText.copy(color = LocalContentColor.current),
+            maxLines = 1,
+            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 14.sp, maxFontSize = RequestMetaText.fontSize),
+        )
     }
 }
 
 @Composable
-private fun DeleteAccountCard(onDeleteAccount: () -> Unit) {
+private fun DeleteAccountCard(onDeleteAccount: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(17.dp))
             .background(colors.elevatedSurface)

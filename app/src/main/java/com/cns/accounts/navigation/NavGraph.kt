@@ -25,9 +25,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.cns.accounts.AppContainer
 import com.cns.accounts.R
 import com.cns.accounts.data.session.AuthState
@@ -127,6 +129,9 @@ private fun AppNavGraph(container: AppContainer) {
                 onSettingsClick = {
                     navController.navigate("settings") { launchSingleTop = true }
                 },
+                onOpenSetting = { id ->
+                    navController.navigate("settings?highlight=$id") { launchSingleTop = true }
+                },
                 onRefresh = viewModel::refresh,
                 onRefreshHistory = viewModel::refreshHistory,
                 onLoadMoreHistory = viewModel::loadMoreHistory,
@@ -140,15 +145,22 @@ private fun AppNavGraph(container: AppContainer) {
                 onDialogDismiss = viewModel::dismissDialog,
             )
         }
-        composable("settings") {
-            SettingsRoute(container, onBack = { navController.popBackStack() })
+        composable(
+            route = "settings?highlight={highlight}",
+            arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true }),
+        ) { entry ->
+            SettingsRoute(
+                container,
+                highlight = entry.arguments?.getString("highlight"),
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }
 
 /** Settings plus the platform pieces its actions need: photo picker and biometric prompt. */
 @Composable
-private fun SettingsRoute(container: AppContainer, onBack: () -> Unit) {
+private fun SettingsRoute(container: AppContainer, highlight: String?, onBack: () -> Unit) {
     val viewModel = containerViewModel { c, application -> SettingsViewModel(c, application) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -183,5 +195,6 @@ private fun SettingsRoute(container: AppContainer, onBack: () -> Unit) {
         onDialogConfirm = viewModel::confirmDialog,
         onDialogDismiss = viewModel::dismissDialog,
         onPickAvatar = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        highlight = highlight,
     )
 }
