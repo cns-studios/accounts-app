@@ -106,7 +106,7 @@ fun SettingsScreen(
     state: SettingsUiState,
     onBack: () -> Unit,
     onToggleBiometricUnlock: (Boolean) -> Unit,
-    onToggleStrongAccountProtection: (Boolean) -> Unit,
+    onToggleNotifications: (Boolean) -> Unit,
     onToggleTwoFactorAuthentication: (Boolean) -> Unit,
     onToggleRequireSecurityApp: (Boolean) -> Unit,
     onEditUsername: () -> Unit,
@@ -158,7 +158,7 @@ fun SettingsScreen(
                 ToggleGroup(
                     toggles = data.toggles,
                     onToggleBiometricUnlock = onToggleBiometricUnlock,
-                    onToggleStrongAccountProtection = onToggleStrongAccountProtection,
+                    onToggleNotifications = onToggleNotifications,
                     onToggleTwoFactorAuthentication = onToggleTwoFactorAuthentication,
                     onToggleRequireSecurityApp = onToggleRequireSecurityApp,
                     onSetupRecoveryPhrase = onSetupRecoveryPhrase,
@@ -372,7 +372,7 @@ private fun SecurityFactorBar(factor: SecurityFactor, modifier: Modifier = Modif
 private fun ToggleGroup(
     toggles: SettingsToggles,
     onToggleBiometricUnlock: (Boolean) -> Unit,
-    onToggleStrongAccountProtection: (Boolean) -> Unit,
+    onToggleNotifications: (Boolean) -> Unit,
     onToggleTwoFactorAuthentication: (Boolean) -> Unit,
     onToggleRequireSecurityApp: (Boolean) -> Unit,
     onSetupRecoveryPhrase: () -> Unit,
@@ -386,11 +386,9 @@ private fun ToggleGroup(
         )
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         ToggleRow(
-            label = stringResource(R.string.strong_account_protection),
-            helpContentDescription = stringResource(R.string.strong_account_protection_help),
-            helpHint = stringResource(R.string.strong_account_protection_hint),
-            checked = toggles.strongAccountProtection,
-            onCheckedChange = onToggleStrongAccountProtection,
+            label = stringResource(R.string.notifications),
+            checked = toggles.notifications,
+            onCheckedChange = onToggleNotifications,
         )
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         ToggleRow(
@@ -769,7 +767,7 @@ private fun SettingsScreenPreview() {
             state = SettingsUiState(data = sampleSettingsData()),
             onBack = {},
             onToggleBiometricUnlock = {},
-            onToggleStrongAccountProtection = {},
+            onToggleNotifications = {},
             onToggleTwoFactorAuthentication = {},
             onToggleRequireSecurityApp = {},
             onEditUsername = {},
@@ -796,7 +794,7 @@ private fun SettingsScreenDarkPreview() {
             state = SettingsUiState(data = sampleSettingsData()),
             onBack = {},
             onToggleBiometricUnlock = {},
-            onToggleStrongAccountProtection = {},
+            onToggleNotifications = {},
             onToggleTwoFactorAuthentication = {},
             onToggleRequireSecurityApp = {},
             onEditUsername = {},

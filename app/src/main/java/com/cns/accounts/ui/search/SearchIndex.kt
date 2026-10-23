@@ -24,7 +24,7 @@ private val SettingsEntries = listOf(
     SettingsEntry("username", R.string.search_entry_username, "username name rename profile"),
     SettingsEntry("avatar", R.string.search_entry_avatar, "avatar photo picture image profile"),
     SettingsEntry("biometric", R.string.search_entry_biometric, "biometric fingerprint face unlock lock"),
-    SettingsEntry("strong-protection", R.string.search_entry_strong_protection, "strong protection security"),
+    SettingsEntry("notifications", R.string.search_entry_notifications, "notifications alerts notify push login password username 2fa changes"),
     SettingsEntry("security-app", R.string.search_entry_security_app, "security app approve sign-in request"),
     SettingsEntry("recovery-phrase", R.string.search_entry_recovery_phrase, "recovery phrase backup restore"),
     SettingsEntry("security-center", R.string.search_entry_security_center, "security center score"),

@@ -68,7 +68,7 @@ never shares its session or 2FA keys. Debug builds allow plain http to `localhos
 | UI | What's missing in auth-v2 | Current behaviour |
 | --- | --- | --- |
 | Sign-in request card (Allow/Deny) | push/approval flow: list pending sign-ins, approve/deny, "check your phone" login step | `SignInRequests` stub never yields a request, so the card is hidden; Allow/Deny would report "not available" |
-| Strong account protection toggle | the protection bundle (email for codes, enforced 2FA, recovery phrase, required app…) | toggle stays off, snackbar "not available yet" |
+| Notifications toggle | background delivery of account events (2FA on/off, password/username change, new sign-in) — design pending | toggle stays off, snackbar "not available yet" |
 | Require Security App toggle | depends on the approval flow above | same |
 | Recovery phrase "Setup" | recovery phrase storage/verification | same |
 | Search: Help / Q&A results | Help Center at help.cns-studios.com (+ its index) | kinds and icons exist, nothing produces them |

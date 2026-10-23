@@ -168,7 +168,7 @@ private fun SettingsRoute(container: AppContainer, onBack: () -> Unit) {
                 else -> Biometrics.authenticate(context, biometricTitle, biometricSubtitle, onSuccess = { viewModel.setBiometricUnlock(true) })
             }
         },
-        onToggleStrongAccountProtection = viewModel::setStrongAccountProtection,
+        onToggleNotifications = viewModel::setNotifications,
         onToggleTwoFactorAuthentication = viewModel::setTwoFactorAuthentication,
         onToggleRequireSecurityApp = viewModel::setRequireSecurityApp,
         onEditUsername = { viewModel.openDialog(SettingsDialogKind.EditUsername) },

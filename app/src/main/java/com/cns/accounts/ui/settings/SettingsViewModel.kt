@@ -77,7 +77,8 @@ class SettingsViewModel(
         if (enabled) enableTwoFactor() else openDialog(SettingsDialogKind.DisableTwoFactor)
     }
 
-    fun setStrongAccountProtection(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
+    // Account-event notifications: waiting on how they get delivered in the background (see docs/api_wiring.md).
+    fun setNotifications(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
     fun setRequireSecurityApp(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
     fun setupRecoveryPhrase() = unsupported()
 

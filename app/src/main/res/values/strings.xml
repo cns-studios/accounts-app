@@ -17,9 +17,7 @@
     <string name="configure_2fa">Configure 2FA</string>
     <string name="security_center">Security center</string>
     <string name="biometric_unlock">Biometric unlock</string>
-    <string name="strong_account_protection">Strong Account\nprotection</string>
-    <string name="strong_account_protection_help">What is strong account protection?</string>
-    <string name="strong_account_protection_hint">Adds extra checks, like device trust and login alerts, on top of your password.</string>
+    <string name="notifications">Notifications</string>
     <string name="two_factor_authentication">2-Factor-Authentication</string>
     <string name="require_security_app">Require Security App?</string>
     <string name="require_security_app_help">What does requiring the security app do?</string>
@@ -140,7 +138,7 @@
     <string name="search_entry_username">Change your username</string>
     <string name="search_entry_avatar">Change your avatar</string>
     <string name="search_entry_biometric">Turn biometric unlock on or off</string>
-    <string name="search_entry_strong_protection">Strong account protection</string>
+    <string name="search_entry_notifications">Notifications for account changes and new sign-ins</string>
     <string name="search_entry_security_app">Require the security app</string>
     <string name="search_entry_recovery_phrase">Set up a recovery phrase</string>
     <string name="search_entry_security_center">See how secure your account is</string>
