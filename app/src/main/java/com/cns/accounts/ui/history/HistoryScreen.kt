@@ -1,6 +1,5 @@
 package com.cns.accounts.ui.history
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,8 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,6 +32,7 @@ import com.cns.accounts.R
 import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.sampleHistoryEvents
 import com.cns.accounts.ui.components.NothingPullToRefreshBox
+import com.cns.accounts.ui.components.fadingEdges
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.ui.theme.HistoryEventDetailText
@@ -46,9 +43,9 @@ import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.ProfileNameText
 
-// history.json: the "History" tab — a page title, a scrollable feed of activity cards, and a
-// fade-to-black scrim (Rectangle32) where the feed runs under the bottom nav bar. The feed is
-// auth-v2's `/api/me/activity`, paged by cursor as the list nears its end.
+// history.json: the "History" tab — a page title and a scrollable feed of activity cards that
+// fades out (history.json's Rectangle32 fade) before it reaches the bottom nav, and under the
+// title. The feed is auth-v2's `/api/me/activity`, paged by cursor as the list nears its end.
 @Immutable
 data class HistoryUiState(
     val events: List<HistoryEvent> = emptyList(),
@@ -60,6 +57,10 @@ data class HistoryUiState(
 // Start fetching the next page this many cards before the end, so scrolling rarely waits.
 private const val LoadMoreThreshold = 3
 
+private val TitleBottom = 98.dp
+private val NavFadeGap = 8.dp
+private val FadeLength = 40.dp
+
 @Composable
 fun HistoryScreen(
     state: HistoryUiState,
@@ -69,6 +70,7 @@ fun HistoryScreen(
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
+    val navClearance = dimensions.navHeight + dimensions.navBottomGap + NavFadeGap
     val listState = rememberLazyListState()
     val nearEnd by remember {
         derivedStateOf {
@@ -93,12 +95,16 @@ fun HistoryScreen(
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Hidden under the title (55dp + 43dp line) and from just above the nav down,
+                    // so cards neither cover the title nor show around/below the nav pill.
+                    .fadingEdges(topHidden = TitleBottom, bottomHidden = navClearance),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
                     top = 127.dp,
-                    bottom = dimensions.navHeight + 19.dp,
+                    bottom = navClearance + FadeLength,
                 ),
                 verticalArrangement = Arrangement.spacedBy(17.dp),
             ) {
@@ -118,16 +124,6 @@ fun HistoryScreen(
                 }
             }
         }
-        // history.json (Rectangle32): a black fade at the bottom of the feed, top=702px of 874px.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(75.dp)
-                .offset(y = 702.dp)
-                .background(
-                    Brush.verticalGradient(listOf(Color.Transparent, colors.background)),
-                ),
-        )
     }
 }
 

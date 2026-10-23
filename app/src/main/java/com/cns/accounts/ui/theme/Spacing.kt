@@ -26,6 +26,8 @@ data class DesignDimensions(
     val contentMaxWidth: androidx.compose.ui.unit.Dp = 340.dp,
     val avatar: androidx.compose.ui.unit.Dp = 70.dp,
     val navHeight: androidx.compose.ui.unit.Dp = 54.dp,
+    // Gap between the floating bottom nav and the bottom of the screen.
+    val navBottomGap: androidx.compose.ui.unit.Dp = 24.dp,
     val navSelectedWidth: androidx.compose.ui.unit.Dp = 194.dp,
     val navSelectedOuterWidth: androidx.compose.ui.unit.Dp = 202.dp,
     val navSelectedFrameWidth: androidx.compose.ui.unit.Dp = 252.dp,

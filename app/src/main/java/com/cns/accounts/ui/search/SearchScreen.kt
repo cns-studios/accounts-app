@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -32,6 +35,7 @@ import com.cns.accounts.data.sampleSearchResults
 import com.cns.accounts.ui.components.AppCard
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
+import com.cns.accounts.ui.components.fadingEdges
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
@@ -58,13 +62,19 @@ fun SearchScreen(
             .background(colors.background),
     ) {
         if (query.isNotBlank()) {
+            // Same edges as History: results stop (fading) above the search bar instead of running
+            // behind it, and fade out under the status bar instead of showing through it.
+            val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val navClearance = dimensions.navHeight + dimensions.navBottomGap + spacing.sm
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadingEdges(topHidden = statusBar, bottomHidden = navClearance),
                 contentPadding = PaddingValues(
                     start = spacing.xl,
                     end = spacing.xl,
-                    top = dimensions.headerTop,
-                    bottom = dimensions.navHeight + spacing.xl,
+                    top = maxOf(dimensions.headerTop, statusBar + 40.dp),
+                    bottom = navClearance + 40.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(spacing.lg),
             ) {
