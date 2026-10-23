@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -19,14 +22,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.cns.accounts.ui.theme.AccountCodeText
 import com.cns.accounts.ui.theme.DialogButtonText
 import com.cns.accounts.ui.theme.DialogSubtitleText
 import com.cns.accounts.ui.theme.DialogTitleText
@@ -36,10 +41,13 @@ import com.cns.accounts.ui.theme.RequestMetaText
 
 /**
  * settings.tokens.json ("Inputfield"): the app's standard input/action dialog — a dark rounded
- * card (title, subtitle, an optional single-line field, and one primary control) over a darkened
- * scrim. Use this whenever a flow needs a short piece of text input or a single confirmed action;
- * pass [fieldValue]/[onFieldValueChange]/[fieldPlaceholder] together to show the input row, or
- * leave them null for a plain confirm dialog.
+ * card (title, subtitle, optional input fields, and one primary control) over a darkened scrim.
+ * Use this whenever a flow needs a short piece of text input or a single confirmed action.
+ *
+ * Inputs: pass [fieldValue]/[onFieldValueChange]/[fieldPlaceholder] together for one plain text
+ * row, or [fields]/[onFieldChange] for several (e.g. password + 2FA code). [detail] shows a
+ * monospace value such as a setup key; [errorText] shows below the fields; [isBusy] disables
+ * the controls while a request is in flight; [secondaryButtonLabel] adds a text button.
  *
  * The scrim darkens the screen behind the card and, tapping it (or the system back gesture)
  * dismisses the dialog via [onDismissRequest] — the card itself consumes its own taps so they
@@ -55,11 +63,26 @@ fun ActionDialog(
     fieldValue: String? = null,
     onFieldValueChange: (String) -> Unit = {},
     fieldPlaceholder: String? = null,
+    fields: List<DialogField> = emptyList(),
+    onFieldChange: (index: Int, value: String) -> Unit = { _, _ -> },
+    detail: String? = null,
+    errorText: String? = null,
+    isBusy: Boolean = false,
+    secondaryButtonLabel: String? = null,
+    onSecondaryAction: () -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
+    val allFields = if (fieldValue != null && fieldPlaceholder != null) listOf(DialogField(fieldPlaceholder, fieldValue)) + fields else fields
+    val singleFieldOffset = allFields.size - fields.size
+    val submit = {
+        if (!isBusy) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onPrimaryAction()
+        }
+    }
     Dialog(
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = { if (!isBusy) onDismissRequest() },
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
     ) {
         Box(
@@ -67,8 +90,9 @@ fun ActionDialog(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.6f))
                 .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                    onDismissRequest()
+                    if (!isBusy) onDismissRequest()
                 }
+                .imePadding()
                 .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -91,12 +115,31 @@ fun ActionDialog(
                     Text(title, color = colors.onSurface, style = DialogTitleText, textAlign = TextAlign.Center)
                     Text(subtitle, color = colors.dialogSubtitle, style = DialogSubtitleText, textAlign = TextAlign.Center)
                 }
-                if (fieldValue != null && fieldPlaceholder != null) {
-                    DialogTextField(
-                        value = fieldValue,
-                        onValueChange = onFieldValueChange,
-                        placeholder = fieldPlaceholder,
-                    )
+                if (detail != null) {
+                    SelectionContainer {
+                        Text(detail, color = colors.onSurface, style = DialogDetailText, textAlign = TextAlign.Center)
+                    }
+                }
+                if (allFields.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        allFields.forEachIndexed { index, field ->
+                            val isLast = index == allFields.lastIndex
+                            AppTextField(
+                                value = field.value,
+                                onValueChange = { value ->
+                                    if (index < singleFieldOffset) onFieldValueChange(value) else onFieldChange(index - singleFieldOffset, value)
+                                },
+                                placeholder = field.placeholder,
+                                kind = field.kind,
+                                enabled = !isBusy,
+                                imeAction = if (isLast) ImeAction.Done else ImeAction.Next,
+                                onImeAction = { if (isLast) submit() },
+                            )
+                        }
+                    }
+                }
+                if (errorText != null) {
+                    Text(errorText, color = colors.accent, style = DialogErrorText, textAlign = TextAlign.Center)
                 }
                 Box(
                     modifier = Modifier
@@ -104,46 +147,36 @@ fun ActionDialog(
                         .height(53.dp)
                         .clip(RoundedCornerShape(50))
                         .background(colors.fieldSurface)
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onPrimaryAction()
-                        },
+                        .clickable(enabled = !isBusy, onClick = submit),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(primaryButtonLabel, color = colors.onSurface, style = DialogButtonText)
+                    if (isBusy) {
+                        CircularProgressIndicator(modifier = Modifier.size(22.dp), color = colors.onSurface, strokeWidth = 2.dp)
+                    } else {
+                        Text(primaryButtonLabel, color = colors.onSurface, style = DialogButtonText)
+                    }
+                }
+                if (secondaryButtonLabel != null) {
+                    Text(
+                        secondaryButtonLabel,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(enabled = !isBusy) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSecondaryAction()
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = colors.dialogSubtitle,
+                        style = DialogSubtitleText,
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-private fun DialogTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
-    val colors = LocalAppColors.current
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = RequestMetaText.copy(color = colors.onSurface),
-        cursorBrush = SolidColor(colors.onSurface),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(53.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(colors.fieldSurface),
-        decorationBox = { innerTextField ->
-            Box(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (value.isEmpty()) {
-                    Text(placeholder, color = colors.fieldPlaceholder, style = RequestMetaText)
-                }
-                innerTextField()
-            }
-        },
-    )
-}
+private val DialogDetailText = AccountCodeText.copy(fontSize = 18.sp, lineHeight = 24.sp)
+private val DialogErrorText = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp)
 
 @Preview(name = "Action dialog with field", showBackground = true, widthDp = 390, heightDp = 500)
 @Composable

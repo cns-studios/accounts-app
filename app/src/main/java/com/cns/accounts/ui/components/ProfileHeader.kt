@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -17,9 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cns.accounts.data.Profile
@@ -45,15 +42,11 @@ fun ProfileHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(R.drawable.profile_avatar),
-                contentDescription = "Profile avatar",
-                modifier = Modifier.size(dimensions.avatar).semantics { contentDescription = "Profile avatar" },
-            )
+            AvatarImage(profile.avatarUrl, modifier = Modifier.size(dimensions.avatar))
 
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(profile.name, color = colors.onBackground, style = ProfileNameText)
-                StatusChip(profile.twoFactorLabel)
+                StatusChip(twoFactorLabel(profile.twoFactorEnabled))
             }
 
         }
@@ -71,11 +64,15 @@ fun ProfileHeader(
 
 }
 
+@Composable
+fun twoFactorLabel(enabled: Boolean): String =
+    stringResource(if (enabled) R.string.two_factor_enabled_label else R.string.two_factor_disabled_label)
+
 @Preview
 @Composable
 private fun ProfileHeaderPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        ProfileHeader(com.cns.accounts.data.Profile("aaron", "2FA enabled"), {})
+        ProfileHeader(com.cns.accounts.data.Profile("aaron", twoFactorEnabled = true), {})
     }
 }
 
@@ -83,6 +80,6 @@ private fun ProfileHeaderPreview() {
 @Composable
 private fun ProfileHeaderDarkPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme(darkTheme = true) {
-        ProfileHeader(com.cns.accounts.data.Profile("aaron", "2FA enabled"), {})
+        ProfileHeader(com.cns.accounts.data.Profile("aaron", twoFactorEnabled = true), {})
     }
 }

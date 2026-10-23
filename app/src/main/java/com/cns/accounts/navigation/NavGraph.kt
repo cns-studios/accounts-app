@@ -1,29 +1,105 @@
 package com.cns.accounts.navigation
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.cns.accounts.AppContainer
+import com.cns.accounts.R
+import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.ui.home.HomeScreen
 import com.cns.accounts.ui.home.HomeViewModel
+import com.cns.accounts.ui.lock.Biometrics
+import com.cns.accounts.ui.lock.LockScreen
+import com.cns.accounts.ui.login.LoginScreen
+import com.cns.accounts.ui.login.LoginViewModel
+import com.cns.accounts.ui.settings.SettingsDialogKind
 import com.cns.accounts.ui.settings.SettingsScreen
 import com.cns.accounts.ui.settings.SettingsViewModel
 
+/**
+ * The app root: sign-in while there is no session, the Home/Settings graph while there is,
+ * the biometric lock on top when it applies, and the snackbar host for [AppContainer.messages].
+ */
 @Composable
-fun AppNavGraph() {
-    val navController = rememberNavController()
-    val viewModel: HomeViewModel = viewModel()
+fun AppRoot(container: AppContainer) {
+    val authState by container.session.authState.collectAsStateWithLifecycle()
+    val locked by container.appLock.locked.collectAsStateWithLifecycle()
+    val biometricUnlock by container.preferences.biometricUnlock.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        container.messages.messages.collect { message -> snackbarHostState.showSnackbar(message.resolve(context)) }
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (authState) {
+            AuthState.SignedOut -> LoginRoute()
+            AuthState.SignedIn -> AppNavGraph(container)
+        }
+        if (authState == AuthState.SignedIn && biometricUnlock && locked) {
+            LockScreen(onUnlocked = container.appLock::unlock)
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            // Clear of Home's floating bottom nav (54dp tall, 24dp off the bottom edge).
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 96.dp),
+        )
+    }
+}
+
+@Composable
+private fun LoginRoute() {
+    val viewModel = containerViewModel { container, _ -> LoginViewModel(container) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LoginScreen(
+        state = state,
+        onUsernameChange = viewModel::updateUsername,
+        onPasswordChange = viewModel::updatePassword,
+        onCodeChange = viewModel::updateCode,
+        onSubmitCredentials = viewModel::submitCredentials,
+        onSubmitCode = viewModel::submitCode,
+        onRestart = viewModel::restart,
+    )
+}
+
+@Composable
+private fun AppNavGraph(container: AppContainer) {
+    val navController = rememberNavController()
+    val viewModel = containerViewModel { c, _ -> HomeViewModel(c) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val defaultAuthenticatorLabel = stringResource(R.string.authenticator_default_label)
     NavHost(
         navController = navController,
         startDestination = "home",
@@ -57,42 +133,70 @@ fun AppNavGraph() {
                 onSettingsClick = {
                     navController.navigate("settings") { launchSingleTop = true }
                 },
+                onRefresh = viewModel::refresh,
+                onRefreshHistory = viewModel::refreshHistory,
+                onLoadMoreHistory = viewModel::loadMoreHistory,
                 onApproveRequest = viewModel::approveRequest,
                 onDenyRequest = viewModel::denyRequest,
-                onCopyAccountCode = viewModel::copyAccountCode,
+                onAddAuthenticator = viewModel::showAddAuthenticator,
+                onRemoveAuthenticator = viewModel::showRemoveAuthenticator,
+                onServiceClick = viewModel::showDisconnectApp,
+                onDialogFieldChange = viewModel::updateDialogField,
+                onDialogConfirm = { viewModel.confirmDialog(defaultAuthenticatorLabel) },
+                onDialogDismiss = viewModel::dismissDialog,
             )
         }
-        composable("profile") { PlaceholderScreen("Profile") }
-        composable("search") { PlaceholderScreen("Search") }
         composable("settings") {
-            val settingsViewModel: SettingsViewModel = viewModel()
-            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-            SettingsScreen(
-                state = settingsState,
-                onBack = { navController.popBackStack() },
-                onToggleBiometricUnlock = settingsViewModel::setBiometricUnlock,
-                onToggleStrongAccountProtection = settingsViewModel::setStrongAccountProtection,
-                onToggleTwoFactorAuthentication = settingsViewModel::setTwoFactorAuthentication,
-                onToggleRequireSecurityApp = settingsViewModel::setRequireSecurityApp,
-                onEditUsername = settingsViewModel::editUsername,
-                onChangeAvatar = settingsViewModel::changeAvatar,
-                onRemoveAvatar = settingsViewModel::removeAvatar,
-                onConfigureTwoFactor = settingsViewModel::configureTwoFactor,
-                onSetupRecoveryPhrase = settingsViewModel::setupRecoveryPhrase,
-                onChangePassword = settingsViewModel::changePassword,
-                onLogOut = settingsViewModel::logOut,
-                onDeleteAccount = settingsViewModel::deleteAccount,
-            )
+            SettingsRoute(container, onBack = { navController.popBackStack() })
         }
     }
 }
 
+/** Settings plus the platform pieces its actions need: photo picker, biometric prompt, intents. */
 @Composable
-private fun PlaceholderScreen(title: String) {
-    androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center,
-    ) {
-        androidx.compose.material3.Text(title)
+private fun SettingsRoute(container: AppContainer, onBack: () -> Unit) {
+    val viewModel = containerViewModel { c, application -> SettingsViewModel(c, application) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.uploadAvatar(uri)
     }
+    val biometricTitle = stringResource(R.string.enable_biometric_prompt_title)
+    val biometricSubtitle = stringResource(R.string.biometric_prompt_subtitle)
+    SettingsScreen(
+        state = state,
+        onBack = onBack,
+        onToggleBiometricUnlock = { enabled ->
+            when {
+                !enabled -> viewModel.setBiometricUnlock(false)
+                !Biometrics.isAvailable(context) -> container.messages.show(R.string.biometric_unavailable)
+                // Confirm the user can actually unlock before turning the lock on.
+                else -> Biometrics.authenticate(context, biometricTitle, biometricSubtitle, onSuccess = { viewModel.setBiometricUnlock(true) })
+            }
+        },
+        onToggleStrongAccountProtection = viewModel::setStrongAccountProtection,
+        onToggleTwoFactorAuthentication = viewModel::setTwoFactorAuthentication,
+        onToggleRequireSecurityApp = viewModel::setRequireSecurityApp,
+        onEditUsername = { viewModel.openDialog(SettingsDialogKind.EditUsername) },
+        onChangeAvatar = { viewModel.openDialog(SettingsDialogKind.ChangeAvatar) },
+        onRemoveAvatar = { viewModel.openDialog(SettingsDialogKind.RemoveAvatar) },
+        onConfigureTwoFactor = viewModel::configureTwoFactor,
+        onSetupRecoveryPhrase = viewModel::setupRecoveryPhrase,
+        onChangePassword = { viewModel.openDialog(SettingsDialogKind.ChangePassword) },
+        onLogOut = viewModel::logOut,
+        onDeleteAccount = { viewModel.openDialog(SettingsDialogKind.DeleteAccount) },
+        onDialogFieldChange = viewModel::updateField,
+        onDialogConfirm = viewModel::confirmDialog,
+        onDialogDismiss = viewModel::dismissDialog,
+        onPickAvatar = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        onOpenAuthenticatorApp = { setup ->
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(setup.otpauthUri)))
+            } catch (_: ActivityNotFoundException) {
+                clipboard.setText(AnnotatedString(setup.secret))
+                container.messages.show(R.string.no_authenticator_app)
+            }
+        },
+    )
 }

@@ -14,27 +14,30 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.cns.accounts.R
 import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.sampleHistoryEvents
 import com.cns.accounts.ui.components.NothingPullToRefreshBox
 import com.cns.accounts.ui.components.TokenIcon
-import com.cns.accounts.ui.components.TokenIconKind
+import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.ui.theme.HistoryEventDetailText
 import com.cns.accounts.ui.theme.HistoryEventTimeText
 import com.cns.accounts.ui.theme.HistoryEventTitleText
@@ -42,46 +45,54 @@ import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.ProfileNameText
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 // history.json: the "History" tab — a page title, a scrollable feed of activity cards, and a
-// fade-to-black scrim (Rectangle32) where the feed runs under the bottom nav bar.
+// fade-to-black scrim (Rectangle32) where the feed runs under the bottom nav bar. The feed is
+// auth-v2's `/api/me/activity`, paged by cursor as the list nears its end.
 @Immutable
 data class HistoryUiState(
-    val events: List<HistoryEvent> = sampleHistoryEvents(),
+    val events: List<HistoryEvent> = emptyList(),
+    val isLoaded: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val canLoadMore: Boolean = false,
 )
 
-private const val FakeRefreshMillis = 1200L
+// Start fetching the next page this many cards before the end, so scrolling rarely waits.
+private const val LoadMoreThreshold = 3
 
 @Composable
 fun HistoryScreen(
     state: HistoryUiState,
+    onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
-    var isRefreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val nearEnd by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= listState.layoutInfo.totalItemsCount - LoadMoreThreshold
+        }
+    }
+    LaunchedEffect(nearEnd, state.canLoadMore, state.events.size) {
+        if (nearEnd && state.canLoadMore) onLoadMore()
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Text(
-            "Account activity",
+            stringResource(R.string.history_title),
             modifier = Modifier.offset(x = 104.dp, y = 55.dp),
             color = colors.onSurface,
             style = ProfileNameText,
         )
         NothingPullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = {
-                scope.launch {
-                    isRefreshing = true
-                    delay(FakeRefreshMillis)
-                    isRefreshing = false
-                }
-            },
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
         ) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 16.dp,
@@ -91,8 +102,19 @@ fun HistoryScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(17.dp),
             ) {
-                items(state.events) { event ->
+                items(state.events, key = { it.id }) { event ->
                     HistoryEventCard(event)
+                }
+                if (state.isLoaded && state.events.isEmpty()) {
+                    item(key = "empty") {
+                        Text(
+                            stringResource(R.string.history_empty),
+                            modifier = Modifier.fillMaxWidth(),
+                            color = colors.mutedText,
+                            style = HistoryEventDetailText,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }
@@ -130,13 +152,13 @@ private fun HistoryEventCard(event: HistoryEvent) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TokenIcon(TokenIconKind.LogOut, tint = colors.onSurface)
-                Text(event.title, color = colors.onSurface, style = HistoryEventTitleText)
+                TokenIcon(eventIcon(event.eventType), tint = colors.onSurface)
+                Text(eventTitle(event.eventType), color = colors.onSurface, style = HistoryEventTitleText)
             }
-            Text(event.timeLabel, color = colors.mutedText, style = HistoryEventTimeText)
+            Text(relativeTime(event.createdAt), color = colors.mutedText, style = HistoryEventTimeText)
         }
-        Text(event.description, color = colors.mutedText, style = HistoryEventDetailText)
-        Text(event.subtitle, color = colors.mutedText, style = HistoryEventDetailText)
+        Text(eventDescription(event.eventType), color = colors.mutedText, style = HistoryEventDetailText)
+        Text(event.subtitle ?: stringResource(R.string.unknown_device), color = colors.mutedText, style = HistoryEventDetailText)
     }
 }
 
@@ -144,7 +166,7 @@ private fun HistoryEventCard(event: HistoryEvent) {
 @Composable
 private fun HistoryScreenPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        HistoryScreen(state = HistoryUiState())
+        HistoryScreen(state = HistoryUiState(events = sampleHistoryEvents(), isLoaded = true), onRefresh = {}, onLoadMore = {})
     }
 }
 

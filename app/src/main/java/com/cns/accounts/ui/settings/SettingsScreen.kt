@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -77,8 +78,13 @@ import com.cns.accounts.data.SecurityFactor
 import com.cns.accounts.data.SecurityStatus
 import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
+import com.cns.accounts.data.api.MfaSetup
 import com.cns.accounts.data.sampleSettingsData
 import com.cns.accounts.ui.components.ActionDialog
+import com.cns.accounts.ui.components.AvatarImage
+import com.cns.accounts.ui.components.DialogField
+import com.cns.accounts.ui.components.FieldKind
+import com.cns.accounts.ui.components.twoFactorLabel
 import com.cns.accounts.ui.components.StatusChip
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
@@ -105,7 +111,7 @@ fun SettingsScreen(
     onToggleStrongAccountProtection: (Boolean) -> Unit,
     onToggleTwoFactorAuthentication: (Boolean) -> Unit,
     onToggleRequireSecurityApp: (Boolean) -> Unit,
-    onEditUsername: (String) -> Unit,
+    onEditUsername: () -> Unit,
     onChangeAvatar: () -> Unit,
     onRemoveAvatar: () -> Unit,
     onConfigureTwoFactor: () -> Unit,
@@ -113,6 +119,11 @@ fun SettingsScreen(
     onChangePassword: () -> Unit,
     onLogOut: () -> Unit,
     onDeleteAccount: () -> Unit,
+    onDialogFieldChange: (Int, String) -> Unit,
+    onDialogConfirm: () -> Unit,
+    onDialogDismiss: () -> Unit,
+    onPickAvatar: () -> Unit,
+    onOpenAuthenticatorApp: (MfaSetup) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
@@ -173,6 +184,14 @@ fun SettingsScreen(
             }
         }
     }
+    SettingsDialogHost(
+        dialog = state.dialog,
+        onFieldChange = onDialogFieldChange,
+        onConfirm = onDialogConfirm,
+        onDismiss = onDialogDismiss,
+        onPickAvatar = onPickAvatar,
+        onOpenAuthenticatorApp = onOpenAuthenticatorApp,
+    )
 }
 
 @Composable
@@ -202,12 +221,10 @@ private fun SettingsHeader(onBack: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-private enum class ProfileDialog { EditUsername, ChangeAvatar, RemoveAvatar, ConfigureTwoFactor }
-
 @Composable
 private fun ProfileRow(
     data: SettingsData,
-    onEditUsername: (String) -> Unit,
+    onEditUsername: () -> Unit,
     onChangeAvatar: () -> Unit,
     onRemoveAvatar: () -> Unit,
     onConfigureTwoFactor: () -> Unit,
@@ -216,22 +233,16 @@ private fun ProfileRow(
     val dimensions = LocalDimensions.current
     val haptic = LocalHapticFeedback.current
     var menuExpanded by remember { mutableStateOf(false) }
-    var activeDialog by remember { mutableStateOf<ProfileDialog?>(null) }
-    var usernameInput by remember(data.profile.name) { mutableStateOf(data.profile.name) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(R.drawable.profile_avatar),
-                contentDescription = stringResource(R.string.profile_avatar),
-                modifier = Modifier.size(dimensions.avatar).clip(CircleShape),
-            )
+            AvatarImage(data.profile.avatarUrl, modifier = Modifier.size(dimensions.avatar))
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(data.profile.name, color = colors.onSurface, style = ProfileNameText)
-                StatusChip(data.profile.twoFactorLabel)
+                StatusChip(twoFactorLabel(data.profile.twoFactorEnabled))
             }
         }
         Box {
@@ -260,8 +271,7 @@ private fun ProfileRow(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         menuExpanded = false
-                        usernameInput = data.profile.name
-                        activeDialog = ProfileDialog.EditUsername
+                        onEditUsername()
                     },
                 )
                 HorizontalDivider(color = colors.elevatedSurface)
@@ -271,7 +281,7 @@ private fun ProfileRow(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         menuExpanded = false
-                        activeDialog = ProfileDialog.ChangeAvatar
+                        onChangeAvatar()
                     },
                 )
                 HorizontalDivider(color = colors.elevatedSurface)
@@ -281,7 +291,7 @@ private fun ProfileRow(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         menuExpanded = false
-                        activeDialog = ProfileDialog.RemoveAvatar
+                        onRemoveAvatar()
                     },
                 )
                 HorizontalDivider(color = colors.elevatedSurface)
@@ -291,58 +301,11 @@ private fun ProfileRow(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         menuExpanded = false
-                        activeDialog = ProfileDialog.ConfigureTwoFactor
+                        onConfigureTwoFactor()
                     },
                 )
             }
         }
-    }
-
-    when (activeDialog) {
-        ProfileDialog.EditUsername -> ActionDialog(
-            title = stringResource(R.string.edit_username),
-            subtitle = stringResource(R.string.edit_username_dialog_subtitle),
-            fieldValue = usernameInput,
-            onFieldValueChange = { usernameInput = it },
-            fieldPlaceholder = stringResource(R.string.new_username_placeholder),
-            primaryButtonLabel = stringResource(R.string.update),
-            onDismissRequest = { activeDialog = null },
-            onPrimaryAction = {
-                onEditUsername(usernameInput)
-                activeDialog = null
-            },
-        )
-        ProfileDialog.ChangeAvatar -> ActionDialog(
-            title = stringResource(R.string.change_avatar),
-            subtitle = stringResource(R.string.change_avatar_dialog_subtitle),
-            primaryButtonLabel = stringResource(R.string.choose_photo),
-            onDismissRequest = { activeDialog = null },
-            onPrimaryAction = {
-                onChangeAvatar()
-                activeDialog = null
-            },
-        )
-        ProfileDialog.RemoveAvatar -> ActionDialog(
-            title = stringResource(R.string.remove_avatar),
-            subtitle = stringResource(R.string.remove_avatar_dialog_subtitle),
-            primaryButtonLabel = stringResource(R.string.remove),
-            onDismissRequest = { activeDialog = null },
-            onPrimaryAction = {
-                onRemoveAvatar()
-                activeDialog = null
-            },
-        )
-        ProfileDialog.ConfigureTwoFactor -> ActionDialog(
-            title = stringResource(R.string.configure_2fa),
-            subtitle = stringResource(R.string.configure_2fa_dialog_subtitle),
-            primaryButtonLabel = stringResource(R.string.continue_action),
-            onDismissRequest = { activeDialog = null },
-            onPrimaryAction = {
-                onConfigureTwoFactor()
-                activeDialog = null
-            },
-        )
-        null -> Unit
     }
 }
 
@@ -684,6 +647,126 @@ private fun HoldToDeleteButton(onConfirmed: () -> Unit) {
     }
 }
 
+/** Renders [SettingsUiState.dialog]: titles, fields and buttons per [SettingsDialogKind]. */
+@Composable
+private fun SettingsDialogHost(
+    dialog: SettingsDialog?,
+    onFieldChange: (Int, String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    onPickAvatar: () -> Unit,
+    onOpenAuthenticatorApp: (MfaSetup) -> Unit,
+) {
+    if (dialog == null) return
+    val context = LocalContext.current
+    val error = dialog.error?.resolve(context)
+    fun fields(vararg specs: Pair<Int, FieldKind>) = specs.mapIndexed { index, (placeholder, kind) ->
+        DialogField(context.getString(placeholder), dialog.values.getOrElse(index) { "" }, kind)
+    }
+    when (dialog.kind) {
+        SettingsDialogKind.EditUsername -> ActionDialog(
+            title = stringResource(R.string.edit_username),
+            subtitle = stringResource(R.string.edit_username_dialog_subtitle),
+            primaryButtonLabel = stringResource(R.string.update),
+            fields = fields(R.string.new_username_placeholder to FieldKind.Username, R.string.current_password_placeholder to FieldKind.Password),
+            onFieldChange = onFieldChange,
+            errorText = error,
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onConfirm,
+        )
+        SettingsDialogKind.ChangeAvatar -> ActionDialog(
+            title = stringResource(R.string.change_avatar),
+            subtitle = stringResource(R.string.change_avatar_dialog_subtitle),
+            primaryButtonLabel = stringResource(R.string.choose_photo),
+            errorText = error,
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onPickAvatar,
+        )
+        SettingsDialogKind.RemoveAvatar -> ActionDialog(
+            title = stringResource(R.string.remove_avatar),
+            subtitle = stringResource(R.string.remove_avatar_dialog_subtitle),
+            primaryButtonLabel = stringResource(R.string.remove),
+            errorText = error,
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onConfirm,
+        )
+        SettingsDialogKind.ConfigureTwoFactor -> ActionDialog(
+            title = stringResource(R.string.configure_2fa),
+            subtitle = stringResource(R.string.configure_2fa_dialog_subtitle),
+            primaryButtonLabel = stringResource(R.string.continue_action),
+            errorText = error,
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onConfirm,
+        )
+        SettingsDialogKind.SetupTwoFactor -> {
+            val setup = dialog.setup
+            ActionDialog(
+                title = stringResource(R.string.setup_2fa_title),
+                subtitle = stringResource(if (dialog.keyStoredOnDevice) R.string.setup_2fa_subtitle_local else R.string.setup_2fa_subtitle_manual),
+                primaryButtonLabel = stringResource(R.string.enable),
+                // Grouped in fours like most authenticators display keys, to make typing it easier.
+                detail = setup?.secret?.takeUnless { dialog.keyStoredOnDevice }?.chunked(4)?.joinToString(" "),
+                fields = fields(R.string.code_placeholder to FieldKind.Code),
+                onFieldChange = onFieldChange,
+                errorText = error,
+                isBusy = dialog.isBusy,
+                secondaryButtonLabel = if (setup != null && !dialog.keyStoredOnDevice) stringResource(R.string.open_authenticator_app) else null,
+                onSecondaryAction = { setup?.let(onOpenAuthenticatorApp) },
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+        }
+        SettingsDialogKind.DisableTwoFactor -> ActionDialog(
+            title = stringResource(R.string.disable_2fa_title),
+            subtitle = stringResource(R.string.disable_2fa_subtitle),
+            primaryButtonLabel = stringResource(R.string.turn_off),
+            fields = fields(R.string.current_password_placeholder to FieldKind.Password, R.string.code_placeholder to FieldKind.Code),
+            onFieldChange = onFieldChange,
+            errorText = error,
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onConfirm,
+        )
+        SettingsDialogKind.ChangePassword -> ActionDialog(
+            title = stringResource(R.string.change_password),
+            subtitle = stringResource(R.string.change_password_dialog_subtitle),
+            primaryButtonLabel = stringResource(R.string.update),
+            fields = fields(
+                R.string.current_password_placeholder to FieldKind.Password,
+                R.string.new_password_placeholder to FieldKind.NewPassword,
+                R.string.repeat_password_placeholder to FieldKind.NewPassword,
+            ),
+            onFieldChange = onFieldChange,
+            errorText = error,
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onConfirm,
+        )
+        SettingsDialogKind.DeleteAccount -> {
+            val needsCode = dialog.values.size > 1
+            ActionDialog(
+                title = stringResource(R.string.delete_account_dialog_title),
+                subtitle = stringResource(if (needsCode) R.string.delete_account_dialog_subtitle_2fa else R.string.delete_account_dialog_subtitle),
+                primaryButtonLabel = stringResource(R.string.delete),
+                fields = if (needsCode) {
+                    fields(R.string.current_password_placeholder to FieldKind.Password, R.string.code_placeholder to FieldKind.Code)
+                } else {
+                    fields(R.string.current_password_placeholder to FieldKind.Password)
+                },
+                onFieldChange = onFieldChange,
+                errorText = error,
+                isBusy = dialog.isBusy,
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true, widthDp = 390, heightDp = 1200)
 @Composable
 private fun SettingsScreenPreview() {
@@ -703,6 +786,11 @@ private fun SettingsScreenPreview() {
             onChangePassword = {},
             onLogOut = {},
             onDeleteAccount = {},
+            onDialogFieldChange = { _, _ -> },
+            onDialogConfirm = {},
+            onDialogDismiss = {},
+            onPickAvatar = {},
+            onOpenAuthenticatorApp = {},
         )
     }
 }
@@ -726,6 +814,11 @@ private fun SettingsScreenDarkPreview() {
             onChangePassword = {},
             onLogOut = {},
             onDeleteAccount = {},
+            onDialogFieldChange = { _, _ -> },
+            onDialogConfirm = {},
+            onDialogDismiss = {},
+            onPickAvatar = {},
+            onOpenAuthenticatorApp = {},
         )
     }
 }

@@ -36,11 +36,143 @@
     <string name="remove">Remove</string>
     <string name="continue_action">Continue</string>
     <string name="choose_photo">Choose Photo</string>
-    <string name="edit_username_dialog_subtitle">Choose a new username for your account.</string>
+    <string name="edit_username_dialog_subtitle">Choose a new username and confirm it with your password.</string>
     <string name="change_avatar_dialog_subtitle">Pick a new photo to use as your profile picture.</string>
     <string name="remove_avatar_dialog_subtitle">Your profile photo will be removed and replaced with the default.</string>
     <string name="configure_2fa_dialog_subtitle">Set up an authenticator app as an extra sign-in step.</string>
     <string name="search_placeholder">Search anything...</string>
     <string name="open_search">Search</string>
     <string name="clear_search">Clear search</string>
+    <!-- Status / errors -->
+    <string name="two_factor_enabled_label">2FA enabled</string>
+    <string name="two_factor_disabled_label">2FA disabled</string>
+    <string name="error_session_expired">Your session expired. Please sign in again.</string>
+    <string name="error_rate_limited">Too many attempts. Please wait a few minutes and try again.</string>
+    <string name="error_server">CNS is having trouble right now. Please try again in a minute.</string>
+    <string name="error_offline">Can\'t reach CNS. Check your connection and try again.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+    <string name="feature_unavailable">This isn\'t available yet. It\'s coming in a future update.</string>
+
+    <!-- Sign-in -->
+    <string name="sign_in_title">Sign in</string>
+    <string name="sign_in_subtitle">Use your CNS account.</string>
+    <string name="username_placeholder">Username</string>
+    <string name="password_placeholder">Password</string>
+    <string name="sign_in">Sign in</string>
+    <string name="no_account_yet">No account yet?</string>
+    <string name="create_account">Create one</string>
+    <string name="two_factor_title">Two-factor code</string>
+    <string name="two_factor_subtitle">Enter the 6-digit code from your authenticator app.</string>
+    <string name="two_factor_subtitle_prefilled">Filled in from this device\'s authenticator.</string>
+    <string name="code_placeholder">6-digit code</string>
+    <string name="verify">Verify</string>
+    <string name="use_different_account">Use a different account</string>
+    <string name="login_failed">Wrong username or password.</string>
+    <string name="two_factor_failed">That code didn\'t work, or it expired. Sign in again.</string>
+    <string name="sign_in_missing_fields">Enter your username and password.</string>
+
+    <!-- App lock -->
+    <string name="app_locked_title">Locked</string>
+    <string name="app_locked_subtitle">Unlock to see your CNS account.</string>
+    <string name="unlock">Unlock</string>
+    <string name="unlock_prompt_title">Unlock CNS Accounts</string>
+    <string name="enable_biometric_prompt_title">Turn on biometric unlock</string>
+    <string name="biometric_prompt_subtitle">Confirm it\'s you</string>
+    <string name="biometric_unavailable">Set up a fingerprint, face or screen lock on this device first.</string>
+
+    <!-- Home -->
+    <string name="no_connected_apps">No apps connected yet</string>
+    <string name="disconnect_app_title">Disconnect app</string>
+    <string name="disconnect_app_subtitle">%1$s will lose access to your account until you sign in to it again.</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="app_disconnected">App disconnected</string>
+    <string name="add">Add</string>
+    <string name="authenticator_empty">No key yet</string>
+    <string name="authenticator_default_label">Account</string>
+    <string name="add_authenticator_title">Add authenticator</string>
+    <string name="add_authenticator_subtitle">Paste a setup key or an otpauth:// link. Codes are generated on this device only.</string>
+    <string name="authenticator_key_placeholder">Setup key or otpauth:// link</string>
+    <string name="authenticator_label_placeholder">Label (optional)</string>
+    <string name="authenticator_invalid">That doesn\'t look like a valid setup key.</string>
+    <string name="authenticator_added">Authenticator added</string>
+    <string name="remove_authenticator_title">Remove authenticator</string>
+    <string name="remove_authenticator_subtitle">The key will be deleted from this device. Make sure you can still sign in without it.</string>
+    <string name="relative_now">now</string>
+
+    <!-- History -->
+    <string name="history_title">Account activity</string>
+    <string name="history_empty">No activity yet</string>
+    <string name="unknown_device">Unknown device</string>
+    <string name="event_signup">Account created</string>
+    <string name="event_signup_hint">Welcome to CNS Studios</string>
+    <string name="event_login_success">Signed in</string>
+    <string name="event_login_success_hint">Successful login</string>
+    <string name="event_login_failure">Failed sign-in</string>
+    <string name="event_login_failure_hint">Wrong credentials or blocked attempt</string>
+    <string name="event_logout">Signed out</string>
+    <string name="event_logout_hint">Logged out of an account or session</string>
+    <string name="event_password_changed">Password changed</string>
+    <string name="event_password_changed_hint">Password updated</string>
+    <string name="event_username_changed">Username changed</string>
+    <string name="event_username_changed_hint">Username updated</string>
+    <string name="event_2fa_enabled">2FA enabled</string>
+    <string name="event_2fa_enabled_hint">Two-factor authentication turned on</string>
+    <string name="event_2fa_disabled">2FA disabled</string>
+    <string name="event_2fa_disabled_hint">Two-factor authentication turned off</string>
+    <string name="event_avatar_updated">Avatar updated</string>
+    <string name="event_avatar_updated_hint">Profile picture changed</string>
+    <string name="event_avatar_deleted">Avatar removed</string>
+    <string name="event_avatar_deleted_hint">Profile picture deleted</string>
+    <string name="event_account_deleted">Account deleted</string>
+    <string name="event_account_deleted_hint">Account marked for deletion</string>
+    <string name="event_revoke_session">Session revoked</string>
+    <string name="event_revoke_session_hint">A device was signed out</string>
+    <string name="event_revoke_all_sessions">All sessions revoked</string>
+    <string name="event_revoke_all_sessions_hint">Signed out everywhere</string>
+    <string name="event_account_locked">Account locked</string>
+    <string name="event_account_locked_hint">Too many failed sign-in attempts</string>
+    <string name="event_unknown_hint">Account event</string>
+
+    <!-- Search -->
+    <string name="search_kind_settings">Settings</string>
+    <string name="search_kind_activity">Activity</string>
+    <string name="search_entry_2fa">Change 2FA settings</string>
+    <string name="search_entry_password">Change your password</string>
+    <string name="search_entry_username">Change your username</string>
+    <string name="search_entry_avatar">Change your avatar</string>
+    <string name="search_entry_biometric">Turn biometric unlock on or off</string>
+    <string name="search_entry_strong_protection">Strong account protection</string>
+    <string name="search_entry_security_app">Require the security app</string>
+    <string name="search_entry_recovery_phrase">Set up a recovery phrase</string>
+    <string name="search_entry_security_center">See how secure your account is</string>
+    <string name="search_entry_log_out">Log out of this device</string>
+    <string name="search_entry_delete">Delete your account</string>
+
+    <!-- Settings dialogs -->
+    <string name="current_password_placeholder">Current password</string>
+    <string name="new_password_placeholder">New password</string>
+    <string name="repeat_password_placeholder">Repeat new password</string>
+    <string name="change_password_dialog_subtitle">At least 12 characters. Your other devices will be signed out.</string>
+    <string name="passwords_dont_match">The new passwords don\'t match.</string>
+    <string name="password_changed">Password changed. Other devices were signed out.</string>
+    <string name="username_changed">Username changed</string>
+    <string name="setup_2fa_title">Set up 2FA</string>
+    <string name="setup_2fa_subtitle_local">Codes will come from this app\'s authenticator. Confirm with the current code.</string>
+    <string name="setup_2fa_subtitle_manual">Add this key to your authenticator app, then enter the code it shows.</string>
+    <string name="enable">Enable</string>
+    <string name="open_authenticator_app">Open in authenticator app</string>
+    <string name="no_authenticator_app">No authenticator app found, so the key was copied instead.</string>
+    <string name="two_factor_on">Two-factor authentication is on</string>
+    <string name="disable_2fa_title">Turn off 2FA</string>
+    <string name="disable_2fa_subtitle">Confirm with your password and a current 2FA code.</string>
+    <string name="turn_off">Turn off</string>
+    <string name="two_factor_off">Two-factor authentication is off</string>
+    <string name="delete_account_dialog_title">Delete account</string>
+    <string name="delete_account_dialog_subtitle">Confirm with your password. This can\'t be undone.</string>
+    <string name="delete_account_dialog_subtitle_2fa">Confirm with your password and a current 2FA code. This can\'t be undone.</string>
+    <string name="delete">Delete</string>
+    <string name="avatar_updated">Avatar updated</string>
+    <string name="avatar_removed">Avatar removed</string>
+    <string name="avatar_invalid">Couldn\'t read that image.</string>
+    <string name="fill_all_fields">Fill in all fields.</string>
 </resources>

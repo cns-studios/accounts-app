@@ -1,6 +1,11 @@
 package com.cns.accounts.ui.search
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +34,7 @@ import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
+import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.LocalSpacing
 import com.cns.accounts.ui.theme.RequestMetaText
 import com.cns.accounts.ui.theme.SearchResultTitleText
@@ -39,8 +45,9 @@ import com.cns.accounts.ui.theme.SearchResultTitleText
 @Composable
 fun SearchScreen(
     query: String,
+    results: List<SearchResult>,
+    onResultClick: (SearchResult) -> Unit,
     modifier: Modifier = Modifier,
-    results: List<SearchResult> = sampleSearchResults(),
 ) {
     val colors = LocalAppColors.current
     val spacing = LocalSpacing.current
@@ -61,8 +68,8 @@ fun SearchScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(spacing.lg),
             ) {
-                items(results, key = { it.title }) { result ->
-                    SearchResultCard(result, query)
+                items(results, key = { it.id }) { result ->
+                    SearchResultCard(result, query, onClick = { onResultClick(result) })
                 }
             }
         }
@@ -70,9 +77,17 @@ fun SearchScreen(
 }
 
 @Composable
-private fun SearchResultCard(result: SearchResult, query: String) {
+private fun SearchResultCard(result: SearchResult, query: String, onClick: () -> Unit) {
     val colors = LocalAppColors.current
-    AppCard {
+    val haptic = LocalHapticFeedback.current
+    AppCard(
+        modifier = Modifier
+            .clip(RoundedCornerShape(LocalRadii.current.card))
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            },
+    ) {
         Column(
             modifier = Modifier.padding(LocalSpacing.current.md),
             verticalArrangement = Arrangement.spacedBy(13.dp),
@@ -94,6 +109,7 @@ private fun SearchResultCard(result: SearchResult, query: String) {
 
 private fun iconFor(kind: SearchResultKind): TokenIconKind = when (kind) {
     SearchResultKind.Settings -> TokenIconKind.Settings
+    SearchResultKind.Activity -> TokenIconKind.User
     SearchResultKind.Help -> TokenIconKind.LifeBuoy
     SearchResultKind.QuestionAnswer -> TokenIconKind.MessageQuestion
 }
@@ -126,7 +142,7 @@ private fun highlightMatches(text: String, query: String, baseColor: Color, matc
 @Composable
 private fun SearchScreenPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        SearchScreen(query = "2fa")
+        SearchScreen(query = "2fa", results = sampleSearchResults(), onResultClick = {})
     }
 }
 
@@ -134,6 +150,6 @@ private fun SearchScreenPreview() {
 @Composable
 private fun SearchScreenEmptyPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
-        SearchScreen(query = "")
+        SearchScreen(query = "", results = emptyList(), onResultClick = {})
     }
 }
