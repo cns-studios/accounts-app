@@ -27,7 +27,7 @@ http additionally needs a network security config). `-PcnsAccountsWebUrl` sets t
 | UI | Endpoint(s) | Notes |
 | --- | --- | --- |
 | Profile header (Home, Settings) | `GET /api/me` | name, `totp_enabled` chip, `profile.avatar` image; cached on disk |
-| Services card | `GET /api/me/connected-apps` | revoked apps hidden; row → disconnect dialog → `POST /api/me/connected-apps/{id}/disconnect` |
+| Services card | `GET /api/me/connected-apps` | all apps listed, like the web dashboard (see "Known auth issues"); row → disconnect dialog → `POST /api/me/connected-apps/{id}/disconnect` |
 | History tab | `GET /api/me/activity?cursor=` | paged as you scroll; labels mirror `accounts/lib/format.ts`; internal events hidden |
 | Pull-to-refresh (Home/History) | the three above | |
 | Edit username | `POST /api/me/username` | needs password (API requirement); new token pair is stored |
@@ -67,6 +67,15 @@ http additionally needs a network security config). `-PcnsAccountsWebUrl` sets t
 Also not exposed in the app (API exists, no design yet): the session list / revoke
 (`/api/me/sessions*`). Known API mismatches already noted for later in auth: username change
 requires the password; delete requires password + code.
+
+## Known auth issues
+
+- `/api/me/connected-apps` aggregates an app's sessions wrongly (`ConnectedApps` in
+  `internal/service/account.go`): `is_revoked` becomes true when *any* session of the app was
+  revoked (e.g. one logout), and `last_used` / `revoked_at` end up as the *oldest* session's
+  values. The app therefore ignores `is_revoked` (it used to hide e.g. Sendly while it was still
+  connected), and a disconnected app reappears on the next refresh until auth reports
+  `is_revoked` as "every session revoked" and `last_used` as the newest.
 
 ## Not verified here
 

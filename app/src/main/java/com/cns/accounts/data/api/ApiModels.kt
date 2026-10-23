@@ -112,7 +112,6 @@ data class ConnectedApp(
     val clientId: String,
     val name: String,
     val lastUsed: Instant?,
-    val isRevoked: Boolean,
 ) {
     companion object {
         fun listFromJson(json: JSONObject): List<ConnectedApp> {
@@ -124,7 +123,6 @@ data class ConnectedApp(
                     clientId = clientId,
                     name = item.optStringOrNull("client_name") ?: clientId,
                     lastUsed = item.optInstant("last_used"),
-                    isRevoked = item.optBoolean("is_revoked"),
                 )
             }
         }

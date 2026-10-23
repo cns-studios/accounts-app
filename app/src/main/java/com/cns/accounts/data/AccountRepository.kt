@@ -50,7 +50,10 @@ class AccountRepository(
     }
 
     suspend fun refreshConnectedApps() {
-        _connectedApps.value = api.connectedApps().filterNot { it.isRevoked }
+        // Not filtered on is_revoked: auth-v2 sets it as soon as ANY of an app's sessions was
+        // revoked (a logout is enough), so it hid apps that are still connected. Same list as the
+        // web dashboard until auth reports it per app (see docs/api_wiring.md).
+        _connectedApps.value = api.connectedApps()
     }
 
     suspend fun refreshActivity() {
