@@ -45,6 +45,13 @@ class AppContainer(context: Context) {
                 account.clear()
             }
         }
+        // 2FA turned off elsewhere (web, another device) kills the stored CNS key server-side;
+        // drop it once the account says so instead of showing codes that no longer work.
+        appScope.launch {
+            account.user.collect { user ->
+                if (user != null && !user.totpEnabled && authenticator.entry.value?.isCnsAccount == true) authenticator.remove()
+            }
+        }
     }
 }
 

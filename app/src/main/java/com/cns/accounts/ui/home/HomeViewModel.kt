@@ -46,7 +46,9 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         HomeData(
             profile = Profile(user?.username.orEmpty(), user?.totpEnabled == true, user?.avatarUrl),
             signInRequest = request,
-            account = authenticator?.let { Account(it.label, it.secret) },
+            // A CNS key is only live while the account has 2FA on; once it was turned off
+            // (here, on the web or on another device) its codes are useless, so don't show them.
+            account = authenticator?.takeUnless { it.isCnsAccount && user?.totpEnabled != true }?.let { Account(it.label, it.secret) },
             services = apps?.map { Service(it.clientId, it.name, it.lastUsed) },
         )
     }
