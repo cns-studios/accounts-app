@@ -85,9 +85,10 @@ private fun LoginRoute() {
         onUsernameChange = viewModel::updateUsername,
         onPasswordChange = viewModel::updatePassword,
         onCodeChange = viewModel::updateCode,
+        onShowCredentials = viewModel::showCredentials,
         onSubmitCredentials = viewModel::submitCredentials,
         onSubmitCode = viewModel::submitCode,
-        onRestart = viewModel::restart,
+        onBack = viewModel::back,
     )
 }
 

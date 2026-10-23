@@ -51,19 +51,18 @@
     <string name="feature_unavailable">This isn\'t available yet. It\'s coming in a future update.</string>
 
     <!-- Sign-in -->
-    <string name="sign_in_title">Sign in</string>
+    <string name="welcome_title">Welcome to CNS</string>
+    <string name="welcome_subtitle">Manage your account, enable stronger security and more.</string>
+    <string name="log_in">Log In</string>
+    <string name="create_account_button">Create Account</string>
     <string name="sign_in_subtitle">Use your CNS account.</string>
     <string name="username_placeholder">Username</string>
     <string name="password_placeholder">Password</string>
-    <string name="sign_in">Sign in</string>
-    <string name="no_account_yet">No account yet?</string>
-    <string name="create_account">Create one</string>
     <string name="two_factor_title">Two-factor code</string>
     <string name="two_factor_subtitle">Enter the 6-digit code from your authenticator app.</string>
     <string name="two_factor_subtitle_prefilled">Filled in from this device\'s authenticator.</string>
     <string name="code_placeholder">6-digit code</string>
     <string name="verify">Verify</string>
-    <string name="use_different_account">Use a different account</string>
     <string name="login_failed">Wrong username or password.</string>
     <string name="two_factor_failed">That code didn\'t work, or it expired. Sign in again.</string>
     <string name="sign_in_missing_fields">Enter your username and password.</string>

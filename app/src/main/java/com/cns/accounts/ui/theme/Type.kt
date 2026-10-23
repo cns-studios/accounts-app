@@ -56,3 +56,6 @@ val DialogButtonText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeigh
 // search.tokens.json: search-bar input text and result-card title styles.
 val SearchBarText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp)
 val SearchResultTitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
+
+// TEMP_ONBOARDING_TOKENS.json: the welcome title (Instrument Serif 48) above the gray Rubik 20 subtitle.
+val WelcomeTitleText = TextStyle(fontFamily = InstrumentSerif, fontSize = 48.sp, lineHeight = 58.sp)

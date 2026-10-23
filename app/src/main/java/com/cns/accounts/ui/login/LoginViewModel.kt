@@ -23,6 +23,8 @@ data class LoginUiState(
     // Non-null once the password was accepted and auth-v2 asked for a TOTP code.
     val loginToken: String? = null,
     val codePrefilled: Boolean = false,
+    // false: the welcome page (Log In / Create Account); true: the username/password form.
+    val showCredentials: Boolean = false,
     val isBusy: Boolean = false,
     val error: UserMessage? = null,
 )
@@ -73,8 +75,17 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /** Back from the 2FA step to the username/password form. */
-    fun restart() = _uiState.update { LoginUiState(username = it.username) }
+    /** "Log In" on the welcome page. */
+    fun showCredentials() = _uiState.update { it.copy(showCredentials = true, error = null) }
+
+    /** Back: from the 2FA step to the form, from the form to the welcome page. */
+    fun back() = _uiState.update { state ->
+        when {
+            state.isBusy -> state
+            state.loginToken != null -> LoginUiState(username = state.username, showCredentials = true)
+            else -> LoginUiState(username = state.username)
+        }
+    }
 
     private fun handleResult(result: LoginResult) {
         when (result) {
