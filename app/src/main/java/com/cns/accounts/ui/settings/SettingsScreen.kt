@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -165,17 +164,22 @@ fun SettingsScreen(
                     onSetupRecoveryPhrase = onSetupRecoveryPhrase,
                 )
             }
-            item(key = "change-password") {
-                LightButton(text = stringResource(R.string.change_password), onClick = onChangePassword)
+            item(key = "account-actions") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    ActionButton(
+                        text = stringResource(R.string.change_password),
+                        onClick = onChangePassword,
+                        secondary = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ActionButton(text = stringResource(R.string.log_out), onClick = onLogOut, modifier = Modifier.weight(1f))
+                }
             }
             item(key = "delete-account") {
                 DeleteAccountCard(onDeleteAccount = onDeleteAccount)
-            }
-            item(key = "delete-account-log-out-gap") {
-                Spacer(modifier = Modifier.height(spacing.lg))
-            }
-            item(key = "log-out") {
-                LightButton(text = stringResource(R.string.log_out), onClick = onLogOut)
             }
             item(key = "bottom-inset") {
                 Box(modifier = Modifier.navigationBarsPadding())
@@ -546,21 +550,26 @@ private fun SettingsToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit)
     }
 }
 
+/** A full-height action button: white (primary) or the elevated surface with white text (secondary). */
 @Composable
-private fun LightButton(text: String, onClick: () -> Unit) {
+private fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, secondary: Boolean = false) {
+    val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
     Button(
         onClick = {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             onClick()
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(LocalDimensions.current.actionHeight),
+        modifier = modifier.height(LocalDimensions.current.actionHeight),
         shape = RoundedCornerShape(11.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+        colors = if (secondary) {
+            ButtonDefaults.buttonColors(containerColor = colors.elevatedSurface, contentColor = Color.White)
+        } else {
+            ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+        },
+        contentPadding = PaddingValues(horizontal = 12.dp),
     ) {
-        Text(text, style = RequestMetaText)
+        Text(text, style = RequestMetaText, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }
 
