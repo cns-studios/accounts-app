@@ -82,6 +82,15 @@
     <string name="disconnect_app_subtitle">%1$s will lose access to your account until you sign in to it again.</string>
     <string name="disconnect">Disconnect</string>
     <string name="app_disconnected">App disconnected</string>
+    <string name="last_used">Last used</string>
+    <string name="last_used_unknown">Not yet</string>
+    <string name="login_request">Login request</string>
+    <string name="login_request_device">Device</string>
+    <string name="login_request_code">Code</string>
+    <string name="service_needs_setup">Needs setup</string>
+    <string name="set_up_service_title">Setting up %1$s</string>
+    <string name="set_up_sendly_subtitle">By continuing, you can approve or deny new Sendly logins from this app.</string>
+    <string name="continue_label">Continue</string>
     <string name="authenticator_default_label">Account</string>
     <string name="set_up">Set Up</string>
     <string name="two_factor_not_set_up">2 Factor Authentication is not set up</string>

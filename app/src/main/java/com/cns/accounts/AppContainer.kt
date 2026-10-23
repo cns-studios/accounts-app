@@ -3,6 +3,7 @@ package com.cns.accounts
 import android.content.Context
 import com.cns.accounts.data.AccountRepository
 import com.cns.accounts.data.AppPreferences
+import com.cns.accounts.data.ServiceLinks
 import com.cns.accounts.data.SignInRequests
 import com.cns.accounts.data.UserMessages
 import com.cns.accounts.data.api.CnsApi
@@ -35,6 +36,7 @@ class AppContainer(context: Context) {
     val twoFactor = TwoFactorManager(api, account, authenticator, appScope)
     val preferences = AppPreferences(context)
     val signInRequests = SignInRequests()
+    val serviceLinks = ServiceLinks()
     val messages = UserMessages()
     val appLock = AppLock(preferences)
 

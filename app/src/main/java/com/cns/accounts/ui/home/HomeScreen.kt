@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -59,7 +58,6 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import com.cns.accounts.R
@@ -74,7 +72,6 @@ import com.cns.accounts.data.sampleHomeData
 import com.cns.accounts.ui.components.ActionDialog
 import com.cns.accounts.ui.components.DialogField
 import com.cns.accounts.ui.components.FieldKind
-import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.ui.components.AppCard
 import com.cns.accounts.ui.components.FLING_VELOCITY_THRESHOLD
 import com.cns.accounts.ui.components.HomeBottomNavigation
@@ -87,7 +84,6 @@ import com.cns.accounts.ui.theme.AccountCodeText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalSpacing
-import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.RequestCaptionText
 import com.cns.accounts.ui.theme.RequestMetaText
 import com.cns.accounts.ui.theme.RequestTitleText
@@ -105,7 +101,11 @@ fun HomeScreen(
     onDenyRequest: () -> Unit,
     onSetUpTwoFactor: () -> Unit,
     onTransferTwoFactor: () -> Unit,
-    onServiceClick: (Service) -> Unit,
+    onToggleService: (Service) -> Unit,
+    onDisconnectService: (Service) -> Unit,
+    onSetUpService: (Service) -> Unit,
+    onApproveServiceLogin: (Service) -> Unit,
+    onDenyServiceLogin: (Service) -> Unit,
     onDialogFieldChange: (Int, String) -> Unit,
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
@@ -284,7 +284,15 @@ fun HomeScreen(
                             .padding(horizontal = spacing.xl),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ServicesCard(state.data.services, onServiceClick)
+                        ServicesCard(
+                            services = state.data.services,
+                            expandedServiceId = state.expandedServiceId,
+                            onToggleService = onToggleService,
+                            onDisconnect = onDisconnectService,
+                            onSetUp = onSetUpService,
+                            onApproveLogin = onApproveServiceLogin,
+                            onDenyLogin = onDenyServiceLogin,
+                        )
                     }
                 }
             }
@@ -365,6 +373,15 @@ private fun HomeDialogHost(
             title = stringResource(R.string.disconnect_app_title),
             subtitle = stringResource(R.string.disconnect_app_subtitle, dialog.service.name),
             primaryButtonLabel = stringResource(R.string.disconnect),
+            isBusy = dialog.isBusy,
+            onDismissRequest = onDismiss,
+            onPrimaryAction = onConfirm,
+        )
+        is HomeDialog.SetUpService -> ActionDialog(
+            title = stringResource(R.string.set_up_service_title, dialog.service.name),
+            subtitle = stringResource(R.string.set_up_sendly_subtitle),
+            primaryButtonLabel = stringResource(R.string.continue_label),
+            errorText = dialog.error?.resolve(LocalContext.current),
             isBusy = dialog.isBusy,
             onDismissRequest = onDismiss,
             onPrimaryAction = onConfirm,
@@ -612,68 +629,6 @@ private fun copySensitive(context: android.content.Context, code: String) {
     clipboard.setPrimaryClip(clip)
 }
 
-/**
- * Connected apps (auth-v2 `/api/me/connected-apps`): each row is the app plus when it last
- * used the account; the chevron opens the disconnect dialog. Grows with the list — the exported
- * serviceCardHeight (110dp) only fits the design's single row, so it is a minimum, not a size.
- */
-@Composable
-private fun ServicesCard(services: List<Service>?, onServiceClick: (Service) -> Unit) {
-    val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
-    AppCard(modifier = Modifier.heightIn(min = LocalDimensions.current.serviceCardHeight)) {
-        androidx.compose.foundation.layout.Column(
-            modifier = Modifier.padding(LocalSpacing.current.md),
-            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.lg),
-        ) {
-            Text(stringResource(R.string.services), color = colors.onSurface, style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
-            if (services != null && services.isEmpty()) {
-                Text(stringResource(R.string.no_connected_apps), color = colors.mutedText, style = RequestMetaText)
-            }
-            services.orEmpty().forEach { service ->
-                androidx.compose.foundation.layout.Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(LocalRadii.current.pill))
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onServiceClick(service)
-                        },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    androidx.compose.foundation.layout.Row(
-                        modifier = Modifier.weight(1f, fill = false),
-                        horizontalArrangement = Arrangement.spacedBy(LocalSpacing.current.xs),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            service.name,
-                            modifier = Modifier.weight(1f, fill = false),
-                            color = colors.onSurface,
-                            style = RequestTitleText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(relativeTime(service.lastUsed), color = colors.serviceAccent, style = RequestMetaText)
-                    }
-
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(LocalRadii.current.pill))
-                            .background(colors.surface)
-                            .padding(8.dp),
-                    ) {
-                        TokenIcon(TokenIconKind.ChevronRight, tint = colors.onSurface)
-                    }
-                }
-            }
-
-        }
-    }
-}
-
 @Preview(showBackground = true, widthDp = 390, heightDp = 874)
 @Composable
 private fun HomeScreenPreview() {
@@ -690,7 +645,11 @@ private fun HomeScreenPreview() {
             onDenyRequest = {},
             onSetUpTwoFactor = {},
             onTransferTwoFactor = {},
-            onServiceClick = {},
+            onToggleService = {},
+            onDisconnectService = {},
+            onSetUpService = {},
+            onApproveServiceLogin = {},
+            onDenyServiceLogin = {},
             onDialogFieldChange = { _, _ -> },
             onDialogConfirm = {},
             onDialogDismiss = {},
@@ -763,7 +722,11 @@ private fun HomeScreenDarkPreview() {
             onDenyRequest = {},
             onSetUpTwoFactor = {},
             onTransferTwoFactor = {},
-            onServiceClick = {},
+            onToggleService = {},
+            onDisconnectService = {},
+            onSetUpService = {},
+            onApproveServiceLogin = {},
+            onDenyServiceLogin = {},
             onDialogFieldChange = { _, _ -> },
             onDialogConfirm = {},
             onDialogDismiss = {},
@@ -795,10 +758,3 @@ private fun AccountCardNotSetUpPreview() {
     }
 }
 
-@Preview(name = "Services card", showBackground = true, widthDp = 340, heightDp = 180)
-@Composable
-private fun ServicesCardPreview() {
-    com.cns.accounts.ui.theme.CNSAccountsTheme {
-        ServicesCard(sampleHomeData().services, onServiceClick = {})
-    }
-}

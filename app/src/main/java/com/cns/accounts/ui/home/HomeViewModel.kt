@@ -8,6 +8,7 @@ import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.HomeData
 import com.cns.accounts.data.Profile
 import com.cns.accounts.data.Service
+import com.cns.accounts.data.isSendly
 import com.cns.accounts.data.api.ActivityEntry
 import com.cns.accounts.data.UserMessage
 import com.cns.accounts.data.authenticator.TwoFactorMoveIncompleteException
@@ -43,12 +44,22 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         account.connectedApps,
         container.twoFactor.state,
         container.signInRequests.pending,
-    ) { user, apps, twoFactor, request ->
+        container.serviceLinks.sendly,
+    ) { user, apps, twoFactor, request, sendly ->
         HomeData(
             profile = Profile(user?.username.orEmpty(), user?.totpEnabled == true, user?.avatarUrl),
             signInRequest = request,
             twoFactor = twoFactor,
-            services = apps?.map { Service(it.clientId, it.name, it.lastUsed) },
+            services = apps?.map { app ->
+                val sendlyApp = isSendly(app.clientId, app.name)
+                Service(
+                    id = app.clientId,
+                    name = app.name,
+                    lastUsed = app.lastUsed,
+                    needsSetup = sendlyApp && !sendly.isSetUp,
+                    loginRequest = sendly.pendingLogin.takeIf { sendlyApp },
+                )
+            },
         )
     }
 
@@ -65,6 +76,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             selectedDestination = local.selectedDestination,
             dialog = local.dialog,
             isSettingUpTwoFactor = local.isSettingUpTwoFactor,
+            expandedServiceId = local.expandedServiceId,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -147,6 +159,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         when (val dialog = local.value.dialog) {
             is HomeDialog.TransferTwoFactor -> transferTwoFactor(dialog)
             is HomeDialog.DisconnectApp -> disconnect(dialog)
+            is HomeDialog.SetUpService -> setUpService(dialog)
             null -> Unit
         }
     }
@@ -155,6 +168,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val busy = when (val dialog = state.dialog) {
             is HomeDialog.DisconnectApp -> dialog.isBusy
             is HomeDialog.TransferTwoFactor -> dialog.isBusy
+            is HomeDialog.SetUpService -> dialog.isBusy
             null -> false
         }
         if (busy) state else state.copy(dialog = null)
@@ -186,13 +200,42 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     // --- connected apps ---
 
+    /** A row's chevron: show that service in detail, or back to the list if it already is. */
+    fun toggleService(service: Service) = local.update {
+        it.copy(expandedServiceId = if (it.expandedServiceId == service.id) null else service.id)
+    }
+
     fun showDisconnectApp(service: Service) = local.update { it.copy(dialog = HomeDialog.DisconnectApp(service)) }
+
+    fun showSetUpService(service: Service) = local.update { it.copy(dialog = HomeDialog.SetUpService(service)) }
+
+    fun approveServiceLogin(service: Service) = respondToServiceLogin(service, approve = true)
+    fun denyServiceLogin(service: Service) = respondToServiceLogin(service, approve = false)
+
+    private fun respondToServiceLogin(service: Service, approve: Boolean) {
+        val request = service.loginRequest ?: return
+        viewModelScope.launch {
+            runCatching { container.serviceLinks.respondToSendlyLogin(request, approve) }.onFailure(messages::show)
+        }
+    }
+
+    private fun setUpService(dialog: HomeDialog.SetUpService) {
+        if (dialog.isBusy) return
+        local.update { it.copy(dialog = dialog.copy(isBusy = true, error = null)) }
+        viewModelScope.launch {
+            runCatching { container.serviceLinks.beginSendlySetup() }
+                .onFailure { error -> local.update { it.copy(dialog = dialog.copy(isBusy = false, error = error.toUserMessage())) } }
+        }
+    }
 
     private fun disconnect(dialog: HomeDialog.DisconnectApp) {
         local.update { it.copy(dialog = dialog.copy(isBusy = true)) }
         viewModelScope.launch {
             runCatching { account.disconnectApp(dialog.service.id) }
-                .onSuccess { messages.show(R.string.app_disconnected) }
+                .onSuccess {
+                    messages.show(R.string.app_disconnected)
+                    local.update { it.copy(expandedServiceId = null) }
+                }
                 .onFailure(messages::show)
             local.update { it.copy(dialog = null) }
         }
@@ -211,5 +254,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val selectedDestination: String = "home",
         val dialog: HomeDialog? = null,
         val isSettingUpTwoFactor: Boolean = false,
+        val expandedServiceId: String? = null,
     )
 }

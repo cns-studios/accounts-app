@@ -19,12 +19,27 @@ data class SignInRequest(
     val timeLabel: String,
 )
 
-/** A connected app (auth-v2 `/api/me/connected-apps`); [lastUsed] drives the "now"/"2h ago" label. */
+/**
+ * A connected app (auth-v2 `/api/me/connected-apps`). [needsSetup] marks a service this app can
+ * do more for once set up (Sendly, see [ServiceLinks]); [loginRequest] is a sign-in to that
+ * service waiting for this app's approval.
+ */
 @Immutable
 data class Service(
     val id: String,
     val name: String,
     val lastUsed: Instant?,
+    val needsSetup: Boolean = false,
+    val loginRequest: ServiceLoginRequest? = null,
+)
+
+/** A new device signing in to a service, to be allowed or denied here (Sendly device enrollment). */
+@Immutable
+data class ServiceLoginRequest(
+    val id: String,
+    val device: String,
+    val code: String,
+    val createdAt: Instant?,
 )
 
 @Immutable
@@ -43,5 +58,5 @@ fun sampleHomeData() = HomeData(
     profile = Profile("aaron", twoFactorEnabled = true),
     signInRequest = SignInRequest("preview", "Firefox on Linux", "now"),
     twoFactor = TwoFactorState.Active("JBSWY3DPEHPK3PXP"),
-    services = listOf(Service("sendly", "Sendly", Instant.now())),
+    services = listOf(Service("sendly", "Sendly", Instant.now(), needsSetup = true), Service("ilc", "ILC", Instant.now())),
 )

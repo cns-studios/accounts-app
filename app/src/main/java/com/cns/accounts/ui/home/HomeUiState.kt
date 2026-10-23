@@ -14,6 +14,8 @@ data class HomeUiState(
     val selectedDestination: String = "home",
     val dialog: HomeDialog? = null,
     val isSettingUpTwoFactor: Boolean = false,
+    // The service the Services card is showing in detail (tapped row), if any.
+    val expandedServiceId: String? = null,
 )
 
 /** The one dialog Home can show at a time; its field values live here so they survive recomposition. */
@@ -27,4 +29,7 @@ sealed interface HomeDialog {
         val error: UserMessage? = null,
     ) : HomeDialog
     data class DisconnectApp(val service: Service, val isBusy: Boolean = false) : HomeDialog
+
+    /** "Set Up" on a service (Sendly): explains what it does, then runs it. */
+    data class SetUpService(val service: Service, val isBusy: Boolean = false, val error: UserMessage? = null) : HomeDialog
 }
