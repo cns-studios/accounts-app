@@ -22,8 +22,9 @@ val MutedLight = Color(0xFFD9D9D9)
 val TimerSpent = Color(0xFF616161)
 // history.json: rgba(118, 118, 118, 1)
 val MutedText = Color(0xFF767676)
-// settings.tokens.json (Rectangle40, off-state track): rgba(150, 150, 150, 1)
-val ToggleOffTrack = Color(0xFF969696)
+// Toggle tokens (StateOff): track rgba(149, 149, 149, 1), knob rgba(76, 76, 76, 1)
+val ToggleOffTrack = Color(0xFF959595)
+val ToggleOffThumb = Color(0xFF4C4C4C)
 // settings.tokens.json (Inputfield subtitle): rgba(149, 149, 149, 1)
 val DialogSubtitleGray = Color(0xFF959595)
 // settings.tokens.json (Inputfield Group12/Group13 fill): rgba(76, 76, 76, 1)
@@ -44,6 +45,7 @@ data class AppColors(
     val timerSpent: Color = TimerSpent,
     val mutedText: Color = MutedText,
     val toggleOffTrack: Color = ToggleOffTrack,
+    val toggleOffThumb: Color = ToggleOffThumb,
     val dialogSubtitle: Color = DialogSubtitleGray,
     val fieldSurface: Color = FieldSurface,
     val fieldPlaceholder: Color = FieldPlaceholder,

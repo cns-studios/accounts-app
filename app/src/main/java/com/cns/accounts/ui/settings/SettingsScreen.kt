@@ -511,13 +511,13 @@ private fun HelpHintIcon(contentDescription: String, hint: String) {
     }
 }
 
-// settings.tokens.json (Rectangle40/41): a fixed-size white pill track (66x36) with a fixed-size
-// black thumb (26x26) that only slides between left/right — unlike Material3's Switch, the thumb
-// never shrinks in the off state, and neither color ever changes.
-private val ToggleTrackWidth = 66.dp
-private val ToggleTrackHeight = 36.dp
-private val ToggleThumbSize = 26.dp
-private val ToggleThumbInset = 5.dp
+// Toggle tokens (StateOn / StateOff): a 40x28 pill with a 24dp knob inset 2dp top/bottom and 3dp
+// from its edge (13dp on the other side). On: white track, black knob, knob right. Off: gray
+// (149,149,149) track, dark gray (76,76,76) knob, knob left.
+private val ToggleTrackWidth = 40.dp
+private val ToggleTrackHeight = 28.dp
+private val ToggleThumbSize = 24.dp
+private val ToggleThumbInset = 3.dp
 
 @Composable
 private fun SettingsToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
@@ -527,8 +527,8 @@ private fun SettingsToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit)
         targetValue = if (checked) ToggleTrackWidth - ToggleThumbSize - ToggleThumbInset else ToggleThumbInset,
         label = "toggle-thumb-offset",
     )
-    // settings.tokens.json (Rectangle40): white track when on, gray (150,150,150) when off.
     val trackColor by animateColorAsState(if (checked) Color.White else colors.toggleOffTrack, label = "toggle-track-color")
+    val thumbColor by animateColorAsState(if (checked) Color.Black else colors.toggleOffThumb, label = "toggle-thumb-color")
     Box(
         modifier = Modifier
             .size(ToggleTrackWidth, ToggleTrackHeight)
@@ -545,7 +545,7 @@ private fun SettingsToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit)
                 .padding(start = thumbOffset)
                 .size(ToggleThumbSize)
                 .clip(CircleShape)
-                .background(Color.Black),
+                .background(thumbColor),
         )
     }
 }
