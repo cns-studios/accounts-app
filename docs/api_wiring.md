@@ -11,6 +11,11 @@ never shares its session or 2FA keys. Debug builds allow plain http to `localhos
 `10.0.2.2` only. For a local auth-v2: `adb reverse tcp:3845 tcp:3845` and
 `-PcnsApiBaseUrl=http://localhost:3845`.
 
+## Sign-in
+
+Signed out, the app shows the onboarding page (`TEMP_ONBOARDING_TOKENS.json`): Log In → the
+credentials step → the 2FA step; Create Account → the web sign-up.
+
 ## Session
 
 | What | Where |
@@ -30,7 +35,7 @@ never shares its session or 2FA keys. Debug builds allow plain http to `localhos
 | UI | Endpoint(s) | Notes |
 | --- | --- | --- |
 | Profile header (Home, Settings) | `GET /api/me` | name, `totp_enabled` chip, `profile.avatar` image; cached on disk |
-| Services card | `GET /api/me/connected-apps` | all apps listed, like the web dashboard (see "Known auth issues"); row → disconnect dialog → `POST /api/me/connected-apps/{id}/disconnect` |
+| Services card | `GET /api/me/connected-apps` | all apps listed, like the web dashboard (see "Known auth issues"); a row opens the service's detail (last used, Disconnect → `POST /api/me/connected-apps/{id}/disconnect`). Sendly's Set Up / login requests: see below |
 | History tab | `GET /api/me/activity?cursor=` | paged as you scroll; labels mirror `accounts/lib/format.ts`; internal events hidden |
 | Pull-to-refresh (Home/History) | the three above | |
 | Edit username | `POST /api/me/username` | needs password (API requirement); new token pair is stored |
@@ -67,9 +72,10 @@ never shares its session or 2FA keys. Debug builds allow plain http to `localhos
 
 | UI | What's missing in auth-v2 | Current behaviour |
 | --- | --- | --- |
+| Sendly Set Up, Sendly login requests (Services card) | this app as a trusted Sendly device (`docs/backend_plans.md` §4) | Sendly always shows the orange "not set up" dot; Continue in its Set Up dialog reports "not available yet" |
 | Sign-in request card (Allow/Deny) | push/approval flow: list pending sign-ins, approve/deny, "check your phone" login step | `SignInRequests` stub never yields a request, so the card is hidden; Allow/Deny would report "not available" |
 | Notifications toggle | background delivery of account events (2FA on/off, password/username change, new sign-in) — design pending | toggle stays off, snackbar "not available yet" |
-| Require Security App toggle | depends on the approval flow above | same |
+| Require Security App toggle | signed approvals (`docs/backend_plans.md` §3) | same |
 | Recovery phrase "Setup" | recovery phrase storage/verification | same |
 | Search: Help / Q&A results | Help Center at help.cns-studios.com (+ its index) | kinds and icons exist, nothing produces them |
 
