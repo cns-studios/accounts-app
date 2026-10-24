@@ -332,6 +332,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         eventType = entry.eventType,
         createdAt = entry.createdAt,
         subtitle = entry.device?.takeUnless { it == "Unknown device" } ?: entry.ipAddress,
+        data = entry.data,
     )
 
     private data class LocalState(

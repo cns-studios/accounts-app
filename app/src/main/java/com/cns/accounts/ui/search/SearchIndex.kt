@@ -50,10 +50,10 @@ fun rememberSearchResults(query: String, activity: List<HistoryEvent>): List<Sea
     }
     val activityTitle = context.getString(R.string.search_kind_activity)
     val activityIndex = activity.map { event ->
-        val description = listOfNotNull(eventTitle(event.eventType), event.subtitle).joinToString(" · ")
+        val description = listOfNotNull(eventTitle(event.eventType, event.data), event.subtitle).joinToString(" · ")
         IndexedResult(
             SearchResult("activity-${event.id}", SearchResultKind.Activity, activityTitle, description),
-            haystack = "$description ${eventDescription(event.eventType)}".lowercase(),
+            haystack = "$description ${eventDescription(event.eventType, event.data)}".lowercase(),
         )
     }
     val needle = query.trim().lowercase()

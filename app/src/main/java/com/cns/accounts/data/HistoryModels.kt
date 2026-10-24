@@ -13,6 +13,7 @@ data class HistoryEvent(
     val eventType: String,
     val createdAt: Instant?,
     val subtitle: String?,
+    val data: Map<String, String> = emptyMap(),
 )
 
 fun sampleHistoryEvents(): List<HistoryEvent> = List(5) { index ->

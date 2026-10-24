@@ -168,11 +168,11 @@ private fun HistoryEventCard(event: HistoryEvent, modifier: Modifier = Modifier)
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TokenIcon(eventIcon(event.eventType), tint = colors.onSurface)
-                Text(eventTitle(event.eventType), color = colors.onSurface, style = HistoryEventTitleText)
+                Text(eventTitle(event.eventType, event.data), color = colors.onSurface, style = HistoryEventTitleText)
             }
             Text(relativeTime(event.createdAt), color = colors.mutedText, style = HistoryEventTimeText)
         }
-        Text(eventDescription(event.eventType), color = colors.mutedText, style = HistoryEventDetailText)
+        Text(eventDescription(event.eventType, event.data), color = colors.mutedText, style = HistoryEventDetailText)
         Text(event.subtitle ?: stringResource(R.string.unknown_device), color = colors.mutedText, style = HistoryEventDetailText)
     }
 }

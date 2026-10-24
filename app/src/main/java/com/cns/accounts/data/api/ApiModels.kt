@@ -201,7 +201,27 @@ data class ActivityEntry(
     val ipAddress: String?,
     val device: String?,
     val createdAt: Instant?,
+    /** The event's string details (e.g. an approval's action and status), from `event_data`. */
+    val data: Map<String, String> = emptyMap(),
 )
+
+/** auth-v2 sends `event_data` as a JSON string (older rows: an object); only string values are kept. */
+private fun activityData(item: JSONObject): Map<String, String> {
+    val raw = item.opt("event_data")
+    val json = when (raw) {
+        is JSONObject -> raw
+        is String -> runCatching { JSONObject(raw) }.getOrNull()
+        else -> null
+    } ?: return emptyMap()
+    return buildMap {
+        json.keys().forEach { key ->
+            when (val value = json.opt(key)) {
+                is String -> put(key, value)
+                is Boolean -> put(key, value.toString())
+            }
+        }
+    }
+}
 
 data class ActivityPage(val entries: List<ActivityEntry>, val nextCursor: Long?) {
     companion object {
@@ -223,6 +243,7 @@ data class ActivityPage(val entries: List<ActivityEntry>, val nextCursor: Long?)
                             ipAddress = item.optStringOrNull("ip_address"),
                             device = item.optStringOrNull("device"),
                             createdAt = item.optInstant("created_at"),
+                            data = activityData(item),
                         ),
                     )
                 }
