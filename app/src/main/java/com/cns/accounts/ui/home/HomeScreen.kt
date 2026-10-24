@@ -41,10 +41,17 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
@@ -81,7 +88,13 @@ import com.cns.accounts.ui.components.ProfileHeader
 import com.cns.accounts.ui.components.TabSettleSpring
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
+import com.cns.accounts.ui.components.BusySpinnerPhase
+import com.cns.accounts.ui.components.RefreshSpinner
+import com.cns.accounts.ui.components.navAlignedWidth
 import com.cns.accounts.ui.theme.AccountCodeText
+import com.cns.accounts.ui.theme.CardHeadlineText
+import com.cns.accounts.ui.theme.CardLabelText
+import com.cns.accounts.ui.theme.CardSupportingText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalSpacing
@@ -94,10 +107,12 @@ fun HomeScreen(
     state: HomeUiState,
     onDestinationSelected: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onAccountClick: () -> Unit,
     onOpenSetting: (String) -> Unit,
     onRefresh: () -> Unit,
     onRefreshHistory: () -> Unit,
     onLoadMoreHistory: () -> Unit,
+    onHistorySeen: () -> Unit,
     onApproveRequest: () -> Unit,
     onDenyRequest: () -> Unit,
     onSetUpTwoFactor: () -> Unit,
@@ -111,6 +126,8 @@ fun HomeScreen(
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    // False while something covers Home (the lock screen): the code's rollover buzz stays quiet.
+    codeHapticsAllowed: Boolean = true,
 ) {
     var selectedTab by remember { androidx.compose.runtime.mutableStateOf("home") }
     // Home/history swipe: a drag on EITHER the segmented nav pill or the page background below
@@ -173,6 +190,21 @@ fun HomeScreen(
     // read in graphicsLayer, so the fade doesn't recompose the whole screen every frame.
     val searchOverlayShown by remember { derivedStateOf { searchAlpha.value > 0.01f } }
     val haptic = LocalHapticFeedback.current
+    // The rollover buzz is only for someone looking at the code: Home's own tab, in the
+    // foreground, with nothing (search, a dialog, the lock screen) over it.
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val codeHapticsOn by rememberUpdatedState(
+        codeHapticsAllowed && lifecycleState.isAtLeast(Lifecycle.State.RESUMED) &&
+            selectedTab == "home" && !searchActive && state.dialog == null,
+    )
+    // History on screen: its events count as seen, so the nav's unread mark goes away (also
+    // for new ones a refresh brings in while the tab is open).
+    LaunchedEffect(selectedTab, state.historyUnread) {
+        if (selectedTab == "history" && state.historyUnread) {
+            delay(HistorySeenDelayMillis)
+            onHistorySeen()
+        }
+    }
     val secretLength = TimerSquareCount
     // TOTP periods are aligned to wall-clock 30s boundaries, so the timer squares are too: the
     // code flips exactly when the row resets, matching any other authenticator app.
@@ -187,7 +219,7 @@ fun HomeScreen(
                 lastPeriod = period
                 if (secretBytes != null) {
                     accountCode = formatAccountCode(Totp.code(secretBytes, now))
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (codeHapticsOn) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
             }
             val cycleMillis = now % Totp.PeriodMillis
@@ -238,10 +270,10 @@ fun HomeScreen(
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = spacing.xl),
+                            .padding(horizontal = NavSideInset),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ProfileHeader(state.data.profile, onSettingsClick)
+                        ProfileHeader(state.data.profile, onSettingsClick, modifier = Modifier.navAlignedWidth())
                     }
                 }
                 item(key = "profile-request-gap", contentType = "spacer") {
@@ -257,7 +289,7 @@ fun HomeScreen(
                                 .padding(horizontal = spacing.xl),
                             contentAlignment = Alignment.Center,
                         ) {
-                            SignInRequestCard(signInRequest, onApproveRequest, onDenyRequest)
+                            SignInRequestCard(signInRequest, onApproveRequest, onDenyRequest, modifier = Modifier.navAlignedWidth())
                         }
                     }
                     item(key = "request-account-gap", contentType = "spacer") {
@@ -268,10 +300,13 @@ fun HomeScreen(
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = spacing.xl),
+                            .padding(horizontal = NavSideInset),
                         contentAlignment = Alignment.Center,
                     ) {
-                        AccountCard(twoFactor, accountCode, spentCount, state.isSettingUpTwoFactor, onSetUp = onSetUpTwoFactor, onTransfer = onTransferTwoFactor)
+                        AccountCard(
+                            twoFactor, accountCode, spentCount, state.isSettingUpTwoFactor,
+                            onSetUp = onSetUpTwoFactor, onTransfer = onTransferTwoFactor, modifier = Modifier.navAlignedWidth(),
+                        )
                     }
                 }
                 item(key = "account-services-gap", contentType = "spacer") {
@@ -281,10 +316,11 @@ fun HomeScreen(
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = spacing.xl),
+                            .padding(horizontal = NavSideInset),
                         contentAlignment = Alignment.Center,
                     ) {
                         ServicesCard(
+                            modifier = Modifier.navAlignedWidth(),
                             services = state.data.services,
                             expandedServiceId = state.expandedServiceId,
                             onToggleService = onToggleService,
@@ -321,7 +357,7 @@ fun HomeScreen(
                     when (result.kind) {
                         SearchResultKind.Activity -> selectTab("history")
                         SearchResultKind.Settings -> onOpenSetting(result.id.removePrefix(SettingsResultPrefix))
-                        else -> onSettingsClick()
+                        else -> onAccountClick()
                     }
                 },
                 modifier = Modifier.graphicsLayer { alpha = searchAlpha.value },
@@ -334,7 +370,9 @@ fun HomeScreen(
             onSwipeDragStarted = onSwipeDragStarted,
             onSwipeProgressDelta = { delta -> liveSwipeProgress = (liveSwipeProgress + delta).coerceIn(0f, 1f) },
             onSwipeDragStopped = onSwipeSettle,
-            onUserClick = onSettingsClick,
+            onUserClick = onAccountClick,
+            avatarUrl = state.data.profile.avatarUrl,
+            historyUnread = state.historyUnread,
             isSearchActive = searchActive,
             onSearchActiveChange = { searchActive = it },
             searchQuery = searchQuery,
@@ -407,36 +445,31 @@ private fun SignInRequestCard(
     request: SignInRequest,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
     // Sized to content (no fixed card height) so the bottom gap below the buttons is exactly
     // the padding value below, matching the left/right inset instead of leftover centering slack.
     AppCard(
         color = colors.accent,
-        modifier = Modifier.semantics { role = Role.Button },
+        modifier = modifier.semantics { role = Role.Button },
     ) {
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    start = LocalSpacing.current.sm,
-                    end = LocalSpacing.current.sm,
-                    top = LocalSpacing.current.md,
-                    bottom = LocalSpacing.current.sm,
-                ),
+                .padding(CardPadding),
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.lg),
         ) {
-            androidx.compose.foundation.layout.Column {
+            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 androidx.compose.foundation.layout.Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = LocalSpacing.current.sm),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(requestTitle(request), modifier = Modifier.weight(1f, fill = false), color = colors.onSurface, style = RequestTitleText)
-                    Text(relativeTime(request.createdAt), color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
+                    Text(requestTitle(request), modifier = Modifier.weight(1f, fill = false), color = colors.onSurface, style = CardHeadlineText)
+                    Text(relativeTime(request.createdAt), color = colors.onSurface.copy(alpha = 0.75f), style = CardLabelText)
                 }
-                Text(request.device, modifier = Modifier.padding(horizontal = LocalSpacing.current.sm), color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
+                Text(request.device, color = colors.onSurface.copy(alpha = 0.75f), style = CardSupportingText)
             }
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -490,6 +523,12 @@ private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier
     )
 }
 
+// Home's cards: the same inset on every side.
+private val CardPadding = 16.dp
+// Keeps the column off the screen edges on phones narrower than the bottom nav.
+private val NavSideInset = 12.dp
+private const val HistorySeenDelayMillis = 450L
+
 private fun formatAccountCode(code: String) = "${code.take(3)}-${code.drop(3)}"
 
 /**
@@ -506,21 +545,19 @@ private fun AccountCard(
     isSettingUp: Boolean,
     onSetUp: () -> Unit,
     onTransfer: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
     // Sized to content, not a fixed height — the exported accountCardHeight token (137dp)
     // undershoots this card's real content (label + code row + timer squares + gaps ≈ 145dp),
     // which made AppCard's rounded-corner clip cut the bottom off the timer squares row.
-    AppCard {
+    AppCard(modifier = modifier) {
         androidx.compose.foundation.layout.Column(
-            modifier = Modifier.padding(LocalSpacing.current.md),
+            modifier = Modifier.padding(CardPadding),
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
         ) {
-            Text(
-                stringResource(R.string.authenticator_default_label),
-                color = colors.onSurface,
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-            )
+            // The card's name as a small label, so it never competes with what the card says.
+            Text(stringResource(R.string.authenticator_default_label), color = colors.dialogSubtitle, style = CardLabelText)
             when (state) {
                 is TwoFactorState.Active -> {
                     androidx.compose.foundation.layout.Row(
@@ -541,11 +578,11 @@ private fun AccountCard(
                     }
                 }
                 TwoFactorState.Elsewhere -> {
-                    Text(stringResource(R.string.two_factor_elsewhere), color = colors.mutedText, style = RequestMetaText)
+                    CardMessage(stringResource(R.string.two_factor_elsewhere), stringResource(R.string.two_factor_elsewhere_hint))
                     CardWideButton(stringResource(R.string.transfer_2fa_here), isBusy = false, onClick = onTransfer)
                 }
                 TwoFactorState.NotSetUp, TwoFactorState.Unknown -> {
-                    Text(stringResource(R.string.two_factor_not_set_up), color = colors.mutedText, style = RequestMetaText)
+                    CardMessage(stringResource(R.string.two_factor_not_set_up), stringResource(R.string.two_factor_not_set_up_hint))
                     CardWideButton(
                         stringResource(R.string.set_up),
                         isBusy = isSettingUp,
@@ -558,6 +595,17 @@ private fun AccountCard(
     }
 }
 
+/** A card's headline with a smaller, muted line of explanation under it. */
+@Composable
+private fun CardMessage(headline: String, supporting: String) {
+    val colors = LocalAppColors.current
+    androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(headline, color = colors.onSurface, style = CardHeadlineText)
+        Text(supporting, color = colors.dialogSubtitle, style = CardSupportingText)
+    }
+}
+
+/** The card's main action: a white 48dp pill. */
 @Composable
 private fun CardWideButton(label: String, isBusy: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
     val colors = LocalAppColors.current
@@ -567,7 +615,7 @@ private fun CardWideButton(label: String, isBusy: Boolean, onClick: () -> Unit, 
             .fillMaxWidth()
             .height(48.dp)
             .clip(RoundedCornerShape(LocalDimensions.current.copyRadius))
-            .background(colors.background)
+            .background(if (enabled) androidx.compose.ui.graphics.Color.White else colors.mutedSurface.copy(alpha = 0.4f))
             .clickable(enabled = enabled && !isBusy) {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
@@ -576,16 +624,12 @@ private fun CardWideButton(label: String, isBusy: Boolean, onClick: () -> Unit, 
         contentAlignment = Alignment.Center,
     ) {
         if (isBusy) {
-            androidx.compose.material3.CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = colors.onSurface,
-                strokeWidth = 2.dp,
-            )
+            RefreshSpinner(phase = { BusySpinnerPhase }, size = 20.dp, color = colors.onLightSurface)
         } else {
             Text(
                 label,
-                color = if (enabled) colors.onSurface else colors.mutedText,
-                style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp),
+                color = colors.onLightSurface,
+                style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
             )
         }
     }
@@ -604,7 +648,7 @@ private fun CopyCodeButton(code: String) {
         modifier = Modifier
             .height(48.dp)
             .clip(RoundedCornerShape(LocalDimensions.current.copyRadius))
-            .background(colors.background)
+            .background(colors.surface)
             .clickable(enabled = !copied) {
                 haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                 copySensitive(context, code)
@@ -660,10 +704,12 @@ private fun HomeScreenPreview() {
             state = HomeUiState(data = sampleHomeData()),
             onDestinationSelected = {},
             onSettingsClick = {},
+            onAccountClick = {},
             onOpenSetting = {},
             onRefresh = {},
             onRefreshHistory = {},
             onLoadMoreHistory = {},
+            onHistorySeen = {},
             onApproveRequest = {},
             onDenyRequest = {},
             onSetUpTwoFactor = {},
@@ -698,11 +744,27 @@ private fun AnimatedAccountCode(code: String, color: androidx.compose.ui.graphic
                 },
                 label = "account-code-char-$index",
             ) { targetChar ->
-                Text(targetChar.toString(), color = color, style = AccountCodeText)
+                // On top of the slide and fade, each digit blurs as it leaves and sharpens as it
+                // lands (the blur follows how far through its own enter/exit it is).
+                val blur by transition.animateFloat(
+                    transitionSpec = { androidx.compose.animation.core.tween(320) },
+                    label = "account-code-char-blur-$index",
+                ) { phase -> if (phase == androidx.compose.animation.EnterExitState.Visible) 0f else 1f }
+                Text(
+                    targetChar.toString(),
+                    modifier = Modifier.graphicsLayer {
+                        val radius = blur * CodeBlurRadius.toPx()
+                        renderEffect = if (radius > 0.1f) BlurEffect(radius, radius, TileMode.Decal) else null
+                    },
+                    color = color,
+                    style = AccountCodeText,
+                )
             }
         }
     }
 }
+
+private val CodeBlurRadius = 6.dp
 
 private val TimerSquareAnim = androidx.compose.animation.core.tween<androidx.compose.ui.graphics.Color>(durationMillis = 90)
 
@@ -719,9 +781,11 @@ private fun TimerSquares(count: Int, spentCount: Int) {
         val defaultColor = if (index == 0) LocalAppColors.current.accent else androidx.compose.ui.graphics.Color.White
         val targetColor = if (isSpent) LocalAppColors.current.timerSpent else defaultColor
         val color by animateColorAsState(targetColor, animationSpec = TimerSquareAnim, label = "timer-square-$index")
+        // Shares the card's width, so the row always spans it, whatever the card's width.
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
-                .size(17.dp)
+                .weight(1f)
+                .height(17.dp)
                 .background(color),
         )
       }
@@ -737,10 +801,12 @@ private fun HomeScreenDarkPreview() {
             state = HomeUiState(data = sampleHomeData()),
             onDestinationSelected = {},
             onSettingsClick = {},
+            onAccountClick = {},
             onOpenSetting = {},
             onRefresh = {},
             onRefreshHistory = {},
             onLoadMoreHistory = {},
+            onHistorySeen = {},
             onApproveRequest = {},
             onDenyRequest = {},
             onSetUpTwoFactor = {},

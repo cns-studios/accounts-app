@@ -13,6 +13,9 @@
     <string name="edit_profile">Edit profile</string>
     <string name="edit_username">Edit username</string>
     <string name="change_avatar">Change Avatar</string>
+    <string name="upload_avatar">Upload Avatar</string>
+    <string name="enable_2fa_menu">Enable 2FA</string>
+    <string name="disable_2fa_menu">Disable 2FA</string>
     <string name="remove_avatar">Remove Avatar</string>
     <string name="configure_2fa">Configure 2FA</string>
     <string name="security_center">Security center</string>
@@ -50,12 +53,18 @@
     <string name="error_generic">Something went wrong. Please try again.</string>
     <string name="feature_unavailable">This isn\'t available yet. It\'s coming in a future update.</string>
 
+    <!-- App settings -->
+    <string name="app_settings_title">Settings</string>
+    <string name="about_version_inline">CNS Accounts %1$s (%2$d)</string>
+
     <!-- Sign-in -->
     <string name="welcome_title">Welcome to CNS</string>
     <string name="welcome_subtitle">Manage your account, enable stronger security and more.</string>
     <string name="log_in">Log In</string>
     <string name="create_account_button">Create Account</string>
     <string name="sign_in_subtitle">Use your CNS account.</string>
+    <string name="use_passkey">Use Passkey</string>
+    <string name="finish">Finish</string>
     <string name="username_placeholder">Username</string>
     <string name="password_placeholder">Password</string>
     <string name="two_factor_title">Two-factor code</string>
@@ -93,8 +102,13 @@
     <string name="continue_label">Continue</string>
     <string name="authenticator_default_label">Account</string>
     <string name="set_up">Set Up</string>
-    <string name="two_factor_not_set_up">2 Factor Authentication is not set up</string>
-    <string name="two_factor_elsewhere">2FA for this account is connected to another device.</string>
+    <string name="two_factor_not_set_up">2FA isn\'t set up yet</string>
+    <string name="two_factor_not_set_up_hint">Make this app your authenticator. Signing in will ask for its code.</string>
+    <string name="two_factor_elsewhere">2FA runs on another device</string>
+    <string name="two_factor_elsewhere_hint">Move it here to see your codes in this app.</string>
+    <string name="service_last_used">Last used %1$s</string>
+    <string name="service_needs_setup_hint">Tap to set up</string>
+    <string name="service_login_waiting">Login request waiting</string>
     <string name="transfer_2fa_here">Transfer to this device</string>
     <string name="transfer_2fa_title">Transfer 2FA</string>
     <string name="transfer_2fa_subtitle">Confirm with your password and the current code from the device that has 2FA now. Afterwards only this device shows codes; the other one stops working.</string>

@@ -27,8 +27,36 @@ class AppPreferences(context: Context) {
         _notifications.value = enabled
     }
 
-    private companion object {
-        const val BiometricUnlockKey = "biometric_unlock"
-        const val NotificationsKey = "notifications"
+    private val _historySeenAt = MutableStateFlow(prefs.getLong(HistorySeenAtKey, NotSeen))
+
+    /** The newest History event time (epoch ms) the user has seen on the History tab; [NotSeen] before the first look. */
+    val historySeenAt: StateFlow<Long> = _historySeenAt.asStateFlow()
+
+    fun setHistorySeenAt(epochMillis: Long) {
+        if (epochMillis <= _historySeenAt.value) return
+        prefs.edit().putLong(HistorySeenAtKey, epochMillis).apply()
+        _historySeenAt.value = epochMillis
+    }
+
+    private val _celebratedFactors = MutableStateFlow(prefs.getStringSet(CelebratedFactorsKey, null)?.toSet())
+
+    /**
+     * Security center factors whose completion the user has already been shown (see
+     * [SecurityMilestones]); null until the first account state was recorded.
+     */
+    val celebratedFactors: StateFlow<Set<String>?> = _celebratedFactors.asStateFlow()
+
+    fun setCelebratedFactors(ids: Set<String>) {
+        if (ids == _celebratedFactors.value) return
+        prefs.edit().putStringSet(CelebratedFactorsKey, ids).apply()
+        _celebratedFactors.value = ids
+    }
+
+    companion object {
+        const val NotSeen = -1L
+        private const val BiometricUnlockKey = "biometric_unlock"
+        private const val NotificationsKey = "notifications"
+        private const val HistorySeenAtKey = "history_seen_at"
+        private const val CelebratedFactorsKey = "celebrated_security_factors"
     }
 }

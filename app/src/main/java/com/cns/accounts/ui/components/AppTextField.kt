@@ -1,6 +1,7 @@
 package com.cns.accounts.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
@@ -54,6 +57,10 @@ fun AppTextField(
     enabled: Boolean = true,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: () -> Unit = {},
+    // The sign-in page sits on black, where the dialog's lighter field surface looked washed out.
+    containerColor: Color = LocalAppColors.current.fieldSurface,
+    shape: Shape = RoundedCornerShape(11.dp),
+    borderColor: Color = Color.Transparent,
 ) {
     val colors = LocalAppColors.current
     val isSecret = kind == FieldKind.Password || kind == FieldKind.NewPassword
@@ -80,8 +87,9 @@ fun AppTextField(
         modifier = modifier
             .fillMaxWidth()
             .height(53.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(colors.fieldSurface)
+            .clip(shape)
+            .background(containerColor)
+            .border(1.dp, borderColor, shape)
             .semantics {
                 when (kind) {
                     FieldKind.Username -> contentType = ContentType.Username

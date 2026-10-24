@@ -20,6 +20,7 @@ fun StatusChip(
     modifier: Modifier = Modifier,
     textStyle: TextStyle = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
     background: Color = LocalAppColors.current.mutedSurface,
+    contentColor: Color = LocalAppColors.current.onLightSurface,
 ) {
     androidx.compose.foundation.layout.Box(
         modifier = modifier,
@@ -30,7 +31,7 @@ fun StatusChip(
                 .clip(RoundedCornerShape(LocalRadii.current.card))
                 .background(background)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
-            color = LocalAppColors.current.onLightSurface,
+            color = contentColor,
             style = textStyle,
         )
     }

@@ -59,3 +59,17 @@ val SearchResultTitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, line
 
 // TEMP_ONBOARDING_TOKENS.json: the welcome title (Instrument Serif 48) above the gray Rubik 20 subtitle.
 val WelcomeTitleText = TextStyle(fontFamily = InstrumentSerif, fontSize = 48.sp, lineHeight = 58.sp)
+
+// Home cards: a small muted label naming the card ("Account", "Services") above the card's own
+// headline and supporting text, so the card title and its content never compete at one size.
+val CardLabelText = TextStyle(fontFamily = Rubik, fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 0.2.sp)
+val CardHeadlineText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
+val CardSupportingText = TextStyle(fontFamily = Rubik, fontSize = 15.sp, lineHeight = 20.sp)
+
+// Toasts, inline error banners and tooltips.
+val ToastText = TextStyle(fontFamily = Rubik, fontSize = 15.sp, lineHeight = 20.sp)
+val TooltipText = TextStyle(fontFamily = Rubik, fontSize = 14.sp, lineHeight = 19.sp)
+
+// App settings: section labels and the About rows.
+val SettingsSectionText = TextStyle(fontFamily = Rubik, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.4.sp)
+val SettingsValueText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp)

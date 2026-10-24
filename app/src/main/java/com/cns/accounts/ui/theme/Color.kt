@@ -32,6 +32,9 @@ val FieldSurface = Color(0xFF4C4C4C)
 // settings.tokens.json (Inputfield placeholder text): rgba(109, 109, 109, 1)
 val FieldPlaceholder = Color(0xFF6D6D6D)
 
+// Bottom nav: the History glyph while there is activity the user hasn't opened yet.
+val UnreadHighlight = Color(0xFFFFCA1B)
+
 data class AppColors(
     val background: Color = Ink,
     val surface: Color = SurfaceDark,
@@ -49,4 +52,5 @@ data class AppColors(
     val dialogSubtitle: Color = DialogSubtitleGray,
     val fieldSurface: Color = FieldSurface,
     val fieldPlaceholder: Color = FieldPlaceholder,
+    val unreadHighlight: Color = UnreadHighlight,
 )

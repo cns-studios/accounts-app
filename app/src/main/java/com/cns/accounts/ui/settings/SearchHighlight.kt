@@ -15,20 +15,17 @@ import com.cns.accounts.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
 
 /**
- * Settings rows a search result can point at (ids from ui/search/SearchIndex.kt), with the
- * index of the list item that holds each, so Settings can scroll there before highlighting it.
+ * Your Account rows a search result can point at (ids from ui/search/SearchIndex.kt), with the
+ * index of the list item that holds each, so the page can scroll there before highlighting it.
  */
 internal enum class SettingsTarget(val id: String, val itemIndex: Int) {
     Username("username", 0),
     Avatar("avatar", 0),
     SecurityCenter("security-center", 1),
-    Biometric("biometric", 2),
-    Notifications("notifications", 2),
     TwoFactor("2fa", 2),
     SecurityApp("security-app", 2),
     RecoveryPhrase("recovery-phrase", 2),
     Password("password", 3),
-    LogOut("log-out", 3),
     Delete("delete", 4),
     ;
 
@@ -36,6 +33,21 @@ internal enum class SettingsTarget(val id: String, val itemIndex: Int) {
         fun fromId(id: String?): SettingsTarget? = entries.firstOrNull { it.id == id }
     }
 }
+
+/** The same for the app Settings page (device settings); Log Out sits below the list (no index). */
+internal enum class AppSettingsTarget(val id: String, val itemIndex: Int?) {
+    Biometric("biometric", 0),
+    Notifications("notifications", 0),
+    LogOut("log-out", null),
+    ;
+
+    companion object {
+        fun fromId(id: String?): AppSettingsTarget? = entries.firstOrNull { it.id == id }
+    }
+}
+
+/** Whether a search result's settings id lives on the app Settings page rather than Your Account. */
+fun isAppSettingsId(id: String): Boolean = AppSettingsTarget.fromId(id) != null
 
 /**
  * Briefly flashes an accent-tinted rounded backdrop behind the row a search result led to

@@ -9,6 +9,7 @@ import androidx.compose.runtime.Immutable
 // image (Rectangle39) is a blank 1x1 pixel rendered only via its red pill-shaped border.
 @Immutable
 data class SecurityFactor(
+    val id: String,
     val label: String,
     val achieved: Boolean,
 )
@@ -20,12 +21,10 @@ data class SecurityStatus(
 )
 
 // settings.tokens.json (Frame30): each row is a label (some with a help glyph) paired with a
-// toggle. Biometric unlock and notifications are device settings (notifications are delivered
-// by push, see data/push), 2FA and "require security app" mirror the account.
+// toggle; 2FA and "require security app" mirror the account. (The device settings, biometric
+// unlock and notifications, are on the app Settings page.)
 @Immutable
 data class SettingsToggles(
-    val biometricUnlock: Boolean = false,
-    val notifications: Boolean = false,
     val twoFactorAuthentication: Boolean = false,
     val requireSecurityApp: Boolean = false,
 )
@@ -35,6 +34,8 @@ data class SettingsData(
     val profile: Profile = Profile("", twoFactorEnabled = false),
     val security: SecurityStatus = securityStatus(twoFactorEnabled = false, authenticatorOnDevice = false),
     val toggles: SettingsToggles = SettingsToggles(),
+    // Completed factors the user hasn't been shown yet (see SecurityMilestones).
+    val newlyCompletedFactors: Set<String> = emptySet(),
 )
 
 /**
@@ -44,10 +45,10 @@ data class SettingsData(
  */
 fun securityStatus(twoFactorEnabled: Boolean, authenticatorOnDevice: Boolean): SecurityStatus {
     val factors = listOf(
-        SecurityFactor("2FA", achieved = twoFactorEnabled),
-        SecurityFactor("PW", achieved = true),
-        SecurityFactor("App", achieved = authenticatorOnDevice),
-        SecurityFactor("Phrase", achieved = false),
+        SecurityFactor("2fa", "2FA", achieved = twoFactorEnabled),
+        SecurityFactor("password", "PW", achieved = true),
+        SecurityFactor("app", "App", achieved = authenticatorOnDevice),
+        SecurityFactor("phrase", "Phrase", achieved = false),
     )
     return SecurityStatus(percentComplete = factors.count { it.achieved } * 100 / factors.size, factors = factors)
 }
@@ -55,5 +56,5 @@ fun securityStatus(twoFactorEnabled: Boolean, authenticatorOnDevice: Boolean): S
 fun sampleSettingsData() = SettingsData(
     profile = Profile("aaron", twoFactorEnabled = true),
     security = securityStatus(twoFactorEnabled = true, authenticatorOnDevice = true),
-    toggles = SettingsToggles(biometricUnlock = true, twoFactorAuthentication = true),
+    toggles = SettingsToggles(twoFactorAuthentication = true),
 )

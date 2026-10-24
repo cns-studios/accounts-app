@@ -44,6 +44,9 @@ import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
 import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.ui.theme.AccountCodeText
+import com.cns.accounts.ui.theme.CardHeadlineText
+import com.cns.accounts.ui.theme.CardLabelText
+import com.cns.accounts.ui.theme.CardSupportingText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.RequestMetaText
@@ -52,8 +55,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-// TEMP_SERVICE_CARD_TOKENS: the Services card (#2D2D2D, 17dp radius, 14dp padding, 18dp gaps).
-// - StateDefault: "Services" (20sp) over rows 5dp apart — service name (24sp medium) and a
+// TEMP_SERVICE_CARD_TOKENS: the Services card (#2D2D2D, 17dp radius), with Home's even 16dp inset.
+// - StateDefault: a small muted "Services" label over rows 12dp apart — service name (20sp
+//   medium) over a muted status line (last used / needs setup / login request), and a
 //   chevron-right in a #1A1A1A circle (8dp padding).
 // - StateAlert: a row with a pending login request gets a red dot after its name (the setup dot
 //   in the service accent red).
@@ -76,9 +80,10 @@ internal fun ServicesCard(
     onSetUp: (Service) -> Unit,
     onApproveLogin: (Service) -> Unit,
     onDenyLogin: (Service) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val expanded = services?.firstOrNull { it.id == expandedServiceId }
-    AppCard(modifier = Modifier.heightIn(min = LocalDimensions.current.serviceCardHeight)) {
+    AppCard(modifier = modifier.heightIn(min = LocalDimensions.current.serviceCardHeight)) {
         AnimatedContent(
             targetState = expanded,
             transitionSpec = {
@@ -91,8 +96,8 @@ internal fun ServicesCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 if (service == null) {
                     ServiceList(services, onToggleService)
@@ -107,11 +112,12 @@ internal fun ServicesCard(
 @Composable
 private fun ServiceList(services: List<Service>?, onToggleService: (Service) -> Unit) {
     val colors = LocalAppColors.current
-    Text(stringResource(R.string.services), color = colors.onSurface, style = RequestMetaText)
+    // The card's name as a small label above the rows (same as the Account card).
+    Text(stringResource(R.string.services), color = colors.dialogSubtitle, style = CardLabelText)
     if (services != null && services.isEmpty()) {
-        Text(stringResource(R.string.no_connected_apps), color = colors.mutedText, style = RequestMetaText)
+        Text(stringResource(R.string.no_connected_apps), color = colors.dialogSubtitle, style = CardSupportingText)
     }
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         services.orEmpty().forEach { service ->
             ServiceRow(service, onClick = { onToggleService(service) })
         }
@@ -134,24 +140,38 @@ private fun ServiceRow(service: Service, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    service.name,
+                    modifier = Modifier.weight(1f, fill = false),
+                    color = colors.onSurface,
+                    style = CardHeadlineText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val request = service.loginRequest
+                when {
+                    request != null -> StatusDot(colors.serviceAccent, stringResource(R.string.login_request))
+                    service.needsSetup -> StatusDot(SetupDot, stringResource(R.string.service_needs_setup))
+                }
+            }
+            // What the row is about at a glance, so the name isn't the only line.
             Text(
-                service.name,
-                modifier = Modifier.weight(1f, fill = false),
-                color = colors.onSurface,
-                style = RequestTitleText,
+                when {
+                    service.loginRequest != null -> stringResource(R.string.service_login_waiting)
+                    service.needsSetup -> stringResource(R.string.service_needs_setup_hint)
+                    service.lastUsed != null -> stringResource(R.string.service_last_used, relativeTime(service.lastUsed))
+                    else -> stringResource(R.string.service_last_used, stringResource(R.string.last_used_unknown).lowercase())
+                },
+                color = if (service.loginRequest != null) colors.serviceAccent else colors.dialogSubtitle,
+                style = CardSupportingText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val request = service.loginRequest
-            when {
-                request != null -> StatusDot(colors.serviceAccent, stringResource(R.string.login_request))
-                service.needsSetup -> StatusDot(SetupDot, stringResource(R.string.service_needs_setup))
-            }
         }
         ChevronButton(TokenIconKind.ChevronRight, contentDescription = null)
     }
@@ -190,7 +210,7 @@ private fun ServiceDetail(
             service.name,
             modifier = Modifier.weight(1f),
             color = colors.onSurface,
-            style = RequestMetaText,
+            style = CardHeadlineText,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -214,7 +234,7 @@ private fun ServiceDetail(
         }
     } else {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(stringResource(R.string.last_used), color = colors.onSurface, style = RequestMetaText)
+            Text(stringResource(R.string.last_used), color = colors.dialogSubtitle, style = CardLabelText)
             Text(
                 service.lastUsed?.let(::formatLastUsed) ?: stringResource(R.string.last_used_unknown),
                 color = colors.onSurface,
@@ -238,8 +258,8 @@ private fun LoginRequestDetail(request: ServiceLoginRequest) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.login_request), color = colors.onSurface, style = RequestTitleText)
-            Text(relativeTime(request.createdAt), color = colors.serviceAccent, style = RequestMetaText)
+            Text(stringResource(R.string.login_request), color = colors.dialogSubtitle, style = CardLabelText)
+            Text(relativeTime(request.createdAt), color = colors.serviceAccent, style = CardLabelText)
         }
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             LabeledValue(stringResource(R.string.login_request_device), request.device)
@@ -256,7 +276,7 @@ private fun LabeledValue(label: String, value: String) {
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, color = colors.onSurface, style = RequestMetaText)
+        Text(label, color = colors.dialogSubtitle, style = CardSupportingText)
         Text(
             value,
             modifier = Modifier.weight(1f),

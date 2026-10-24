@@ -17,7 +17,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,6 +44,7 @@ fun LockScreen(onUnlocked: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     val title = stringResource(R.string.unlock_prompt_title)
     val subtitle = stringResource(R.string.biometric_prompt_subtitle)
+    val haptic = LocalHapticFeedback.current
     val prompt = {
         // No usable lock method any more (e.g. the screen lock was removed): don't trap the user.
         if (!Biometrics.isAvailable(context)) onUnlocked()
@@ -65,7 +68,10 @@ fun LockScreen(onUnlocked: () -> Unit, modifier: Modifier = Modifier) {
             textAlign = TextAlign.Center,
         )
         Button(
-            onClick = prompt,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                prompt()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(LocalDimensions.current.actionHeight),

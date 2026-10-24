@@ -16,6 +16,10 @@ data class HomeUiState(
     val isSettingUpTwoFactor: Boolean = false,
     // The service the Services card is showing in detail (tapped row), if any.
     val expandedServiceId: String? = null,
+    // The first load after a sign-in or app start; the splash screen stays up meanwhile.
+    val isLoadingAccount: Boolean = false,
+    // History has events newer than the ones the user last saw there.
+    val historyUnread: Boolean = false,
 )
 
 /** The one dialog Home can show at a time; its field values live here so they survive recomposition. */

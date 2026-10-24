@@ -14,8 +14,11 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import java.io.IOException
 
-/** A short app-wide notice, shown in the root snackbar host. Either a string resource or raw text. */
-data class UserMessage(@param:StringRes val resId: Int? = null, val text: String? = null) {
+/**
+ * A short app-wide notice, shown as a toast (ui/components/AppToast.kt). Either a string resource
+ * or raw text; [isError] marks failures, which the toast shows (and buzzes) differently.
+ */
+data class UserMessage(@param:StringRes val resId: Int? = null, val text: String? = null, val isError: Boolean = false) {
     fun resolve(context: Context): String = resId?.let(context::getString) ?: text.orEmpty()
 }
 
@@ -23,12 +26,12 @@ class UserMessages {
     private val _messages = MutableSharedFlow<UserMessage>(extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val messages: SharedFlow<UserMessage> = _messages.asSharedFlow()
 
-    fun show(@StringRes resId: Int) {
-        _messages.tryEmit(UserMessage(resId = resId))
+    fun show(@StringRes resId: Int, isError: Boolean = false) {
+        _messages.tryEmit(UserMessage(resId = resId, isError = isError))
     }
 
     fun show(error: Throwable) {
-        _messages.tryEmit(error.toUserMessage())
+        _messages.tryEmit(error.toUserMessage().copy(isError = true))
     }
 }
 

@@ -30,8 +30,8 @@ import java.io.ByteArrayOutputStream
 
 /**
  * "Your Account": profile edits, 2FA (through [AppContainer.twoFactor]), Require Security App
- * (through [AppContainer.approvals]), password, avatar, sign-out and deletion against auth-v2,
- * plus the device-local biometric lock. The recovery phrase has no backend yet; its control
+ * (through [AppContainer.approvals]), password, avatar and deletion against auth-v2 (device
+ * settings and sign-out are [AppSettingsViewModel]'s). The recovery phrase has no backend yet; its control
  * reports that instead of pretending. While Require Security App is on, the password, username
  * and deletion requests wait for an approval, which this device gives itself when it is the
  * approver.
@@ -50,36 +50,41 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = combine(
         account.user,
         twoFactorManager.state,
-        container.preferences.biometricUnlock,
-        container.preferences.notifications,
+        container.securityMilestones.celebrated,
         dialog,
         enablingTwoFactor,
         switchingRequireApp,
     ) { values ->
         val user = values[0] as AccountUser?
         val twoFactorState = values[1] as TwoFactorState
-        val biometric = values[2] as Boolean
-        val notifications = values[3] as Boolean
         @Suppress("UNCHECKED_CAST")
-        val dialog = values[4] as SettingsDialog?
-        val enabling = values[5] as Boolean
-        val switchingRequireApp = values[6] as Boolean?
+        val celebrated = values[2] as Set<String>?
+        val dialog = values[3] as SettingsDialog?
+        val enabling = values[4] as Boolean
+        val switchingRequireApp = values[5] as Boolean?
         val twoFactor = user?.totpEnabled == true
+        val security = securityStatus(twoFactorEnabled = twoFactor, authenticatorOnDevice = twoFactorState is TwoFactorState.Active)
         SettingsUiState(
             data = SettingsData(
                 profile = Profile(user?.username.orEmpty(), twoFactor, user?.avatarUrl),
-                security = securityStatus(twoFactorEnabled = twoFactor, authenticatorOnDevice = twoFactorState is TwoFactorState.Active),
+                security = security,
                 // Shown on while it is being turned on, so the toggle doesn't bounce back meanwhile.
                 toggles = SettingsToggles(
-                    biometricUnlock = biometric,
-                    notifications = notifications,
                     twoFactorAuthentication = twoFactor || enabling,
                     requireSecurityApp = switchingRequireApp ?: (user?.requireAppApproval == true),
                 ),
+                newlyCompletedFactors = if (user == null || celebrated == null) {
+                    emptySet()
+                } else {
+                    security.factors.filter { it.achieved && it.id !in celebrated }.mapTo(HashSet()) { it.id }
+                },
             ),
             dialog = dialog,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    /** The security center showed a factor's completion; don't show it again. */
+    fun onSecurityFactorCelebrated(factorId: String) = container.securityMilestones.markCelebrated(factorId)
 
     /** Whether 2FA codes can come from this device, so dialogs needn't ask for one. */
     private val codeOnDevice get() = twoFactorManager.state.value is TwoFactorState.Active
@@ -96,9 +101,6 @@ class SettingsViewModel(
 
     // --- toggles ---
 
-    /** Called only after the UI has confirmed the user with a biometric prompt (when enabling). */
-    fun setBiometricUnlock(enabled: Boolean) = container.preferences.setBiometricUnlock(enabled)
-
     fun setTwoFactorAuthentication(enabled: Boolean) {
         when {
             enabled -> enableTwoFactor()
@@ -106,16 +108,6 @@ class SettingsViewModel(
             requireAppOn -> messages.show(R.string.require_app_blocks_2fa_off)
             else -> openDialog(SettingsDialogKind.DisableTwoFactor)
         }
-    }
-
-    /** Account-event notifications; the screen has asked for the notification permission first. */
-    fun setNotifications(enabled: Boolean) {
-        if (enabled && !container.push.isConfigured) {
-            messages.show(R.string.push_unavailable)
-            return
-        }
-        container.preferences.setNotifications(enabled)
-        if (enabled) messages.show(R.string.notifications_on)
     }
 
     /** On: asks for the password (and a code if needed) first. Off: approved by the approver, usually this device. */
@@ -261,12 +253,6 @@ class SettingsViewModel(
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
             out.toByteArray()
         }
-    }
-
-    // --- sign-out ---
-
-    fun logOut() {
-        viewModelScope.launch { account.signOut() }
     }
 
     // --- plumbing ---

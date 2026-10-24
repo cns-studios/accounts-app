@@ -20,7 +20,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +35,7 @@ import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.sampleHistoryEvents
 import com.cns.accounts.ui.components.NothingPullToRefreshBox
 import com.cns.accounts.ui.components.fadingEdges
+import com.cns.accounts.ui.components.navAlignedWidth
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.ui.theme.HistoryEventDetailText
@@ -81,6 +84,20 @@ fun HistoryScreen(
     LaunchedEffect(nearEnd, state.canLoadMore, state.events.size) {
         if (nearEnd && state.canLoadMore) onLoadMore()
     }
+    // After a refresh, and whenever a new event arrives on top, jump back up so it's in view.
+    var refreshed by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isRefreshing) {
+        if (state.isRefreshing) {
+            refreshed = true
+        } else if (refreshed) {
+            refreshed = false
+            listState.animateScrollToItem(0)
+        }
+    }
+    val newestId = state.events.firstOrNull()?.id
+    LaunchedEffect(newestId) {
+        if (newestId != null) listState.animateScrollToItem(0)
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Text(
             stringResource(R.string.history_title),
@@ -100,16 +117,18 @@ fun HistoryScreen(
                     // Hidden under the title (55dp + 43dp line) and from just above the nav down,
                     // so cards neither cover the title nor show around/below the nav pill.
                     .fadingEdges(topHidden = TitleBottom, bottomHidden = navClearance),
+                // Cards as wide as the bottom nav (see navAlignedWidth).
+                horizontalAlignment = Alignment.CenterHorizontally,
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
+                    start = 12.dp,
+                    end = 12.dp,
                     top = 127.dp,
                     bottom = navClearance + FadeLength,
                 ),
                 verticalArrangement = Arrangement.spacedBy(17.dp),
             ) {
                 items(state.events, key = { it.id }) { event ->
-                    HistoryEventCard(event)
+                    HistoryEventCard(event, modifier = Modifier.navAlignedWidth().animateItem())
                 }
                 if (state.isLoaded && state.events.isEmpty()) {
                     item(key = "empty") {
@@ -128,11 +147,11 @@ fun HistoryScreen(
 }
 
 @Composable
-private fun HistoryEventCard(event: HistoryEvent) {
+private fun HistoryEventCard(event: HistoryEvent, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     val radii = LocalRadii.current
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .border(2.dp, colors.elevatedSurface, RoundedCornerShape(radii.card))
             .clip(RoundedCornerShape(radii.card))

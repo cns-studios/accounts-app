@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cns.accounts.AppContainer
 import com.cns.accounts.R
+import com.cns.accounts.data.ActivityFeed
+import com.cns.accounts.data.AppPreferences
 import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.HomeData
 import com.cns.accounts.data.Profile
@@ -38,7 +40,9 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val account = container.account
     private val messages = container.messages
 
-    private val local = MutableStateFlow(LocalState())
+    // Signed in at start: the first load is already due (init below), so start out "loading".
+    private val signedInAtStart = container.session.authState.value == AuthState.SignedIn
+    private val local = MutableStateFlow(LocalState(isLoadingAccount = signedInAtStart))
     private var loadMoreJob: Job? = null
     private var setUpJob: Job? = null
 
@@ -74,7 +78,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         )
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(homeData, account.activity, local) { data, feed, local ->
+    val uiState: StateFlow<HomeUiState> = combine(homeData, account.activity, local, container.preferences.historySeenAt) { data, feed, local, seenAt ->
         HomeUiState(
             data = data,
             history = HistoryUiState(
@@ -88,27 +92,48 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             dialog = local.dialog,
             isSettingUpTwoFactor = local.isSettingUpTwoFactor,
             expandedServiceId = local.expandedServiceId,
+            isLoadingAccount = local.isLoadingAccount,
+            historyUnread = seenAt != AppPreferences.NotSeen && newestEventMillis(feed) > seenAt,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState(isLoadingAccount = signedInAtStart))
 
     init {
         // This ViewModel outlives a sign-out (it is activity-scoped), so load on every sign-in,
         // not just on creation; the StateFlow replays the current state, covering the first load.
         viewModelScope.launch {
             container.session.authState.collect { state ->
-                if (state == AuthState.SignedIn) refresh(showIndicator = false)
+                if (state == AuthState.SignedIn) refresh(showIndicator = false, initial = true)
+            }
+        }
+        // The first feed this install ever loads counts as seen: only what arrives later is "new".
+        viewModelScope.launch {
+            account.activity.collect { feed ->
+                if (feed.loaded && container.preferences.historySeenAt.value == AppPreferences.NotSeen) {
+                    container.preferences.setHistorySeenAt(newestEventMillis(feed).coerceAtLeast(0L))
+                }
             }
         }
     }
 
+    /** The History tab is on screen: everything it shows now has been seen. */
+    fun markHistorySeen() {
+        val feed = account.activity.value
+        if (feed.loaded) container.preferences.setHistorySeenAt(newestEventMillis(feed))
+    }
+
+    private fun newestEventMillis(feed: ActivityFeed): Long =
+        feed.entries.filter { isUserFacingEvent(it.eventType) }.maxOfOrNull { it.createdAt?.toEpochMilli() ?: 0L } ?: 0L
+
     fun selectDestination(destination: String) = local.update { it.copy(selectedDestination = destination) }
 
     /** Pull-to-refresh on Home; also runs once on start. Reloads everything Home and History show. */
-    fun refresh(showIndicator: Boolean = true) {
+    fun refresh(showIndicator: Boolean = true, initial: Boolean = false) {
         viewModelScope.launch {
             if (showIndicator) local.update { it.copy(isRefreshing = true) }
+            if (initial) local.update { it.copy(isLoadingAccount = true) }
             val failures = listOf(
-                async { runCatching { account.refreshProfile() } },
+                // The splash waits for the account itself, not for the slower extras.
+                async { runCatching { account.refreshProfile() }.also { local.update { it.copy(isLoadingAccount = false) } } },
                 async { runCatching { account.refreshConnectedApps() } },
                 async { runCatching { account.refreshActivity() } },
                 async { runCatching { container.approvals.refresh() } },
@@ -116,7 +141,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             ).awaitAll().mapNotNull { it.exceptionOrNull() }
             // Parallel calls usually fail for the same reason (offline): report it once.
             failures.firstOrNull()?.let(messages::show)
-            local.update { it.copy(isRefreshing = false) }
+            local.update { it.copy(isRefreshing = false, isLoadingAccount = false) }
         }
     }
 
@@ -316,5 +341,6 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         val dialog: HomeDialog? = null,
         val isSettingUpTwoFactor: Boolean = false,
         val expandedServiceId: String? = null,
+        val isLoadingAccount: Boolean = false,
     )
 }

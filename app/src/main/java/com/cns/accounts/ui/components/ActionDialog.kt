@@ -1,11 +1,14 @@
 package com.cns.accounts.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,14 +17,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
@@ -37,7 +41,6 @@ import com.cns.accounts.ui.theme.DialogSubtitleText
 import com.cns.accounts.ui.theme.DialogTitleText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalRadii
-import com.cns.accounts.ui.theme.RequestMetaText
 
 /**
  * settings.tokens.json ("Inputfield"): the app's standard input/action dialog — a dark rounded
@@ -46,7 +49,8 @@ import com.cns.accounts.ui.theme.RequestMetaText
  *
  * Inputs: pass [fieldValue]/[onFieldValueChange]/[fieldPlaceholder] together for one plain text
  * row, or [fields]/[onFieldChange] for several (e.g. password + 2FA code). [detail] shows a
- * monospace value such as a setup key; [errorText] shows below the fields; [isBusy] disables
+ * monospace value such as a setup key; [errorText] unfolds as an [ErrorBanner] below the fields
+ * (and shakes the card); [isBusy] disables
  * the controls while a request is in flight; [secondaryButtonLabel] adds a text button.
  *
  * The scrim darkens the screen behind the card and, tapping it (or the system back gesture)
@@ -96,8 +100,18 @@ fun ActionDialog(
                 .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
+            // The card springs in from slightly smaller, and shakes on a failed submit.
+            val entrance = remember { Animatable(0f) }
+            LaunchedEffect(Unit) { entrance.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 500f)) }
             Column(
                 modifier = Modifier
+                    .then(rememberErrorShake(errorText))
+                    .graphicsLayer {
+                        val t = entrance.value
+                        scaleX = 0.92f + 0.08f * t
+                        scaleY = scaleX
+                        alpha = t.coerceIn(0f, 1f)
+                    }
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(LocalRadii.current.card))
                     .background(colors.elevatedSurface)
@@ -138,22 +152,23 @@ fun ActionDialog(
                         }
                     }
                 }
-                if (errorText != null) {
-                    Text(errorText, color = colors.accent, style = DialogErrorText, textAlign = TextAlign.Center)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(53.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(colors.fieldSurface)
-                        .clickable(enabled = !isBusy, onClick = submit),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isBusy) {
-                        CircularProgressIndicator(modifier = Modifier.size(22.dp), color = colors.onSurface, strokeWidth = 2.dp)
-                    } else {
-                        Text(primaryButtonLabel, color = colors.onSurface, style = DialogButtonText)
+                // One child of the card's column, so the folded-away banner adds no gap.
+                Column {
+                    ErrorBanner(errorText, contentPadding = PaddingValues(bottom = 14.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(53.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.fieldSurface)
+                            .clickable(enabled = !isBusy, onClick = submit),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isBusy) {
+                            RefreshSpinner(phase = { BusySpinnerPhase }, size = 22.dp)
+                        } else {
+                            Text(primaryButtonLabel, color = colors.onSurface, style = DialogButtonText)
+                        }
                     }
                 }
                 if (secondaryButtonLabel != null) {
@@ -176,7 +191,6 @@ fun ActionDialog(
 }
 
 private val DialogDetailText = AccountCodeText.copy(fontSize = 18.sp, lineHeight = 24.sp)
-private val DialogErrorText = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp)
 
 @Preview(name = "Action dialog with field", showBackground = true, widthDp = 390, heightDp = 500)
 @Composable

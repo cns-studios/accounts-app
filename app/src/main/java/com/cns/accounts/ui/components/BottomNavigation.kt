@@ -100,6 +100,10 @@ fun HomeBottomNavigation(
     onSwipeDragStopped: (velocity: Float) -> Unit,
     modifier: Modifier = Modifier,
     onUserClick: () -> Unit = {},
+    // The account's avatar replaces the user glyph on the left button once there is one.
+    avatarUrl: String? = null,
+    // History has activity the user hasn't looked at yet: its glyph turns yellow.
+    historyUnread: Boolean = false,
     isSearchActive: Boolean = false,
     onSearchActiveChange: (Boolean) -> Unit = {},
     searchQuery: String = "",
@@ -129,7 +133,7 @@ fun HomeBottomNavigation(
                 .graphicsLayer { alpha = 1f - searchProgress },
         ) {
             if (searchProgress < 1f) {
-                NavCircle(TokenIconKind.User, onClick = {
+                AccountNavButton(avatarUrl, onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onUserClick()
                 })
@@ -148,6 +152,7 @@ fun HomeBottomNavigation(
                         onTabSelected(tab)
                     },
                     progress = swipeProgress,
+                    historyUnread = historyUnread,
                     onDragStarted = onSwipeDragStarted,
                     onProgressDelta = onSwipeProgressDelta,
                     onDragStopped = onSwipeDragStopped,
@@ -269,19 +274,26 @@ private fun SearchControl(
     }
 }
 
+/** The left nav circle (to Your Account): the account's avatar filling it, or the user glyph without one. */
 @Composable
-private fun NavCircle(icon: TokenIconKind, onClick: (() -> Unit)? = null) {
+private fun AccountNavButton(avatarUrl: String?, onClick: () -> Unit) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
+    val label = stringResource(R.string.your_account)
     Box(
         modifier = Modifier
             .size(dimensions.navHeight)
             .clip(CircleShape)
             .background(colors.elevatedSurface)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        TokenIcon(icon, tint = colors.onSurface)
+        if (avatarUrl != null) {
+            AvatarImage(avatarUrl, modifier = Modifier.fillMaxSize(), placeholder = { TokenIcon(TokenIconKind.User, tint = colors.onSurface) })
+        } else {
+            TokenIcon(TokenIconKind.User, tint = colors.onSurface)
+        }
     }
 }
 
@@ -290,11 +302,13 @@ private fun SegmentedTabControl(
     selectedTab: String,
     onTabSelected: (String) -> Unit,
     progress: () -> Float,
+    historyUnread: Boolean,
     onDragStarted: () -> Unit,
     onProgressDelta: (Float) -> Unit,
     onDragStopped: (velocity: Float) -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val unread by animateFloatAsState(if (historyUnread) 1f else 0f, tween(450), label = "history-unread")
     val dimensions = LocalDimensions.current
     val radii = LocalRadii.current
     val density = LocalDensity.current
@@ -339,7 +353,7 @@ private fun SegmentedTabControl(
             width = historyWidth,
             label = "History",
             onClick = { onTabSelected(HISTORY_TAB) },
-        ) { tint -> TokenMiniDotMark(tint) }
+        ) { tint -> TokenMiniDotMark(lerp(tint, colors.unreadHighlight, unread)) }
     }
 }
 

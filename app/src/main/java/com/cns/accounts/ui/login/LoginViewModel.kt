@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cns.accounts.AppContainer
 import com.cns.accounts.R
+import com.cns.accounts.data.UnsupportedFeatureException
 import com.cns.accounts.data.UserMessage
 import com.cns.accounts.data.api.ApiException
 import com.cns.accounts.data.api.ApprovalChallenge
@@ -87,8 +88,11 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /** "Log In" on the welcome page. */
+    /** "Continue" on the welcome page (after "Log In" split into Continue / Use Passkey). */
     fun showCredentials() = _uiState.update { it.copy(showCredentials = true, error = null) }
+
+    /** "Use Passkey": auth-v2 has no passkeys yet. */
+    fun usePasskey() = container.messages.show(UnsupportedFeatureException())
 
     /** "Use a 2FA code instead" while waiting for the approver phone. */
     fun useCodeInstead() {

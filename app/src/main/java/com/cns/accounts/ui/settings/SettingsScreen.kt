@@ -1,17 +1,9 @@
 package com.cns.accounts.ui.settings
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -19,28 +11,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,31 +38,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import com.cns.accounts.R
-import com.cns.accounts.data.SecurityFactor
-import com.cns.accounts.data.SecurityStatus
 import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
 import com.cns.accounts.data.sampleSettingsData
@@ -85,10 +59,9 @@ import com.cns.accounts.ui.components.ActionDialog
 import com.cns.accounts.ui.components.AvatarImage
 import com.cns.accounts.ui.components.DialogField
 import com.cns.accounts.ui.components.FieldKind
-import com.cns.accounts.ui.components.twoFactorLabel
-import com.cns.accounts.ui.components.StatusChip
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
+import com.cns.accounts.ui.components.TwoFactorChip
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
@@ -96,20 +69,18 @@ import com.cns.accounts.ui.theme.LocalSpacing
 import com.cns.accounts.ui.theme.ProfileNameText
 import com.cns.accounts.ui.theme.RequestCaptionText
 import com.cns.accounts.ui.theme.RequestMetaText
-import com.cns.accounts.ui.theme.SecurityFactorLabelText
-import com.cns.accounts.ui.theme.SecurityPercentText
+import com.cns.accounts.ui.theme.SettingsValueText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// settings.tokens.json ("Your Account"): the account/settings page reached from the profile
-// header's gear button. A fixed back-button header sits above a scrollable body so the page
-// still works when the security/toggle content doesn't fit a phone screen.
+// settings.tokens.json ("Your Account"): the account page, reached from the bottom nav's user
+// button. A fixed back-button header sits above a scrollable body so the page still works when
+// the security/toggle content doesn't fit a phone screen. Device settings (biometric unlock,
+// notifications, sign-out) live on the app Settings page instead (AppSettingsScreen.kt).
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
     onBack: () -> Unit,
-    onToggleBiometricUnlock: (Boolean) -> Unit,
-    onToggleNotifications: (Boolean) -> Unit,
     onToggleTwoFactorAuthentication: (Boolean) -> Unit,
     onToggleRequireSecurityApp: (Boolean) -> Unit,
     onEditUsername: () -> Unit,
@@ -118,13 +89,13 @@ fun SettingsScreen(
     onConfigureTwoFactor: () -> Unit,
     onSetupRecoveryPhrase: () -> Unit,
     onChangePassword: () -> Unit,
-    onLogOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onDialogFieldChange: (Int, String) -> Unit,
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
     onPickAvatar: () -> Unit,
     modifier: Modifier = Modifier,
+    onSecurityFactorCelebrated: (String) -> Unit = {},
     highlight: String? = null,
 ) {
     val colors = LocalAppColors.current
@@ -142,7 +113,11 @@ fun SettingsScreen(
             .background(colors.background)
             .statusBarsPadding(),
     ) {
-        SettingsHeader(onBack = onBack, modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.lg))
+        SettingsHeader(
+            title = stringResource(R.string.your_account),
+            onBack = onBack,
+            modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.lg),
+        )
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -166,40 +141,31 @@ fun SettingsScreen(
                 )
             }
             item(key = "security") {
-                SecurityCenterCard(data.security, Modifier.searchHighlight(target == SettingsTarget.SecurityCenter))
+                SecurityCenterCard(
+                    security = data.security,
+                    newlyCompleted = data.newlyCompletedFactors,
+                    onCelebrated = onSecurityFactorCelebrated,
+                    modifier = Modifier.searchHighlight(target == SettingsTarget.SecurityCenter),
+                )
             }
             item(key = "toggles") {
                 ToggleGroup(
                     target = target,
                     toggles = data.toggles,
-                    onToggleBiometricUnlock = onToggleBiometricUnlock,
-                    onToggleNotifications = onToggleNotifications,
                     onToggleTwoFactorAuthentication = onToggleTwoFactorAuthentication,
                     onToggleRequireSecurityApp = onToggleRequireSecurityApp,
                     onSetupRecoveryPhrase = onSetupRecoveryPhrase,
                 )
             }
             item(key = "account-actions") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    ActionButton(
-                        text = stringResource(R.string.change_password),
-                        onClick = onChangePassword,
-                        secondary = true,
-                        modifier = Modifier
-                            .weight(1f)
-                            .searchHighlight(target == SettingsTarget.Password),
-                    )
-                    ActionButton(
-                        text = stringResource(R.string.log_out),
-                        onClick = onLogOut,
-                        modifier = Modifier
-                            .weight(1f)
-                            .searchHighlight(target == SettingsTarget.LogOut),
-                    )
-                }
+                ActionButton(
+                    text = stringResource(R.string.change_password),
+                    onClick = onChangePassword,
+                    secondary = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .searchHighlight(target == SettingsTarget.Password),
+                )
             }
             item(key = "delete-account") {
                 DeleteAccountCard(onDeleteAccount = onDeleteAccount, modifier = Modifier.searchHighlight(target == SettingsTarget.Delete))
@@ -215,34 +181,8 @@ fun SettingsScreen(
         onConfirm = onDialogConfirm,
         onDismiss = onDialogDismiss,
         onPickAvatar = onPickAvatar,
+        hasAvatar = data.profile.avatarUrl != null,
     )
-}
-
-@Composable
-private fun SettingsHeader(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
-    val backLabel = stringResource(R.string.back)
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onBack()
-            },
-            modifier = Modifier
-                .size(54.dp)
-                .clip(CircleShape)
-                .background(colors.elevatedSurface)
-                .semantics { contentDescription = backLabel },
-        ) {
-            TokenIcon(TokenIconKind.ChevronLeft, tint = colors.onSurface)
-        }
-        Text(stringResource(R.string.your_account), color = colors.onSurface, style = ProfileNameText)
-    }
 }
 
 @Composable
@@ -256,168 +196,96 @@ private fun ProfileRow(
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
-    val haptic = LocalHapticFeedback.current
     var menuExpanded by remember { mutableStateOf(false) }
+    val hasAvatar = data.profile.avatarUrl != null
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             AvatarImage(data.profile.avatarUrl, modifier = Modifier.size(dimensions.avatar))
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(data.profile.name, color = colors.onSurface, style = ProfileNameText)
-                StatusChip(twoFactorLabel(data.profile.twoFactorEnabled))
+                Text(data.profile.name, color = colors.onSurface, style = ProfileNameText, maxLines = 1)
+                TwoFactorChip(data.profile.twoFactorEnabled)
             }
         }
         Box {
-            IconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    menuExpanded = true
-                },
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(colors.elevatedSurface)
-                    .semantics { role = Role.Button },
-            ) {
-                TokenIcon(TokenIconKind.Edit, tint = colors.onSurface)
-            }
+            RoundIconButton(TokenIconKind.Edit, contentDescription = stringResource(R.string.edit_profile), onClick = { menuExpanded = true })
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
                 containerColor = colors.surface,
                 shape = RoundedCornerShape(LocalRadii.current.card),
             ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.edit_username), color = colors.onSurface) },
-                    leadingIcon = { TokenIcon(TokenIconKind.User, tint = colors.onSurface) },
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        menuExpanded = false
-                        onEditUsername()
-                    },
+                // The menu offers what applies to this account: no "remove" without an avatar,
+                // and 2FA's entry says which way it switches.
+                fun pick(action: () -> Unit): () -> Unit = {
+                    menuExpanded = false
+                    action()
+                }
+                ProfileMenuItem(stringResource(R.string.edit_username), TokenIconKind.User, pick(onEditUsername))
+                MenuDivider()
+                ProfileMenuItem(
+                    stringResource(if (hasAvatar) R.string.change_avatar else R.string.upload_avatar),
+                    TokenIconKind.Image,
+                    pick(onChangeAvatar),
                 )
-                HorizontalDivider(color = colors.elevatedSurface)
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.change_avatar), color = colors.onSurface) },
-                    leadingIcon = { TokenIcon(TokenIconKind.Image, tint = colors.onSurface) },
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        menuExpanded = false
-                        onChangeAvatar()
-                    },
-                )
-                HorizontalDivider(color = colors.elevatedSurface)
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.remove_avatar), color = colors.onSurface) },
-                    leadingIcon = { TokenIcon(TokenIconKind.Trash, tint = colors.onSurface) },
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        menuExpanded = false
-                        onRemoveAvatar()
-                    },
-                )
-                HorizontalDivider(color = colors.elevatedSurface)
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.configure_2fa), color = colors.onSurface) },
-                    leadingIcon = { TokenIcon(TokenIconKind.Shield, tint = colors.onSurface) },
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        menuExpanded = false
-                        onConfigureTwoFactor()
-                    },
+                if (hasAvatar) {
+                    MenuDivider()
+                    ProfileMenuItem(stringResource(R.string.remove_avatar), TokenIconKind.Trash, pick(onRemoveAvatar))
+                }
+                MenuDivider()
+                ProfileMenuItem(
+                    stringResource(if (data.toggles.twoFactorAuthentication) R.string.disable_2fa_menu else R.string.enable_2fa_menu),
+                    TokenIconKind.Shield,
+                    pick(onConfigureTwoFactor),
                 )
             }
         }
     }
 }
 
+/** A compact menu row: an 18dp glyph sized to the 16sp label, with tight vertical padding. */
 @Composable
-private fun SecurityCenterCard(security: SecurityStatus, modifier: Modifier = Modifier) {
+private fun ProfileMenuItem(label: String, icon: TokenIconKind, onClick: () -> Unit) {
     val colors = LocalAppColors.current
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(2.dp, colors.elevatedSurface, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    val haptic = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .widthIn(min = 196.dp)
+            .clickable(role = Role.Button) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.security_center), color = colors.onSurface, style = RequestMetaText)
-        Text("${security.percentComplete}%", color = colors.onSurface, style = SecurityPercentText)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            security.factors.forEach { factor ->
-                SecurityFactorBar(factor, modifier = Modifier.weight(1f))
-            }
-        }
+        TokenIcon(icon, tint = colors.onSurface, modifier = Modifier.size(18.dp))
+        Text(label, color = colors.onSurface, style = SettingsValueText)
     }
 }
 
-// settings.tokens.json (Rectangle36-39): each factor is a 76x7px pill — solid white when
-// achieved, or an empty pill outlined with the accent red when still missing.
 @Composable
-private fun SecurityFactorBar(factor: SecurityFactor, modifier: Modifier = Modifier) {
-    val colors = LocalAppColors.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp), modifier = modifier) {
-        val accent = colors.accent
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(7.dp)
-                .drawWithCache {
-                    val cornerRadius = CornerRadius(size.height / 2)
-                    onDrawBehind {
-                        if (factor.achieved) {
-                            drawRoundRect(color = Color.White, cornerRadius = cornerRadius)
-                        } else {
-                            val strokeWidth = 1.5.dp.toPx()
-                            drawRoundRect(
-                                color = accent,
-                                cornerRadius = cornerRadius,
-                                style = Stroke(
-                                    width = strokeWidth,
-                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.5.dp.toPx())),
-                                ),
-                            )
-                        }
-                    }
-                },
-        )
-        Text(factor.label, color = colors.onSurface, style = SecurityFactorLabelText)
-    }
+private fun MenuDivider() {
+    HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = LocalAppColors.current.elevatedSurface)
 }
 
 @Composable
 private fun ToggleGroup(
     target: SettingsTarget?,
     toggles: SettingsToggles,
-    onToggleBiometricUnlock: (Boolean) -> Unit,
-    onToggleNotifications: (Boolean) -> Unit,
     onToggleTwoFactorAuthentication: (Boolean) -> Unit,
     onToggleRequireSecurityApp: (Boolean) -> Unit,
     onSetupRecoveryPhrase: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        ToggleRow(
-            modifier = Modifier.searchHighlight(target == SettingsTarget.Biometric),
-            label = stringResource(R.string.biometric_unlock),
-            checked = toggles.biometricUnlock,
-            onCheckedChange = onToggleBiometricUnlock,
-        )
-        HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
-        ToggleRow(
-            modifier = Modifier.searchHighlight(target == SettingsTarget.Notifications),
-            label = stringResource(R.string.notifications),
-            checked = toggles.notifications,
-            onCheckedChange = onToggleNotifications,
-        )
-        HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         ToggleRow(
             modifier = Modifier.searchHighlight(target == SettingsTarget.TwoFactor),
             label = stringResource(R.string.two_factor_authentication),
@@ -455,157 +323,6 @@ private fun ToggleGroup(
                 Text(stringResource(R.string.setup), style = RequestMetaText)
             }
         }
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    modifier: Modifier,
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    helpContentDescription: String? = null,
-    helpHint: String? = null,
-) {
-    val colors = LocalAppColors.current
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = colors.onSurface, style = RequestMetaText)
-            if (helpContentDescription != null && helpHint != null) {
-                HelpHintIcon(contentDescription = helpContentDescription, hint = helpHint)
-            }
-        }
-        SettingsToggle(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-private const val HelpHintVisibleMillis = 2400L
-
-// A short, transient hint bubble shown above the "?" glyph on tap — the reference only marks
-// these as help affordances, it doesn't specify a full help screen, so a small popover is enough.
-@Composable
-private fun HelpHintIcon(contentDescription: String, hint: String) {
-    val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current
-    val hintVisible = remember { MutableTransitionState(false) }
-    LaunchedEffect(hintVisible.targetState) {
-        if (hintVisible.targetState) {
-            delay(HelpHintVisibleMillis)
-            hintVisible.targetState = false
-        }
-    }
-    Box {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .clickable(onClickLabel = contentDescription) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    hintVisible.targetState = true
-                }
-                .semantics { this.contentDescription = contentDescription },
-            contentAlignment = Alignment.Center,
-        ) {
-            TokenIcon(TokenIconKind.Help, tint = colors.mutedText)
-        }
-        // Kept mounted for as long as the exit fade is still running (targetState/currentState
-        // diverge mid-fade), so the Popup doesn't just vanish the instant it's dismissed.
-        if (hintVisible.targetState || hintVisible.currentState) {
-            Popup(
-                alignment = Alignment.TopCenter,
-                offset = with(density) { IntOffset(0, -(44.dp).roundToPx()) },
-                onDismissRequest = { hintVisible.targetState = false },
-            ) {
-                AnimatedVisibility(
-                    visibleState = hintVisible,
-                    enter = fadeIn(tween(220)),
-                    exit = fadeOut(tween(320)),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .widthIn(max = 220.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.elevatedSurface)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Text(hint, color = colors.onSurface, style = RequestCaptionText)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Toggle tokens (StateOn / StateOff): a 40x28 pill with a 24dp knob inset 2dp top/bottom and 3dp
-// from its edge (13dp on the other side). On: white track, black knob, knob right. Off: gray
-// (149,149,149) track, dark gray (76,76,76) knob, knob left.
-private val ToggleTrackWidth = 40.dp
-private val ToggleTrackHeight = 28.dp
-private val ToggleThumbSize = 24.dp
-private val ToggleThumbInset = 3.dp
-
-@Composable
-private fun SettingsToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
-    val thumbOffset by animateDpAsState(
-        targetValue = if (checked) ToggleTrackWidth - ToggleThumbSize - ToggleThumbInset else ToggleThumbInset,
-        label = "toggle-thumb-offset",
-    )
-    val trackColor by animateColorAsState(if (checked) Color.White else colors.toggleOffTrack, label = "toggle-track-color")
-    val thumbColor by animateColorAsState(if (checked) Color.Black else colors.toggleOffThumb, label = "toggle-thumb-color")
-    Box(
-        modifier = Modifier
-            .size(ToggleTrackWidth, ToggleTrackHeight)
-            .clip(RoundedCornerShape(50))
-            .background(trackColor)
-            .toggleable(value = checked, role = Role.Switch) { newValue ->
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onCheckedChange(newValue)
-            },
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = thumbOffset)
-                .size(ToggleThumbSize)
-                .clip(CircleShape)
-                .background(thumbColor),
-        )
-    }
-}
-
-/** A full-height action button: white (primary) or the elevated surface with white text (secondary). */
-@Composable
-private fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, secondary: Boolean = false) {
-    val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
-    Button(
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onClick()
-        },
-        modifier = modifier.height(LocalDimensions.current.actionHeight),
-        shape = RoundedCornerShape(11.dp),
-        colors = if (secondary) {
-            ButtonDefaults.buttonColors(containerColor = colors.elevatedSurface, contentColor = Color.White)
-        } else {
-            ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-        },
-        contentPadding = PaddingValues(horizontal = 12.dp),
-    ) {
-        // Two buttons share a row, so a long label shrinks to fit instead of being cut off.
-        androidx.compose.foundation.text.BasicText(
-            text,
-            style = RequestMetaText.copy(color = LocalContentColor.current),
-            maxLines = 1,
-            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 14.sp, maxFontSize = RequestMetaText.fontSize),
-        )
     }
 }
 
@@ -697,6 +414,7 @@ private fun SettingsDialogHost(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     onPickAvatar: () -> Unit,
+    hasAvatar: Boolean,
 ) {
     if (dialog == null) return
     val context = LocalContext.current
@@ -717,7 +435,7 @@ private fun SettingsDialogHost(
             onPrimaryAction = onConfirm,
         )
         SettingsDialogKind.ChangeAvatar -> ActionDialog(
-            title = stringResource(R.string.change_avatar),
+            title = stringResource(if (hasAvatar) R.string.change_avatar else R.string.upload_avatar),
             subtitle = stringResource(R.string.change_avatar_dialog_subtitle),
             primaryButtonLabel = stringResource(R.string.choose_photo),
             errorText = error,
@@ -822,8 +540,6 @@ private fun SettingsScreenPreview() {
         SettingsScreen(
             state = SettingsUiState(data = sampleSettingsData()),
             onBack = {},
-            onToggleBiometricUnlock = {},
-            onToggleNotifications = {},
             onToggleTwoFactorAuthentication = {},
             onToggleRequireSecurityApp = {},
             onEditUsername = {},
@@ -832,34 +548,6 @@ private fun SettingsScreenPreview() {
             onConfigureTwoFactor = {},
             onSetupRecoveryPhrase = {},
             onChangePassword = {},
-            onLogOut = {},
-            onDeleteAccount = {},
-            onDialogFieldChange = { _, _ -> },
-            onDialogConfirm = {},
-            onDialogDismiss = {},
-            onPickAvatar = {},
-        )
-    }
-}
-
-@Preview(name = "Settings screen dark", showBackground = true, widthDp = 390, heightDp = 1200, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun SettingsScreenDarkPreview() {
-    com.cns.accounts.ui.theme.CNSAccountsTheme(darkTheme = true) {
-        SettingsScreen(
-            state = SettingsUiState(data = sampleSettingsData()),
-            onBack = {},
-            onToggleBiometricUnlock = {},
-            onToggleNotifications = {},
-            onToggleTwoFactorAuthentication = {},
-            onToggleRequireSecurityApp = {},
-            onEditUsername = {},
-            onChangeAvatar = {},
-            onRemoveAvatar = {},
-            onConfigureTwoFactor = {},
-            onSetupRecoveryPhrase = {},
-            onChangePassword = {},
-            onLogOut = {},
             onDeleteAccount = {},
             onDialogFieldChange = { _, _ -> },
             onDialogConfirm = {},
