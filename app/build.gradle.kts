@@ -28,11 +28,27 @@ android {
         buildConfigField("String", "CNS_API_BASE_URL", "\"$apiBaseUrl\"")
         buildConfigField("String", "CNS_ACCOUNTS_WEB_URL", "\"$accountsWebUrl\"")
 
-        // Push (Firebase Cloud Messaging), configured without google-services.json: set the
-        // Firebase Android app's values as Gradle properties (e.g. in ~/.gradle/gradle.properties).
-        // These identify the Firebase project, they are not secrets. Without them the app
-        // builds and runs without push.
-        fun firebase(name: String) = providers.gradleProperty(name).getOrElse("")
+        // Push (Firebase Cloud Messaging). The Firebase values come from app/google-services.json
+        // (downloaded from the Firebase console, kept out of git), read here instead of through
+        // the google-services plugin so the ".local" builds, whose package the file doesn't list,
+        // still build. Gradle properties (cnsFirebaseAppId, ...) override it. These identify the
+        // Firebase project, they are not secrets. Without either the app builds and runs without push.
+        val googleServices = file("google-services.json").takeIf { it.exists() }?.let {
+            @Suppress("UNCHECKED_CAST")
+            groovy.json.JsonSlurper().parse(it) as Map<String, Any?>
+        }
+        val googleServicesClient = (googleServices?.get("client") as? List<*>)?.map { it as Map<*, *> }?.firstOrNull { client ->
+            val info = (client["client_info"] as Map<*, *>)["android_client_info"] as Map<*, *>
+            info["package_name"] == "com.cns.accounts"
+        }
+        val projectInfo = googleServices?.get("project_info") as? Map<*, *>
+        val fromFile = mapOf(
+            "cnsFirebaseAppId" to (googleServicesClient?.get("client_info") as? Map<*, *>)?.get("mobilesdk_app_id"),
+            "cnsFirebaseApiKey" to ((googleServicesClient?.get("api_key") as? List<*>)?.firstOrNull() as? Map<*, *>)?.get("current_key"),
+            "cnsFirebaseProjectId" to projectInfo?.get("project_id"),
+            "cnsFirebaseSenderId" to projectInfo?.get("project_number"),
+        )
+        fun firebase(name: String) = providers.gradleProperty(name).orNull ?: fromFile[name]?.toString() ?: ""
         buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase("cnsFirebaseAppId")}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${firebase("cnsFirebaseApiKey")}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebase("cnsFirebaseProjectId")}\"")

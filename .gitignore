@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase client config, per developer (see app/build.gradle.kts)
+google-services.json
