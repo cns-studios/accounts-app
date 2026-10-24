@@ -25,7 +25,7 @@ class SecurityMilestones(
     init {
         scope.launch {
             combine(account.user, twoFactor.state) { user, state ->
-                user?.let { securityStatus(twoFactorEnabled = it.totpEnabled, authenticatorOnDevice = state is TwoFactorState.Active) }
+                user?.let { securityStatus(twoFactorEnabled = it.totpEnabled, authenticatorOnDevice = state is TwoFactorState.Active, recoveryPhrase = it.recoveryPhraseEnabled) }
             }.collect { status ->
                 // Signed out: nothing changed on the account, keep what was seen.
                 status ?: return@collect

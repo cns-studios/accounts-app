@@ -27,6 +27,8 @@ data class SecurityStatus(
 data class SettingsToggles(
     val twoFactorAuthentication: Boolean = false,
     val requireSecurityApp: Boolean = false,
+    /** Not a toggle: the recovery phrase row shows "Set Up" or "Manage". */
+    val recoveryPhrase: Boolean = false,
 )
 
 @Immutable
@@ -40,15 +42,14 @@ data class SettingsData(
 
 /**
  * The security center score. Factors: 2FA on the account; a password (every CNS account has
- * one); the app factor = this device holds the CNS authenticator key; a recovery phrase, which
- * auth-v2 can't store yet, so it is never achieved.
+ * one); the app factor = this device holds the CNS authenticator key; a recovery phrase is set up.
  */
-fun securityStatus(twoFactorEnabled: Boolean, authenticatorOnDevice: Boolean): SecurityStatus {
+fun securityStatus(twoFactorEnabled: Boolean, authenticatorOnDevice: Boolean, recoveryPhrase: Boolean = false): SecurityStatus {
     val factors = listOf(
         SecurityFactor("2fa", "2FA", achieved = twoFactorEnabled),
         SecurityFactor("password", "PW", achieved = true),
         SecurityFactor("app", "App", achieved = authenticatorOnDevice),
-        SecurityFactor("phrase", "Phrase", achieved = false),
+        SecurityFactor("phrase", "Phrase", achieved = recoveryPhrase),
     )
     return SecurityStatus(percentComplete = factors.count { it.achieved } * 100 / factors.size, factors = factors)
 }

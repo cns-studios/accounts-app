@@ -43,6 +43,9 @@ class Notifier(private val appContext: Context) {
             "2fa_disabled" -> R.string.notify_2fa_disabled
             "require_app_enabled" -> R.string.notify_require_app_enabled
             "require_app_disabled" -> R.string.notify_require_app_disabled
+            "recovery_phrase_created" -> R.string.notify_recovery_phrase_created
+            "recovery_phrase_removed" -> R.string.notify_recovery_phrase_removed
+            "recovery_phrase_used" -> R.string.notify_recovery_phrase_used
             else -> return
         }
         post(AccountChannel, event.hashCode(), context.getString(title), context.getString(R.string.notify_account_body))

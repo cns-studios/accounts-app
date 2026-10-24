@@ -81,15 +81,23 @@ credentials step → the 2FA step; Create Account → the web sign-up.
   New Sendly devices then show as the login request on the Sendly row; Allow wraps the identity
   key for them (screen lock first when biometric unlock is on), Deny rejects. Disconnect also
   removes the device from Sendly. Build against a local Sendly with `-PcnsSendlyUrl=...`.
+- **Recovery phrase** (`ui/settings/RecoveryPhrase*`, `data/RecoveryWords.kt`): the Settings row
+  opens its own page (secure window: no screenshots or recents preview). Set up / new phrase =
+  password plus the 2FA code (from this device when it holds the key) or a Security App approval,
+  then the 12 words (hidden until tapped), then three of them typed back
+  (`/api/me/recovery-phrase/setup`, `/confirm`); Remove is gated the same way. Sign-in has "Lost
+  your password or phone?" (also on the 2FA step): username + phrase + new password
+  (`/api/auth/recover`), which resets the password, turns 2FA and Require Security App off and
+  signs out everywhere; the user then signs in normally. Phrase fields use a password keyboard so
+  the words don't end up in the keyboard's dictionary.
 - **Security center**: computed on device — 2FA on, password (always), App = this device holds
-  the CNS authenticator key, recovery phrase (never; see below).
+  the CNS authenticator key, Phrase = a recovery phrase is set up.
 - **Search**: local index over settings entries + loaded account activity.
 
 ## Not implemented — backend missing (UI kept)
 
 | UI | What's missing in auth-v2 | Current behaviour |
 | --- | --- | --- |
-| Recovery phrase "Setup" | recovery phrase storage/verification | snackbar "not available yet" |
 | Search: Help / Q&A results | Help Center at help.cns-studios.com (+ its index) | kinds and icons exist, nothing produces them |
 
 Also not exposed in the app (API exists, no design yet): the session list / revoke

@@ -50,6 +50,8 @@ import com.cns.accounts.ui.login.LoginScreen
 import com.cns.accounts.ui.login.LoginViewModel
 import com.cns.accounts.ui.settings.AppSettingsScreen
 import com.cns.accounts.ui.settings.AppSettingsViewModel
+import com.cns.accounts.ui.settings.RecoveryPhraseScreen
+import com.cns.accounts.ui.settings.RecoveryPhraseViewModel
 import com.cns.accounts.ui.settings.SettingsDialogKind
 import com.cns.accounts.ui.settings.SettingsScreen
 import com.cns.accounts.ui.settings.SettingsViewModel
@@ -120,6 +122,11 @@ private fun LoginRoute() {
         onBack = viewModel::back,
         onUseCodeInstead = viewModel::useCodeInstead,
         onUsePasskey = viewModel::usePasskey,
+        onShowRecovery = viewModel::showRecovery,
+        onPhraseChange = viewModel::updatePhrase,
+        onNewPasswordChange = viewModel::updateNewPassword,
+        onNewPasswordConfirmChange = viewModel::updateNewPasswordConfirm,
+        onSubmitRecovery = viewModel::submitRecovery,
     )
 }
 
@@ -186,7 +193,11 @@ private fun AppNavGraph(container: AppContainer, viewModel: HomeViewModel, codeH
             SettingsRoute(
                 highlight = entry.arguments?.getString("highlight"),
                 onBack = { navController.popBackStack() },
+                onOpenRecoveryPhrase = { navController.navigate("recovery-phrase") { launchSingleTop = true } },
             )
+        }
+        composable("recovery-phrase") {
+            RecoveryPhraseRoute(onBack = { navController.popBackStack() })
         }
         composable(
             route = "app-settings?highlight={highlight}",
@@ -203,7 +214,7 @@ private fun AppNavGraph(container: AppContainer, viewModel: HomeViewModel, codeH
 
 /** Your Account plus the photo picker its avatar action needs. */
 @Composable
-private fun SettingsRoute(highlight: String?, onBack: () -> Unit) {
+private fun SettingsRoute(highlight: String?, onBack: () -> Unit, onOpenRecoveryPhrase: () -> Unit) {
     val viewModel = containerViewModel { c, application -> SettingsViewModel(c, application) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -218,7 +229,7 @@ private fun SettingsRoute(highlight: String?, onBack: () -> Unit) {
         onChangeAvatar = { viewModel.openDialog(SettingsDialogKind.ChangeAvatar) },
         onRemoveAvatar = { viewModel.openDialog(SettingsDialogKind.RemoveAvatar) },
         onConfigureTwoFactor = viewModel::configureTwoFactor,
-        onSetupRecoveryPhrase = viewModel::setupRecoveryPhrase,
+        onSetupRecoveryPhrase = onOpenRecoveryPhrase,
         onChangePassword = { viewModel.openDialog(SettingsDialogKind.ChangePassword) },
         onDeleteAccount = { viewModel.openDialog(SettingsDialogKind.DeleteAccount) },
         onDialogFieldChange = viewModel::updateField,
@@ -227,6 +238,28 @@ private fun SettingsRoute(highlight: String?, onBack: () -> Unit) {
         onPickAvatar = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onSecurityFactorCelebrated = viewModel::onSecurityFactorCelebrated,
         highlight = highlight,
+    )
+}
+
+/** The recovery phrase page; its ViewModel (and with it the shown words) goes when the page is left. */
+@Composable
+private fun RecoveryPhraseRoute(onBack: () -> Unit) {
+    val viewModel = containerViewModel { c, _ -> RecoveryPhraseViewModel(c) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    RecoveryPhraseScreen(
+        state = state,
+        onBack = onBack,
+        onPasswordChange = viewModel::updatePassword,
+        onCodeChange = viewModel::updateCode,
+        onSubmitVerify = viewModel::submitVerify,
+        onNewPhrase = viewModel::startNewPhrase,
+        onRemove = viewModel::startRemove,
+        onReveal = viewModel::reveal,
+        onSavedItChange = viewModel::setSavedIt,
+        onContinueToConfirm = viewModel::toConfirm,
+        onAnswerChange = viewModel::updateAnswer,
+        onSubmitConfirm = viewModel::submitConfirm,
+        onStepBack = viewModel::back,
     )
 }
 

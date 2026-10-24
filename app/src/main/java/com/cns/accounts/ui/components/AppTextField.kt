@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -33,8 +34,12 @@ import androidx.compose.ui.unit.dp
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.RequestMetaText
 
-/** What a field holds: drives keyboard, masking and autofill hints (so password managers work). */
-enum class FieldKind { Text, Username, Password, NewPassword, Code }
+/**
+ * What a field holds: drives keyboard, masking and autofill hints (so password managers work).
+ * [Phrase] is a recovery phrase (several lines) and [PhraseWord] one of its words: both get a
+ * password keyboard, so the words stay out of the keyboard's suggestions and learned words.
+ */
+enum class FieldKind { Text, Username, Password, NewPassword, Code, Phrase, PhraseWord }
 
 @Immutable
 data class DialogField(
@@ -64,11 +69,12 @@ fun AppTextField(
 ) {
     val colors = LocalAppColors.current
     val isSecret = kind == FieldKind.Password || kind == FieldKind.NewPassword
+    val multiLine = kind == FieldKind.Phrase
     BasicTextField(
         value = value,
         onValueChange = { input -> onValueChange(if (kind == FieldKind.Code) input.filter(Char::isDigit).take(6) else input) },
         enabled = enabled,
-        singleLine = true,
+        singleLine = !multiLine,
         textStyle = RequestMetaText.copy(color = colors.onSurface),
         cursorBrush = SolidColor(colors.onSurface),
         visualTransformation = if (isSecret) PasswordVisualTransformation() else VisualTransformation.None,
@@ -76,7 +82,7 @@ fun AppTextField(
             capitalization = KeyboardCapitalization.None,
             autoCorrectEnabled = kind == FieldKind.Text,
             keyboardType = when (kind) {
-                FieldKind.Password, FieldKind.NewPassword -> KeyboardType.Password
+                FieldKind.Password, FieldKind.NewPassword, FieldKind.Phrase, FieldKind.PhraseWord -> KeyboardType.Password
                 FieldKind.Code -> KeyboardType.NumberPassword
                 FieldKind.Username -> KeyboardType.Ascii
                 FieldKind.Text -> KeyboardType.Text
@@ -86,7 +92,7 @@ fun AppTextField(
         keyboardActions = KeyboardActions(onAny = { onImeAction() }),
         modifier = modifier
             .fillMaxWidth()
-            .height(53.dp)
+            .then(if (multiLine) Modifier.heightIn(min = 106.dp) else Modifier.height(53.dp))
             .clip(shape)
             .background(containerColor)
             .border(1.dp, borderColor, shape)
@@ -96,13 +102,13 @@ fun AppTextField(
                     FieldKind.Password -> contentType = ContentType.Password
                     FieldKind.NewPassword -> contentType = ContentType.NewPassword
                     FieldKind.Code -> contentType = ContentType.SmsOtpCode
-                    FieldKind.Text -> Unit
+                    FieldKind.Text, FieldKind.Phrase, FieldKind.PhraseWord -> Unit
                 }
             },
         decorationBox = { innerTextField ->
             Box(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = if (multiLine) 15.dp else 0.dp),
+                contentAlignment = if (multiLine) Alignment.TopStart else Alignment.CenterStart,
             ) {
                 if (value.isEmpty()) {
                     Text(placeholder, color = colors.fieldPlaceholder, style = RequestMetaText)

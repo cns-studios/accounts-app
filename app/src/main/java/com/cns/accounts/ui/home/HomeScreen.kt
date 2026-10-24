@@ -490,6 +490,8 @@ private fun requestTitle(request: SignInRequest): String = when (request.action)
     "username_change" -> request.detail?.let { stringResource(R.string.request_username_change_to, it) } ?: stringResource(R.string.request_username_change)
     "account_delete" -> stringResource(R.string.request_account_delete)
     "require_app_disable" -> stringResource(R.string.request_require_app_disable)
+    "recovery_phrase_create" -> stringResource(R.string.request_recovery_phrase_create)
+    "recovery_phrase_remove" -> stringResource(R.string.request_recovery_phrase_remove)
     else -> stringResource(R.string.sign_in_request)
 }
 

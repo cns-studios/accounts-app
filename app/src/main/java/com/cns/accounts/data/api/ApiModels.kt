@@ -21,6 +21,9 @@ data class AccountUser(
     val totpEnabledAt: Instant? = null,
     /** Require Security App: sign-ins and sensitive changes wait for the approver device. */
     val requireAppApproval: Boolean = false,
+    /** A recovery phrase is set up (it can reset the password, 2FA and Require Security App). */
+    val recoveryPhraseEnabled: Boolean = false,
+    val recoveryPhraseCreatedAt: Instant? = null,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -31,6 +34,8 @@ data class AccountUser(
         .put("totp_enabled", totpEnabled)
         .put("totp_enabled_at", totpEnabledAt?.toString() ?: JSONObject.NULL)
         .put("require_app_approval", requireAppApproval)
+        .put("recovery_phrase_enabled", recoveryPhraseEnabled)
+        .put("recovery_phrase_created_at", recoveryPhraseCreatedAt?.toString() ?: JSONObject.NULL)
 
     companion object {
         fun fromJson(json: JSONObject) = AccountUser(
@@ -42,6 +47,8 @@ data class AccountUser(
             totpEnabled = json.optBoolean("totp_enabled"),
             totpEnabledAt = json.optInstant("totp_enabled_at"),
             requireAppApproval = json.optBoolean("require_app_approval"),
+            recoveryPhraseEnabled = json.optBoolean("recovery_phrase_enabled"),
+            recoveryPhraseCreatedAt = json.optInstant("recovery_phrase_created_at"),
         )
     }
 }
@@ -248,6 +255,33 @@ data class ConnectedApp(
 }
 
 data class MfaSetup(val secret: String, val otpauthUri: String)
+
+/** `POST /api/me/recovery-phrase/setup`: the words are shown once and never again. */
+class RecoveryPhraseDraft(
+    val setupToken: String,
+    val words: List<String>,
+    /** 1-based positions of the words the user types back to confirm. */
+    val confirmPositions: List<Int>,
+) {
+    // Keep the words out of logs and crash reports.
+    override fun toString() = "RecoveryPhraseDraft(${words.size} words)"
+
+    companion object {
+        fun fromJson(json: JSONObject): RecoveryPhraseDraft {
+            val words = json.optJSONArray("words") ?: JSONArray()
+            val positions = json.optJSONArray("confirm_positions") ?: JSONArray()
+            return RecoveryPhraseDraft(
+                setupToken = json.optString("setup_token"),
+                words = List(words.length()) { words.optString(it) },
+                confirmPositions = List(positions.length()) { positions.optInt(it) },
+            ).also {
+                if (it.setupToken.isBlank() || it.words.size != 12 || it.confirmPositions.isEmpty()) {
+                    throw ApiException(200, "bad_response", "The server did not return a recovery phrase")
+                }
+            }
+        }
+    }
+}
 
 internal fun JSONObject.optStringOrNull(name: String): String? =
     if (isNull(name)) null else optString(name).takeIf { it.isNotBlank() }

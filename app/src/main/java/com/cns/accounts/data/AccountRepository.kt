@@ -85,6 +85,21 @@ class AccountRepository(
     suspend fun changePassword(currentPassword: String, newPassword: String, approvalId: String? = null) =
         api.changePassword(currentPassword, newPassword, approvalId)
 
+    // Recovery phrase: [code] is null when the account has no 2FA or Require Security App replaces it.
+
+    suspend fun setupRecoveryPhrase(password: String, code: String?, approvalId: String? = null) =
+        api.setupRecoveryPhrase(password, code, approvalId)
+
+    suspend fun confirmRecoveryPhrase(setupToken: String, words: List<String>) {
+        val createdAt = api.confirmRecoveryPhrase(setupToken, words)
+        _user.value?.let { setUser(it.copy(recoveryPhraseEnabled = true, recoveryPhraseCreatedAt = createdAt)) }
+    }
+
+    suspend fun removeRecoveryPhrase(password: String, code: String?, approvalId: String? = null) {
+        api.removeRecoveryPhrase(password, code, approvalId)
+        _user.value?.let { setUser(it.copy(recoveryPhraseEnabled = false, recoveryPhraseCreatedAt = null)) }
+    }
+
     /** Reflects a 2FA change made through [com.cns.accounts.data.authenticator.TwoFactorManager] without a reload. */
     fun markTwoFactor(enabled: Boolean) {
         _user.value?.let { setUser(it.copy(totpEnabled = enabled)) }

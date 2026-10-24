@@ -24,6 +24,15 @@ class CnsApi(
         return LoginResult.fromJson(call("POST", "/api/auth/mobile/login/2fa", body))
     }
 
+    /**
+     * Redeems a recovery phrase: auth-v2 sets [newPassword], turns 2FA and Require Security App off
+     * and signs out every session. The user signs in normally afterwards.
+     */
+    suspend fun recoverAccount(username: String, phrase: String, newPassword: String) {
+        val body = JSONObject().put("username", username).put("phrase", phrase).put("new_password", newPassword)
+        call("POST", "/api/auth/recover", body)
+    }
+
     // --- account ---
 
     suspend fun me(): AccountUser = AccountUser.fromJson(authed("GET", "/api/me"))
@@ -54,6 +63,23 @@ class CnsApi(
 
     suspend fun deleteAccount(password: String, code: String, approvalId: String? = null) {
         authed("POST", "/api/me/delete", JSONObject().put("password", password).put("code", code).putOpt("approval_id", approvalId))
+    }
+
+    // --- recovery phrase (gated like the account changes above: password, plus the 2FA code or an approval) ---
+
+    suspend fun setupRecoveryPhrase(password: String, code: String?, approvalId: String? = null): RecoveryPhraseDraft {
+        val body = JSONObject().put("password", password).putOpt("code", code).putOpt("approval_id", approvalId)
+        return RecoveryPhraseDraft.fromJson(authed("POST", "/api/me/recovery-phrase/setup", body))
+    }
+
+    /** [words]: the words at the draft's confirm positions, in that order. Returns when it was saved. */
+    suspend fun confirmRecoveryPhrase(setupToken: String, words: List<String>): java.time.Instant? {
+        val body = JSONObject().put("setup_token", setupToken).put("words", org.json.JSONArray(words))
+        return authed("POST", "/api/me/recovery-phrase/confirm", body).optInstant("created_at")
+    }
+
+    suspend fun removeRecoveryPhrase(password: String, code: String?, approvalId: String? = null) {
+        authed("POST", "/api/me/recovery-phrase/remove", JSONObject().put("password", password).putOpt("code", code).putOpt("approval_id", approvalId))
     }
 
     // --- 2FA ---

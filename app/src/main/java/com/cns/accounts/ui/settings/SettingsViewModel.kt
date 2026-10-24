@@ -11,7 +11,6 @@ import com.cns.accounts.R
 import com.cns.accounts.data.Profile
 import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
-import com.cns.accounts.data.UnsupportedFeatureException
 import com.cns.accounts.data.UserMessage
 import com.cns.accounts.data.api.AccountUser
 import com.cns.accounts.data.authenticator.TwoFactorState
@@ -31,10 +30,9 @@ import java.io.ByteArrayOutputStream
 /**
  * "Your Account": profile edits, 2FA (through [AppContainer.twoFactor]), Require Security App
  * (through [AppContainer.approvals]), password, avatar and deletion against auth-v2 (device
- * settings and sign-out are [AppSettingsViewModel]'s). The recovery phrase has no backend yet; its control
- * reports that instead of pretending. While Require Security App is on, the password, username
- * and deletion requests wait for an approval, which this device gives itself when it is the
- * approver.
+ * settings and sign-out are [AppSettingsViewModel]'s; the recovery phrase has its own page,
+ * [RecoveryPhraseViewModel]). While Require Security App is on, the password, username and
+ * deletion requests wait for an approval, which this device gives itself when it is the approver.
  */
 class SettingsViewModel(
     private val container: AppContainer,
@@ -63,7 +61,11 @@ class SettingsViewModel(
         val enabling = values[4] as Boolean
         val switchingRequireApp = values[5] as Boolean?
         val twoFactor = user?.totpEnabled == true
-        val security = securityStatus(twoFactorEnabled = twoFactor, authenticatorOnDevice = twoFactorState is TwoFactorState.Active)
+        val security = securityStatus(
+            twoFactorEnabled = twoFactor,
+            authenticatorOnDevice = twoFactorState is TwoFactorState.Active,
+            recoveryPhrase = user?.recoveryPhraseEnabled == true,
+        )
         SettingsUiState(
             data = SettingsData(
                 profile = Profile(user?.username.orEmpty(), twoFactor, user?.avatarUrl),
@@ -72,6 +74,7 @@ class SettingsViewModel(
                 toggles = SettingsToggles(
                     twoFactorAuthentication = twoFactor || enabling,
                     requireSecurityApp = switchingRequireApp ?: (user?.requireAppApproval == true),
+                    recoveryPhrase = user?.recoveryPhraseEnabled == true,
                 ),
                 newlyCompletedFactors = if (user == null || celebrated == null) {
                     emptySet()
@@ -127,10 +130,6 @@ class SettingsViewModel(
             }
         }
     }
-    fun setupRecoveryPhrase() = unsupported()
-
-    private fun unsupported() = messages.show(UnsupportedFeatureException())
-
     // --- dialogs ---
 
     fun openDialog(kind: SettingsDialogKind) {

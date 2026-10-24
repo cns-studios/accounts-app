@@ -34,6 +34,11 @@ data class LoginUiState(
     val usingFallback: Boolean = false,
     // false: the welcome page (Log In / Create Account); true: the username/password form.
     val showCredentials: Boolean = false,
+    // "Lost your password or phone?": username + recovery phrase + a new password.
+    val recovering: Boolean = false,
+    val phrase: String = "",
+    val newPassword: String = "",
+    val newPasswordConfirm: String = "",
     val isBusy: Boolean = false,
     val error: UserMessage? = null,
 )
@@ -54,6 +59,55 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
     fun updateUsername(value: String) = _uiState.update { it.copy(username = value, error = null) }
     fun updatePassword(value: String) = _uiState.update { it.copy(password = value, error = null) }
     fun updateCode(value: String) = _uiState.update { it.copy(code = value, codePrefilled = false, error = null) }
+    fun updatePhrase(value: String) = _uiState.update { it.copy(phrase = value, error = null) }
+    fun updateNewPassword(value: String) = _uiState.update { it.copy(newPassword = value, error = null) }
+    fun updateNewPasswordConfirm(value: String) = _uiState.update { it.copy(newPasswordConfirm = value, error = null) }
+
+    /** "Lost your password or phone?" from the sign-in form or the 2FA step. */
+    fun showRecovery() {
+        if (_uiState.value.isBusy) return
+        approvalJob?.cancel()
+        _uiState.update { LoginUiState(username = it.username, showCredentials = true, recovering = true) }
+    }
+
+    /**
+     * Redeems the recovery phrase: auth-v2 sets the new password, turns 2FA and Require Security
+     * App off and signs every session out. The user then signs in with the new password.
+     */
+    fun submitRecovery() {
+        val state = _uiState.value
+        if (state.isBusy) return
+        val check = container.recoveryWords.check(state.phrase)
+        val problem = when {
+            state.username.isBlank() || state.newPassword.isEmpty() -> R.string.fill_all_fields
+            check.unknown.isNotEmpty() -> R.string.recovery_phrase_unknown_word
+            !check.complete -> R.string.recovery_phrase_incomplete
+            state.newPassword.length < 12 -> R.string.password_too_short
+            state.newPassword != state.newPasswordConfirm -> R.string.passwords_dont_match
+            else -> null
+        }
+        if (problem != null) {
+            _uiState.update { it.copy(error = UserMessage(resId = problem)) }
+            return
+        }
+        _uiState.update { it.copy(isBusy = true, error = null) }
+        viewModelScope.launch {
+            runCatching { container.api.recoverAccount(state.username.trim(), check.words.joinToString(" "), state.newPassword) }
+                .onSuccess {
+                    _uiState.value = LoginUiState(username = state.username.trim(), showCredentials = true)
+                    container.messages.show(R.string.account_recovered)
+                }
+                .onFailure { error ->
+                    val message = when ((error as? ApiException)?.code) {
+                        "recovery_failed" -> UserMessage(resId = R.string.recovery_failed)
+                        "invalid_phrase" -> UserMessage(resId = R.string.recovery_phrase_invalid)
+                        "account_locked" -> UserMessage(resId = R.string.recovery_account_locked)
+                        else -> error.toUserMessage()
+                    }
+                    _uiState.update { it.copy(isBusy = false, error = message) }
+                }
+        }
+    }
 
     fun submitCredentials() {
         val state = _uiState.value
@@ -110,7 +164,7 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
         val state = _uiState.value
         if (state.awaitingApproval) approvalJob?.cancel() else if (state.isBusy) return
         _uiState.value = when {
-            state.loginToken != null || state.awaitingApproval -> LoginUiState(username = state.username, showCredentials = true)
+            state.recovering || state.loginToken != null || state.awaitingApproval -> LoginUiState(username = state.username, showCredentials = true)
             else -> LoginUiState(username = state.username)
         }
     }

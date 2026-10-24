@@ -3,6 +3,7 @@ package com.cns.accounts
 import android.content.Context
 import com.cns.accounts.data.AccountRepository
 import com.cns.accounts.data.AppPreferences
+import com.cns.accounts.data.RecoveryWords
 import com.cns.accounts.data.SecurityMilestones
 import com.cns.accounts.data.ServiceLinks
 import com.cns.accounts.data.UserMessages
@@ -43,6 +44,7 @@ class AppContainer(context: Context) {
     val preferences = AppPreferences(context)
     val securityMilestones = SecurityMilestones(preferences, account, twoFactor, appScope)
     val messages = UserMessages()
+    val recoveryWords = RecoveryWords(context.resources)
     val appLock = AppLock(preferences)
     val notifier = Notifier(context)
     val push = PushRegistrar(context, api, session, preferences, appScope)

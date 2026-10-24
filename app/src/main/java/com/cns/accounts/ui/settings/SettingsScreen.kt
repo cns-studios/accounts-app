@@ -294,7 +294,7 @@ private fun ToggleGroup(
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp),
             ) {
-                Text(stringResource(R.string.setup), style = RequestMetaText)
+                Text(stringResource(if (toggles.recoveryPhrase) R.string.manage else R.string.setup), style = RequestMetaText)
             }
         }
     }

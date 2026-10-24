@@ -78,8 +78,10 @@ import com.cns.accounts.ui.components.OnboardingGlow
 import com.cns.accounts.ui.components.PillButton
 import com.cns.accounts.ui.components.PillButtonHeight
 import com.cns.accounts.ui.components.RefreshSpinner
+import com.cns.accounts.ui.components.SecureWindow
 import com.cns.accounts.ui.components.rememberErrorShake
 import com.cns.accounts.ui.theme.LocalAppColors
+import com.cns.accounts.ui.theme.RequestCaptionText
 import com.cns.accounts.ui.theme.RequestMetaText
 import com.cns.accounts.ui.theme.WelcomeTitleText
 
@@ -107,9 +109,15 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
     onUseCodeInstead: () -> Unit = {},
     onUsePasskey: () -> Unit = {},
+    onShowRecovery: () -> Unit = {},
+    onPhraseChange: (String) -> Unit = {},
+    onNewPasswordChange: (String) -> Unit = {},
+    onNewPasswordConfirmChange: (String) -> Unit = {},
+    onSubmitRecovery: () -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     val step = when {
+        state.recovering -> LoginStep.Recover
         state.awaitingApproval -> LoginStep.Approval
         state.loginToken != null -> LoginStep.TwoFactor
         state.showCredentials -> LoginStep.Credentials
@@ -148,16 +156,19 @@ fun LoginScreen(
                         onContinue = onShowCredentials,
                         onUsePasskey = onUsePasskey,
                     )
-                    LoginStep.Credentials -> CredentialsStep(state, onUsernameChange, onPasswordChange, onSubmitCredentials)
-                    LoginStep.TwoFactor -> TwoFactorStep(state, onCodeChange, onSubmitCode)
+                    LoginStep.Credentials -> CredentialsStep(state, onUsernameChange, onPasswordChange, onSubmitCredentials, onShowRecovery)
+                    LoginStep.TwoFactor -> TwoFactorStep(state, onCodeChange, onSubmitCode, onShowRecovery)
                     LoginStep.Approval -> ApprovalStep(state, onUseCodeInstead)
+                    LoginStep.Recover -> RecoverStep(
+                        state, onUsernameChange, onPhraseChange, onNewPasswordChange, onNewPasswordConfirmChange, onSubmitRecovery,
+                    )
                 }
             }
         }
     }
 }
 
-private enum class LoginStep { Welcome, Credentials, TwoFactor, Approval }
+private enum class LoginStep { Welcome, Credentials, TwoFactor, Approval, Recover }
 
 private val StepSpring = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 480f, visibilityThreshold = IntOffset.VisibilityThreshold)
 
@@ -234,6 +245,7 @@ private fun CredentialsStep(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onShowRecovery: () -> Unit,
 ) {
     Heading(stringResource(R.string.log_in), stringResource(R.string.sign_in_subtitle))
     ButtonColumn(modifier = rememberErrorShake(state.error)) {
@@ -256,6 +268,7 @@ private fun CredentialsStep(
         WithError(state) {
             PillButton(stringResource(R.string.finish), isBusy = state.isBusy, onClick = onSubmit)
         }
+        TextLink(stringResource(R.string.lost_access_link), enabled = !state.isBusy, onClick = onShowRecovery)
     }
 }
 
@@ -264,6 +277,7 @@ private fun TwoFactorStep(
     state: LoginUiState,
     onCodeChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onShowRecovery: () -> Unit,
 ) {
     Heading(
         stringResource(R.string.two_factor_title),
@@ -288,7 +302,83 @@ private fun TwoFactorStep(
         WithError(state) {
             PillButton(stringResource(R.string.verify), isBusy = state.isBusy, onClick = onSubmit)
         }
+        TextLink(stringResource(R.string.lost_authenticator_link), enabled = !state.isBusy, onClick = onShowRecovery)
     }
+}
+
+/** "Lost your password or phone?": the recovery phrase sets a new password and lifts 2FA. */
+@Composable
+private fun RecoverStep(
+    state: LoginUiState,
+    onUsernameChange: (String) -> Unit,
+    onPhraseChange: (String) -> Unit,
+    onNewPasswordChange: (String) -> Unit,
+    onNewPasswordConfirmChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    // The phrase is on screen while it's typed.
+    SecureWindow()
+    val colors = LocalAppColors.current
+    Heading(stringResource(R.string.recover_title), stringResource(R.string.recover_subtitle))
+    ButtonColumn(modifier = rememberErrorShake(state.error)) {
+        LoginField(
+            value = state.username,
+            onValueChange = onUsernameChange,
+            placeholder = stringResource(R.string.username_placeholder),
+            kind = FieldKind.Username,
+            enabled = !state.isBusy,
+        )
+        LoginField(
+            value = state.phrase,
+            onValueChange = onPhraseChange,
+            placeholder = stringResource(R.string.recover_phrase_placeholder),
+            kind = FieldKind.Phrase,
+            enabled = !state.isBusy,
+        )
+        LoginField(
+            value = state.newPassword,
+            onValueChange = onNewPasswordChange,
+            placeholder = stringResource(R.string.new_password_placeholder),
+            kind = FieldKind.NewPassword,
+            enabled = !state.isBusy,
+        )
+        LoginField(
+            value = state.newPasswordConfirm,
+            onValueChange = onNewPasswordConfirmChange,
+            placeholder = stringResource(R.string.confirm_password_placeholder),
+            kind = FieldKind.NewPassword,
+            enabled = !state.isBusy,
+            imeAction = ImeAction.Done,
+            onImeAction = onSubmit,
+        )
+        WithError(state) {
+            PillButton(stringResource(R.string.recover_button), isBusy = state.isBusy, onClick = onSubmit)
+        }
+        Text(
+            stringResource(R.string.recover_no_phrase),
+            modifier = Modifier.fillMaxWidth(),
+            color = colors.fieldPlaceholder,
+            style = RequestCaptionText,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** A quiet text action under a step's button. */
+@Composable
+private fun TextLink(label: String, enabled: Boolean, onClick: () -> Unit) {
+    val colors = LocalAppColors.current
+    Text(
+        label,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(vertical = 10.dp),
+        color = colors.fieldPlaceholder,
+        style = RequestCaptionText,
+        textAlign = TextAlign.Center,
+    )
 }
 
 /** Require Security App: waiting for the approver phone, with the 2FA code as the way out. */

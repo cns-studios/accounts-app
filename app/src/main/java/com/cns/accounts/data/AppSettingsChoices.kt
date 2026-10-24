@@ -33,6 +33,7 @@ enum class NotificationEvent(val id: String, val events: Set<String>, @param:Str
     Username("username", setOf("username_changed"), R.string.notify_event_username),
     TwoFactor("2fa", setOf("2fa_enabled", "2fa_disabled"), R.string.notify_event_2fa),
     SecurityApp("security_app", setOf("require_app_enabled", "require_app_disabled"), R.string.notify_event_security_app),
+    RecoveryPhrase("recovery_phrase", setOf("recovery_phrase_created", "recovery_phrase_removed", "recovery_phrase_used"), R.string.notify_event_recovery_phrase),
     ;
 
     companion object {
