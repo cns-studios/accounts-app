@@ -49,7 +49,10 @@ class PushRegistrar(
     val events: SharedFlow<PushEvent> = _events.asSharedFlow()
 
     fun start() {
-        if (!isConfigured) return
+        if (!isConfigured) {
+            Log.w(Tag, "push not configured: no Firebase values at build time (app/google-services.json)")
+            return
+        }
         if (FirebaseApp.getApps(context).isEmpty()) {
             FirebaseApp.initializeApp(
                 context,
@@ -73,6 +76,7 @@ class PushRegistrar(
     }
 
     fun onMessage(data: Map<String, String>) {
+        Log.i(Tag, "push received: type=${data["type"]} event=${data["event"]}")
         _events.tryEmit(PushEvent(data))
     }
 
@@ -81,6 +85,7 @@ class PushRegistrar(
         runCatching {
             val token = knownToken ?: currentToken()
             api.registerPush(token, accountEvents = preferences.notifications.value)
+            Log.i(Tag, "push registered with auth: token …${token.takeLast(8)}, account events ${preferences.notifications.value}")
         }.onFailure { Log.w(Tag, "push registration failed: ${it.message}") }
     }
 
