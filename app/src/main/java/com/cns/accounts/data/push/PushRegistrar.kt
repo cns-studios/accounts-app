@@ -84,6 +84,10 @@ class PushRegistrar(
         }.onFailure { Log.w(Tag, "push registration failed: ${it.message}") }
     }
 
+    // firebase-messaging 26 deprecates registration tokens in favour of installation-ID messaging
+    // (register()/onRegistered), which auth's FCM HTTP v1 sender doesn't target. Tokens stay the
+    // default mode, so keep them until auth moves.
+    @Suppress("DEPRECATION")
     private suspend fun currentToken(): String = suspendCancellableCoroutine { cont ->
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { cont.resume(it) }

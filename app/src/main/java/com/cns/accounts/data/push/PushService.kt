@@ -12,6 +12,8 @@ import com.google.firebase.messaging.RemoteMessage
 class PushService : FirebaseMessagingService() {
     private val container get() = (application as CnsApplication).container
 
+    // Registration tokens, see PushRegistrar.currentToken.
+    @Deprecated("Registration-token messaging; see PushRegistrar")
     override fun onNewToken(token: String) {
         container.push.onNewToken(token)
     }
