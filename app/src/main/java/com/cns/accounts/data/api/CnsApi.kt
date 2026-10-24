@@ -69,6 +69,13 @@ class CnsApi(
         authed("POST", "/api/me/mfa/disable", JSONObject().put("password", password).put("code", code))
     }
 
+    // --- push ---
+
+    /** Binds this session to its FCM token; [accountEvents] false keeps only approval pushes. */
+    suspend fun registerPush(token: String, accountEvents: Boolean) {
+        authed("PUT", "/api/me/push", JSONObject().put("token", token).put("platform", "android").put("account_events", accountEvents))
+    }
+
     // --- avatar ---
 
     /** Returns the new avatar URL. */

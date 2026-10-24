@@ -27,6 +27,16 @@ android {
         val accountsWebUrl = providers.gradleProperty("cnsAccountsWebUrl").getOrElse("https://accounts.cns-studios.com")
         buildConfigField("String", "CNS_API_BASE_URL", "\"$apiBaseUrl\"")
         buildConfigField("String", "CNS_ACCOUNTS_WEB_URL", "\"$accountsWebUrl\"")
+
+        // Push (Firebase Cloud Messaging), configured without google-services.json: set the
+        // Firebase Android app's values as Gradle properties (e.g. in ~/.gradle/gradle.properties).
+        // These identify the Firebase project, they are not secrets. Without them the app
+        // builds and runs without push.
+        fun firebase(name: String) = providers.gradleProperty(name).getOrElse("")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase("cnsFirebaseAppId")}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${firebase("cnsFirebaseApiKey")}\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebase("cnsFirebaseProjectId")}\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebase("cnsFirebaseSenderId")}\"")
     }
 
     buildTypes {
@@ -64,6 +74,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.biometric)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

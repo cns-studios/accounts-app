@@ -176,4 +176,23 @@
     <string name="avatar_removed">Avatar removed</string>
     <string name="avatar_invalid">Couldn\'t read that image.</string>
     <string name="fill_all_fields">Fill in all fields.</string>
+
+    <!-- Push notifications -->
+    <string name="notification_channel_account">Account activity</string>
+    <string name="notification_channel_approvals">Approval requests</string>
+    <string name="notify_new_login">New sign-in to your CNS account</string>
+    <string name="notify_password_changed">Your CNS password was changed</string>
+    <string name="notify_username_changed">Your CNS username was changed</string>
+    <string name="notify_2fa_enabled">Two-factor authentication was turned on</string>
+    <string name="notify_2fa_disabled">Two-factor authentication was turned off</string>
+    <string name="notify_require_app_enabled">Require Security App was turned on</string>
+    <string name="notify_require_app_disabled">Require Security App was turned off</string>
+    <string name="notify_account_body">Open CNS Accounts to see where it came from.</string>
+    <string name="notify_approval_title">Sign-in request</string>
+    <string name="notify_approval_body">Tap to allow or deny it.</string>
+    <string name="notify_sendly_title">New Sendly device</string>
+    <string name="notify_sendly_body">A device wants access to your Sendly files. Tap to allow or deny it.</string>
+    <string name="push_unavailable">This build has no push notifications set up.</string>
+    <string name="notifications_blocked">Notifications are blocked for CNS Accounts in Android settings.</string>
+    <string name="notifications_on">Notifications are on</string>
 </resources>

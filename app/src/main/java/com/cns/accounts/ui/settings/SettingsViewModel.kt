@@ -13,6 +13,7 @@ import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
 import com.cns.accounts.data.UnsupportedFeatureException
 import com.cns.accounts.data.UserMessage
+import com.cns.accounts.data.api.AccountUser
 import com.cns.accounts.data.authenticator.TwoFactorState
 import com.cns.accounts.data.securityStatus
 import com.cns.accounts.data.toUserMessage
@@ -46,16 +47,28 @@ class SettingsViewModel(
         account.user,
         twoFactorManager.state,
         container.preferences.biometricUnlock,
+        container.preferences.notifications,
         dialog,
         enablingTwoFactor,
-    ) { user, twoFactorState, biometric, dialog, enabling ->
+    ) { values ->
+        val user = values[0] as AccountUser?
+        val twoFactorState = values[1] as TwoFactorState
+        val biometric = values[2] as Boolean
+        val notifications = values[3] as Boolean
+        @Suppress("UNCHECKED_CAST")
+        val dialog = values[4] as SettingsDialog?
+        val enabling = values[5] as Boolean
         val twoFactor = user?.totpEnabled == true
         SettingsUiState(
             data = SettingsData(
                 profile = Profile(user?.username.orEmpty(), twoFactor, user?.avatarUrl),
                 security = securityStatus(twoFactorEnabled = twoFactor, authenticatorOnDevice = twoFactorState is TwoFactorState.Active),
                 // Shown on while it is being turned on, so the toggle doesn't bounce back meanwhile.
-                toggles = SettingsToggles(biometricUnlock = biometric, twoFactorAuthentication = twoFactor || enabling),
+                toggles = SettingsToggles(
+                    biometricUnlock = biometric,
+                    notifications = notifications,
+                    twoFactorAuthentication = twoFactor || enabling,
+                ),
             ),
             dialog = dialog,
         )
@@ -77,8 +90,15 @@ class SettingsViewModel(
         if (enabled) enableTwoFactor() else openDialog(SettingsDialogKind.DisableTwoFactor)
     }
 
-    // Account-event notifications: waiting on how they get delivered in the background (see docs/api_wiring.md).
-    fun setNotifications(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
+    /** Account-event notifications; the screen has asked for the notification permission first. */
+    fun setNotifications(enabled: Boolean) {
+        if (enabled && !container.push.isConfigured) {
+            messages.show(R.string.push_unavailable)
+            return
+        }
+        container.preferences.setNotifications(enabled)
+        if (enabled) messages.show(R.string.notifications_on)
+    }
     fun setRequireSecurityApp(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
     fun setupRecoveryPhrase() = unsupported()
 

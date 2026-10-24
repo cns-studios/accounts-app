@@ -1,5 +1,7 @@
 package com.cns.accounts.navigation
 
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -172,6 +174,10 @@ private fun SettingsRoute(container: AppContainer, highlight: String?, onBack: (
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.uploadAvatar(uri)
     }
+    // Android 13+ asks before an app may post notifications.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) viewModel.setNotifications(true) else container.messages.show(R.string.notifications_blocked)
+    }
     val biometricTitle = stringResource(R.string.enable_biometric_prompt_title)
     val biometricSubtitle = stringResource(R.string.biometric_prompt_subtitle)
     SettingsScreen(
@@ -185,7 +191,13 @@ private fun SettingsRoute(container: AppContainer, highlight: String?, onBack: (
                 else -> Biometrics.authenticate(context, biometricTitle, biometricSubtitle, onSuccess = { viewModel.setBiometricUnlock(true) })
             }
         },
-        onToggleNotifications = viewModel::setNotifications,
+        onToggleNotifications = { enabled ->
+            if (enabled && Build.VERSION.SDK_INT >= 33 && !container.notifier.canPost()) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                viewModel.setNotifications(enabled)
+            }
+        },
         onToggleTwoFactorAuthentication = viewModel::setTwoFactorAuthentication,
         onToggleRequireSecurityApp = viewModel::setRequireSecurityApp,
         onEditUsername = { viewModel.openDialog(SettingsDialogKind.EditUsername) },

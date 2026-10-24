@@ -17,7 +17,18 @@ class AppPreferences(context: Context) {
         _biometricUnlock.value = enabled
     }
 
+    private val _notifications = MutableStateFlow(prefs.getBoolean(NotificationsKey, false))
+
+    /** Account-event notifications (new sign-ins, password changes, ...). */
+    val notifications: StateFlow<Boolean> = _notifications.asStateFlow()
+
+    fun setNotifications(enabled: Boolean) {
+        prefs.edit().putBoolean(NotificationsKey, enabled).apply()
+        _notifications.value = enabled
+    }
+
     private companion object {
         const val BiometricUnlockKey = "biometric_unlock"
+        const val NotificationsKey = "notifications"
     }
 }

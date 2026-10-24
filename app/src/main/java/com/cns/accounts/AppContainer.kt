@@ -10,6 +10,8 @@ import com.cns.accounts.data.api.CnsApi
 import com.cns.accounts.data.api.HttpTransport
 import com.cns.accounts.data.authenticator.AuthenticatorStore
 import com.cns.accounts.data.authenticator.TwoFactorManager
+import com.cns.accounts.data.push.Notifier
+import com.cns.accounts.data.push.PushRegistrar
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.data.session.SecureStore
 import com.cns.accounts.data.session.SessionManager
@@ -39,6 +41,8 @@ class AppContainer(context: Context) {
     val serviceLinks = ServiceLinks()
     val messages = UserMessages()
     val appLock = AppLock(preferences)
+    val notifier = Notifier(context)
+    val push = PushRegistrar(context, api, session, preferences, appScope)
 
     init {
         // Whatever ended the session (sign-out, account deletion, a refresh token the server
@@ -49,6 +53,7 @@ class AppContainer(context: Context) {
                 account.clear()
             }
         }
+        push.start()
 
     }
 }

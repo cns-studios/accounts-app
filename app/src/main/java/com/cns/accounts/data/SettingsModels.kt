@@ -20,8 +20,8 @@ data class SecurityStatus(
 )
 
 // settings.tokens.json (Frame30): each row is a label (some with a help glyph) paired with a
-// toggle. Biometric unlock is device-local and 2FA mirrors the account; notifications and
-// "require security app" have no backing yet, so they always read off.
+// toggle. Biometric unlock and notifications are device settings (notifications are delivered
+// by push, see data/push), 2FA and "require security app" mirror the account.
 @Immutable
 data class SettingsToggles(
     val biometricUnlock: Boolean = false,
