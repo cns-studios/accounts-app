@@ -55,7 +55,8 @@ import java.time.format.DateTimeFormatter
 // TEMP_SERVICE_CARD_TOKENS: the Services card (#2D2D2D, 17dp radius, 14dp padding, 18dp gaps).
 // - StateDefault: "Services" (20sp) over rows 5dp apart — service name (24sp medium) and a
 //   chevron-right in a #1A1A1A circle (8dp padding).
-// - StateAlert: a row with a pending login request gets a red time ("now") after its name.
+// - StateAlert: a row with a pending login request gets a red dot after its name (the setup dot
+//   in the service accent red).
 // - StateApp (row tapped): the service name as the header with a chevron-left to go back, "Last
 //   used" (20sp) over the date (24sp, "01.01.2027 - 00:00"), and a full-width 41dp button: red
 //   (#C8102E) "Disconnect", or white "Set Up" for a service waiting to be set up.
@@ -148,8 +149,8 @@ private fun ServiceRow(service: Service, onClick: () -> Unit) {
             )
             val request = service.loginRequest
             when {
-                request != null -> Text(relativeTime(request.createdAt), color = colors.serviceAccent, style = RequestMetaText)
-                service.needsSetup -> SetupDot()
+                request != null -> StatusDot(colors.serviceAccent, stringResource(R.string.login_request))
+                service.needsSetup -> StatusDot(SetupDot, stringResource(R.string.service_needs_setup))
             }
         }
         ChevronButton(TokenIconKind.ChevronRight, contentDescription = null)
@@ -157,14 +158,13 @@ private fun ServiceRow(service: Service, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SetupDot() {
-    val label = stringResource(R.string.service_needs_setup)
+private fun StatusDot(color: Color, label: String) {
     Box(
         modifier = Modifier
             .padding(start = 3.dp)
             .size(8.dp)
             .clip(CircleShape)
-            .background(SetupDot)
+            .background(color)
             .semantics { contentDescription = label },
     )
 }
