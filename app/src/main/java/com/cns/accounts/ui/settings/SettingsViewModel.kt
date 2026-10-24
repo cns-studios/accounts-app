@@ -155,10 +155,10 @@ class SettingsViewModel(
         dialog.value = SettingsDialog(kind, values)
     }
 
-    /** "Configure 2FA" in the profile menu: set it up when off, turn it off when on. */
-    fun configureTwoFactor() = openDialog(
-        if (uiState.value.data.toggles.twoFactorAuthentication) SettingsDialogKind.DisableTwoFactor else SettingsDialogKind.ConfigureTwoFactor,
-    )
+    /** "Configure 2FA" in the profile menu: set it up when off, turn it off (same checks as the toggle) when on. */
+    fun configureTwoFactor() {
+        if (uiState.value.data.toggles.twoFactorAuthentication) setTwoFactorAuthentication(false) else openDialog(SettingsDialogKind.ConfigureTwoFactor)
+    }
 
     fun updateField(index: Int, value: String) = dialog.update { current ->
         current?.copy(values = current.values.toMutableList().also { if (index in it.indices) it[index] = value }, error = null)

@@ -49,8 +49,29 @@ class TwoFactorManager(
         scope.launch { account.user.collect(::reconcile) }
     }
 
-    /** The current code for the signed-in account, if this device holds its key. */
-    fun currentCode(): String? = liveEntry()?.codeAt(System.currentTimeMillis())
+    // Codes this app sent recently. auth-v2 rejects a code for a minute after accepting it once
+    // (per account, not per key), so two actions in the same 30s step (turning 2FA on, then off
+    // again) used to fail the second one. It also accepts the next step's code, which is the
+    // fresh one to send instead.
+    private val sentCodes = HashMap<String, Long>()
+
+    /** A code for the signed-in account that this app hasn't sent in the last minute, if this device holds its key. */
+    fun currentCode(): String? {
+        val entry = liveEntry() ?: return null
+        val now = System.currentTimeMillis()
+        val code = listOf(now, now + Totp.PeriodMillis).mapNotNull(entry::codeAt).firstOrNull { it !in recentlySent(now) }
+            ?: entry.codeAt(now)
+            ?: return null
+        markSent(code, now)
+        return code
+    }
+
+    private fun recentlySent(now: Long): Set<String> = synchronized(sentCodes) {
+        sentCodes.values.removeAll { now - it > ReplayWindowMillis }
+        sentCodes.keys.toSet()
+    }
+
+    private fun markSent(code: String, now: Long) = synchronized(sentCodes) { sentCodes[code] = now }
 
     /** Turns 2FA on with this app as the authenticator. */
     suspend fun enable() {
@@ -58,6 +79,7 @@ class TwoFactorManager(
         val setup = api.setupTwoFactor()
         val code = Totp.decodeBase32(setup.secret)?.let { Totp.code(it, System.currentTimeMillis()) }
             ?: error("auth returned an unreadable 2FA key")
+        markSent(code, System.currentTimeMillis())
         val enrolledAt = api.confirmTwoFactor(code)
         // Key first, then the profile flag, so the card never sees "on, but no key here".
         store.save(AuthenticatorEntry(setup.secret, user.id, user.username, enrolledAt))
@@ -117,6 +139,8 @@ class TwoFactorManager(
 
     private companion object {
         const val FreshEnrollmentMillis = 120_000L
+        // auth-v2's used-code TTL (60s) plus slack for clock drift.
+        const val ReplayWindowMillis = 90_000L
     }
 }
 
