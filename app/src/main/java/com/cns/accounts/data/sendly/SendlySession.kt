@@ -16,7 +16,7 @@ import java.security.SecureRandom
 import java.util.Base64
 
 /**
- * This app signed in to Sendly: a CNS token issued to the `Sendly` OAuth client, the way Sendly's
+ * This app signed in to Sendly: a CNS token issued to the `sendly` OAuth client, the way Sendly's
  * own clients get one, but without a browser. The app's CNS session asks auth for an
  * authorization code (PKCE, redirect URI [RedirectUri] registered on the client) and exchanges it.
  * The refresh token is kept per account in [SecureStore] and rotated like the app's own.
@@ -85,9 +85,10 @@ class SendlySession(
     private fun refreshKey(userId: Long) = "sendly_refresh_$userId"
 
     companion object {
-        const val ClientId = "Sendly"
+        // The OAuth client's id in auth (its display name is "Sendly"); Sendly's CNS_AUTH_CLIENT_ID.
+        const val ClientId = "sendly"
 
-        /** Must be listed on the `Sendly` OAuth client in auth (admin panel). Never opened: no browser. */
+        /** Must be listed on the `sendly` OAuth client in auth (admin panel). Never opened: no browser. */
         const val RedirectUri = "cnsaccounts://sendly-callback"
     }
 }

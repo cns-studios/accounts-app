@@ -74,7 +74,7 @@ credentials step → the 2FA step; Create Account → the web sign-up.
   approver is another phone it waits ("Approve sign-in"), with the 2FA code as the lost-phone
   fallback (which turns the requirement off).
 - **Sendly approver** (`data/ServiceLinks.kt`, `data/sendly`, Sendly
-  `docs/CNS_ACCOUNTS_APPROVER.md`): Set Up signs the app in to the `Sendly` OAuth client with its
+  `docs/CNS_ACCOUNTS_APPROVER.md`): Set Up signs the app in to the `sendly` OAuth client with its
   own session (PKCE, redirect URI `cnsaccounts://sendly-callback` must be on that client),
   registers an RSA-OAEP-2048 device of kind `approver`, and waits for a trusted Sendly device to
   approve it (code shown, Abort withdraws). The identity key it receives stays Keystore-encrypted.

@@ -43,7 +43,7 @@ setting is on. Server side: auth `docs/APPROVALS.md`; app side: `data/approvals`
 
 ## 4. Sendly: this app as a trusted device that approves Sendly logins — implemented
 
-Built as agreed: a Sendly-scoped token through the `Sendly` OAuth client (needs the redirect URI
+Built as agreed: a Sendly-scoped token through the `sendly` OAuth client (needs the redirect URI
 `cnsaccounts://sendly-callback` on that client), the identity key kept on the phone encrypted
 under a Keystore key, client id `Sendly`. Server side: Sendly `docs/CNS_ACCOUNTS_APPROVER.md`;
 app side: `docs/api_wiring.md`.

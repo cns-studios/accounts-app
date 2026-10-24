@@ -37,7 +37,7 @@ data class SendlyPendingEnrollment(
 
 /**
  * Sendly's device routes for Android clients (`/android/me/devices/...`, bearer-authenticated
- * with a CNS access token issued to the `Sendly` client, see [SendlySession]). Sendly answers
+ * with a CNS access token issued to the `sendly` client, see [SendlySession]). Sendly answers
  * errors as `{error, code}`, mapped to [ApiException] like auth's.
  */
 class SendlyApi(private val session: SendlySession) {
