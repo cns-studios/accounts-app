@@ -1,11 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Status-bar icon: a shield (monochrome, tinted by the system). -->
+<!-- Status-bar icon: the CNS wordmark (monochrome, tinted by the system). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,1L3,5v6c0,5.55 3.84,10.74 9,12 5.16,-1.26 9,-6.45 9,-12L21,5l-9,-4z" />
+    android:viewportWidth="190"
+    android:viewportHeight="190">
+    <group
+        android:translateX="-30"
+        android:translateY="-30">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M98.1924,110.154V94L69.9232,94.2019C57.8075,94.4038 36.0002,102.279 36,125.096C35.9998,148.519 59.2212,156.192 69.9232,157H98.1924V140.846H69.9232C64.9424,140.106 55.3847,135.763 55.3847,125.904C55.3847,116.01 65.2116,111.298 69.9232,110.154H98.1924Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M100.212,157V94H119.596L138.375,127.115V122.673C142.252,130.588 152.51,132.971 157.154,133.173V157H138.173L118.385,122.673V157H100.212Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M138.577,116.615V94H157.154C157.154,96.8269 156.992,114.758 157.154,116.212C157.315,117.665 158.769,118.837 160.788,119.038L191.077,119.24C201.577,119.442 213.692,122.067 213.692,137.413C213.692,152.76 198.683,156.865 191.077,157H159.173V140.846H191.077C192.288,140.846 194.711,139.958 194.711,136.404C194.711,132.85 192.288,131.558 191.077,131.356H156.75C142.413,129.538 139.788,121.865 138.577,116.615Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M159.577,110.154V94H212.077L199.872,110.154H159.577Z" />
+    </group>
 </vector>
