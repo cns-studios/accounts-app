@@ -11,6 +11,7 @@ navigationCompose = "2.9.4"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
 biometric = "1.1.0"
+fragment = "1.8.5"
 firebaseBom = "35.1.0"
 orgJson = "20240303"
 
@@ -34,6 +35,8 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+# biometric 1.1.0 pulls in fragment 1.2.5, whose FragmentActivity rejects the Activity Result API's request codes.
+androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 # org.json is only stubbed in android.jar; JVM unit tests get the real one.

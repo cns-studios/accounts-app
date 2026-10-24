@@ -93,6 +93,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
