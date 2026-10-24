@@ -139,6 +139,37 @@ class CnsApi(
         authed("DELETE", "/api/me/approver", JSONObject().putOpt("approval_id", approvalId))
     }
 
+    // --- signing this app in to another CNS app (Sendly) ---
+
+    /**
+     * Asks auth for an authorization code for [clientId] on this session (no browser: the
+     * session is the sign-in). With Require Security App on, the answer is an approval first.
+     */
+    suspend fun authorizeClient(clientId: String, redirectUri: String, codeChallenge: String, state: String): ClientAuthorization {
+        val body = JSONObject()
+            .put("response_type", "code")
+            .put("client_id", clientId)
+            .put("redirect_uri", redirectUri)
+            .put("code_challenge", codeChallenge)
+            .put("code_challenge_method", "S256")
+            .put("scope", "openid profile")
+            .put("state", state)
+        return ClientAuthorization.fromJson(authed("POST", "/api/auth/authorize", body))
+    }
+
+    suspend fun exchangeCode(code: String, codeVerifier: String, clientId: String, redirectUri: String, state: String): TokenPair {
+        val body = JSONObject()
+            .put("code", code)
+            .put("code_verifier", codeVerifier)
+            .put("client_id", clientId)
+            .put("redirect_uri", redirectUri)
+            .put("state", state)
+        return TokenPair.fromJson(call("POST", "/api/auth/token", body))
+    }
+
+    suspend fun refreshClientToken(refreshToken: String, clientId: String): TokenPair =
+        TokenPair.fromJson(call("POST", "/api/auth/token/refresh", JSONObject().put("refresh_token", refreshToken).put("client_id", clientId)))
+
     // --- avatar ---
 
     /** Returns the new avatar URL. */

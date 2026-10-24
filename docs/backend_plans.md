@@ -41,40 +41,9 @@ requirement off), no number matching, the fingerprint/screen lock only when the 
 setting is on. Server side: auth `docs/APPROVALS.md`; app side: `data/approvals` (see
 `docs/api_wiring.md`).
 
-## 4. Sendly: this app as a trusted device that approves Sendly logins
+## 4. Sendly: this app as a trusted device that approves Sendly logins — implemented
 
-Sendly already has what's needed under `/android/...` (device registration, enrollments,
-approve/reject, WebSockets for pending approvals). The app would:
-
-1. **Sign in to Sendly**: get a token Sendly accepts (see question 1), register a device
-   (`POST /android/me/devices/register`) with a fresh RSA-OAEP-2048 key pair, label
-   "CNS Accounts on <model>". The private key is generated in software and stored encrypted
-   with a Keystore AES-GCM key (Keystore's own RSA-OAEP only does MGF1-SHA1 before Android 14,
-   which can't decrypt WebCrypto's MGF1-SHA256 envelopes).
-2. **Get approved**: `POST /android/me/devices/enrollments` → the "approve this app from a
-   trusted Sendly device" modal with the verification code and Abort → wait on
-   `/android/me/devices/enrollments/{id}/ws` → register again to receive the identity-key
-   envelope → unwrap (RSA-OAEP-2048 + AES-GCM-256, same as `crypto.js`) and store it encrypted,
-   unlockable only after biometric auth.
-3. **Approve others**: pending enrollments (WebSocket while open, push otherwise) show as the
-   Sendly login request (device + code). Allow → biometric → unwrap identity key → wrap it for
-   the requesting device's public key → `POST .../enrollments/{id}/approve` with the
-   verification code, exactly like the web approve flow. Deny → `.../reject`.
-
-**Proposed Sendly changes** (branch `cns-accounts-2fa`, plan only so far):
-- Let a requesting device cancel its own pending enrollment (the modal's Abort); today only a
-  trusted device can reject.
-- Let a device remove itself (Disconnect / sign-out in the CNS app).
-- A device kind (`approver`) so the web lists it as "CNS Accounts" and it is never offered as a
-  file-access device.
-- Push for new enrollments (shares section 2's channel).
-
-**Open questions**
-1. Token: use the CNS app's own access token (works today, but relies on Sendly accepting any
-   CNS client's token, the open issue from the last Sendly audit), or a real Sendly login
-   (`/api/auth/authorize` with the app's bearer + PKCE for the `sendly` client, which needs a
-   redirect URI for the app or a public-client exchange)? The second lets Sendly then reject
-   other clients' tokens.
-2. The app will hold the Sendly identity key, i.e. it could decrypt the account's files (it
-   won't show any). Acceptable, given it's encrypted at rest and biometric-gated?
-3. What is Sendly's production `client_id` in auth (the app matches `sendly` or the name)?
+Built as agreed: a Sendly-scoped token through the `Sendly` OAuth client (needs the redirect URI
+`cnsaccounts://sendly-callback` on that client), the identity key kept on the phone encrypted
+under a Keystore key, client id `Sendly`. Server side: Sendly `docs/CNS_ACCOUNTS_APPROVER.md`;
+app side: `docs/api_wiring.md`.

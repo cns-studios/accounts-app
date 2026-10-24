@@ -30,6 +30,14 @@ sealed interface HomeDialog {
     ) : HomeDialog
     data class DisconnectApp(val service: Service, val isBusy: Boolean = false) : HomeDialog
 
-    /** "Set Up" on a service (Sendly): explains what it does, then runs it. */
-    data class SetUpService(val service: Service, val isBusy: Boolean = false, val error: UserMessage? = null) : HomeDialog
+    /**
+     * "Set Up" on a service (Sendly): explains what it does, then runs it. [waitingCode]: this app
+     * now waits for a trusted Sendly device to approve it, which shows the same code.
+     */
+    data class SetUpService(
+        val service: Service,
+        val isBusy: Boolean = false,
+        val error: UserMessage? = null,
+        val waitingCode: String? = null,
+    ) : HomeDialog
 }

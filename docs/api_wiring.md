@@ -73,6 +73,14 @@ credentials step → the 2FA step; Create Account → the web sign-up.
   the decision. The app approves its own sign-in and its own gated changes itself; when the
   approver is another phone it waits ("Approve sign-in"), with the 2FA code as the lost-phone
   fallback (which turns the requirement off).
+- **Sendly approver** (`data/ServiceLinks.kt`, `data/sendly`, Sendly
+  `docs/CNS_ACCOUNTS_APPROVER.md`): Set Up signs the app in to the `Sendly` OAuth client with its
+  own session (PKCE, redirect URI `cnsaccounts://sendly-callback` must be on that client),
+  registers an RSA-OAEP-2048 device of kind `approver`, and waits for a trusted Sendly device to
+  approve it (code shown, Abort withdraws). The identity key it receives stays Keystore-encrypted.
+  New Sendly devices then show as the login request on the Sendly row; Allow wraps the identity
+  key for them (screen lock first when biometric unlock is on), Deny rejects. Disconnect also
+  removes the device from Sendly. Build against a local Sendly with `-PcnsSendlyUrl=...`.
 - **Security center**: computed on device — 2FA on, password (always), App = this device holds
   the CNS authenticator key, recovery phrase (never; see below).
 - **Search**: local index over settings entries + loaded account activity.
@@ -81,7 +89,6 @@ credentials step → the 2FA step; Create Account → the web sign-up.
 
 | UI | What's missing in auth-v2 | Current behaviour |
 | --- | --- | --- |
-| Sendly Set Up, Sendly login requests (Services card) | this app as a trusted Sendly device (`docs/backend_plans.md` §4) | Sendly always shows the orange "not set up" dot; Continue in its Set Up dialog reports "not available yet" |
 | Recovery phrase "Setup" | recovery phrase storage/verification | snackbar "not available yet" |
 | Search: Help / Q&A results | Help Center at help.cns-studios.com (+ its index) | kinds and icons exist, nothing produces them |
 

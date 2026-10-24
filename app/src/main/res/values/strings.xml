@@ -223,4 +223,14 @@
     <string name="login_approval_subtitle">Open CNS Accounts on your phone and allow this sign-in.</string>
     <string name="login_approval_use_code">Use a 2FA code instead</string>
     <string name="two_factor_subtitle_fallback">Signing in with a code turns Require Security App off. Turn it on again on your new phone.</string>
+
+    <!-- Sendly approver -->
+    <string name="sendly_not_set_up">Set up Sendly in this app first.</string>
+    <string name="sendly_not_ready">Open Sendly in a browser once to set up its encryption, then try again.</string>
+    <string name="sendly_enrollment_expired">The request expired before a Sendly device approved it. Try again.</string>
+    <string name="sendly_enrollment_denied">The request was denied on Sendly.</string>
+    <string name="sendly_waiting_title">Approve this app</string>
+    <string name="sendly_waiting_subtitle">Open Sendly on a device you already use and allow this app. Check that it shows this code:</string>
+    <string name="abort">Abort</string>
+    <string name="sendly_set_up">Sendly is set up</string>
 </resources>

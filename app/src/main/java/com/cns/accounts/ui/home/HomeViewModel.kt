@@ -17,6 +17,7 @@ import com.cns.accounts.data.toUserMessage
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.ui.history.HistoryUiState
 import com.cns.accounts.ui.history.isUserFacingEvent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -39,6 +40,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     private val local = MutableStateFlow(LocalState())
     private var loadMoreJob: Job? = null
+    private var setUpJob: Job? = null
 
     private val homeData = combine(
         account.user,
@@ -110,6 +112,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 async { runCatching { account.refreshConnectedApps() } },
                 async { runCatching { account.refreshActivity() } },
                 async { runCatching { container.approvals.refresh() } },
+                async { runCatching { container.serviceLinks.refresh() } },
             ).awaitAll().mapNotNull { it.exceptionOrNull() }
             // Parallel calls usually fail for the same reason (offline): report it once.
             failures.firstOrNull()?.let(messages::show)
@@ -172,12 +175,18 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         when (val dialog = local.value.dialog) {
             is HomeDialog.TransferTwoFactor -> transferTwoFactor(dialog)
             is HomeDialog.DisconnectApp -> disconnect(dialog)
-            is HomeDialog.SetUpService -> setUpService(dialog)
+            is HomeDialog.SetUpService -> if (dialog.waitingCode != null) abortSetUp() else setUpService(dialog)
             null -> Unit
         }
     }
 
-    fun dismissDialog() = local.update { state ->
+    fun dismissDialog() {
+        // Closing the "approve this app" step withdraws the request.
+        if ((local.value.dialog as? HomeDialog.SetUpService)?.waitingCode != null) return abortSetUp()
+        dismissIdleDialog()
+    }
+
+    private fun dismissIdleDialog() = local.update { state ->
         val busy = when (val dialog = state.dialog) {
             is HomeDialog.DisconnectApp -> dialog.isBusy
             is HomeDialog.TransferTwoFactor -> dialog.isBusy
@@ -228,22 +237,61 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private fun respondToServiceLogin(service: Service, approve: Boolean) {
         val request = service.loginRequest ?: return
         viewModelScope.launch {
-            runCatching { container.serviceLinks.respondToSendlyLogin(request, approve) }.onFailure(messages::show)
+            runCatching { container.serviceLinks.respondToSendlyLogin(request, approve) }
+                .onSuccess { messages.show(if (approve) R.string.request_allowed else R.string.request_denied) }
+                .onFailure(messages::show)
         }
     }
 
+    /** Continue: sign in to Sendly and join as an approver device, waiting for approval if needed. */
     private fun setUpService(dialog: HomeDialog.SetUpService) {
         if (dialog.isBusy) return
         local.update { it.copy(dialog = dialog.copy(isBusy = true, error = null)) }
-        viewModelScope.launch {
-            runCatching { container.serviceLinks.beginSendlySetup() }
-                .onFailure { error -> local.update { it.copy(dialog = dialog.copy(isBusy = false, error = error.toUserMessage())) } }
+        setUpJob = viewModelScope.launch {
+            // While a trusted Sendly device has to approve this app, show the code it will show.
+            val codeWatcher = launch {
+                container.serviceLinks.sendly.collect { link ->
+                    val code = link.enrollment?.verificationCode
+                    local.update { state ->
+                        val current = state.dialog as? HomeDialog.SetUpService ?: return@update state
+                        state.copy(dialog = current.copy(waitingCode = code, isBusy = code == null))
+                    }
+                }
+            }
+            val result = try {
+                runCatching { container.serviceLinks.beginSendlySetup(onWaiting = { messages.show(R.string.approval_waiting) }) }
+            } finally {
+                // Stopped before the outcome is shown, so a late update can't mark the dialog busy again.
+                codeWatcher.cancel()
+            }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            result
+                .onSuccess {
+                    local.update { it.copy(dialog = null) }
+                    messages.show(R.string.sendly_set_up)
+                }
+                .onFailure { error ->
+                    local.update { state ->
+                        val current = state.dialog as? HomeDialog.SetUpService ?: return@update state
+                        state.copy(dialog = current.copy(isBusy = false, waitingCode = null, error = error.toUserMessage()))
+                    }
+                }
         }
+    }
+
+    private fun abortSetUp() {
+        setUpJob?.cancel()
+        local.update { it.copy(dialog = null) }
+        viewModelScope.launch { runCatching { container.serviceLinks.abortSendlySetup() } }
     }
 
     private fun disconnect(dialog: HomeDialog.DisconnectApp) {
         local.update { it.copy(dialog = dialog.copy(isBusy = true)) }
         viewModelScope.launch {
+            // A set-up Sendly also drops this app as a Sendly device and its key copy.
+            if (isSendly(dialog.service.id, dialog.service.name) && container.serviceLinks.sendly.value.isSetUp) {
+                runCatching { container.serviceLinks.disconnectSendly() }
+            }
             runCatching { account.disconnectApp(dialog.service.id) }
                 .onSuccess {
                     messages.show(R.string.app_disconnected)

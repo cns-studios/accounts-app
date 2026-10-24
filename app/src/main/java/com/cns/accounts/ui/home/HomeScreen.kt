@@ -377,15 +377,27 @@ private fun HomeDialogHost(
             onDismissRequest = onDismiss,
             onPrimaryAction = onConfirm,
         )
-        is HomeDialog.SetUpService -> ActionDialog(
-            title = stringResource(R.string.set_up_service_title, dialog.service.name),
-            subtitle = stringResource(R.string.set_up_sendly_subtitle),
-            primaryButtonLabel = stringResource(R.string.continue_label),
-            errorText = dialog.error?.resolve(LocalContext.current),
-            isBusy = dialog.isBusy,
-            onDismissRequest = onDismiss,
-            onPrimaryAction = onConfirm,
-        )
+        is HomeDialog.SetUpService -> if (dialog.waitingCode != null) {
+            // Waiting for a trusted Sendly device; the button withdraws the request.
+            ActionDialog(
+                title = stringResource(R.string.sendly_waiting_title),
+                subtitle = stringResource(R.string.sendly_waiting_subtitle),
+                detail = dialog.waitingCode.chunked(3).joinToString(" "),
+                primaryButtonLabel = stringResource(R.string.abort),
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+        } else {
+            ActionDialog(
+                title = stringResource(R.string.set_up_service_title, dialog.service.name),
+                subtitle = stringResource(R.string.set_up_sendly_subtitle),
+                primaryButtonLabel = stringResource(R.string.continue_label),
+                errorText = dialog.error?.resolve(LocalContext.current),
+                isBusy = dialog.isBusy,
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+        }
         null -> Unit
     }
 }

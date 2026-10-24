@@ -39,6 +39,9 @@ fun Throwable.toUserMessage(): UserMessage = when (this) {
     is ApprovalDeniedException -> UserMessage(resId = R.string.approval_denied)
     is ApprovalExpiredException -> UserMessage(resId = R.string.approval_expired)
     is ApprovalCancelledException -> UserMessage(resId = R.string.approval_cancelled)
+    is SendlyNotSetUpException -> UserMessage(resId = R.string.sendly_not_set_up)
+    is SendlyNotReadyException -> UserMessage(resId = R.string.sendly_not_ready)
+    is SendlyEnrollmentEndedException -> UserMessage(resId = if (expired) R.string.sendly_enrollment_expired else R.string.sendly_enrollment_denied)
     is ApiException -> when {
         isRateLimited -> UserMessage(resId = R.string.error_rate_limited)
         status >= 500 -> UserMessage(resId = R.string.error_server)

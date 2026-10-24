@@ -108,6 +108,21 @@ data class ApprovalChallenge(
     }
 }
 
+/** `POST /api/auth/authorize` on a session: a code, or (Require Security App) an approval first. */
+sealed interface ClientAuthorization {
+    data class Code(val code: String) : ClientAuthorization
+    data class ApprovalRequired(val approval: ApprovalChallenge) : ClientAuthorization
+
+    companion object {
+        fun fromJson(json: JSONObject): ClientAuthorization {
+            val approval = json.optJSONObject("approval")
+            if (json.optBoolean("requires_approval") && approval != null) return ApprovalRequired(ApprovalChallenge.fromJson(approval))
+            val code = json.optStringOrNull("code") ?: throw ApiException(200, "bad_response", "The server did not return a code")
+            return Code(code)
+        }
+    }
+}
+
 /** What a poll of an [ApprovalChallenge] found. */
 sealed interface ApprovalPoll {
     data object Pending : ApprovalPoll

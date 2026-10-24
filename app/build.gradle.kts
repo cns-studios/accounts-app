@@ -27,6 +27,9 @@ android {
         val accountsWebUrl = providers.gradleProperty("cnsAccountsWebUrl").getOrElse("https://accounts.cns-studios.com")
         buildConfigField("String", "CNS_API_BASE_URL", "\"$apiBaseUrl\"")
         buildConfigField("String", "CNS_ACCOUNTS_WEB_URL", "\"$accountsWebUrl\"")
+        // Sendly, for this app as a trusted Sendly device (-PcnsSendlyUrl=... for a local one).
+        val sendlyUrl = providers.gradleProperty("cnsSendlyUrl").getOrElse("https://sendly.cns-studios.com")
+        buildConfigField("String", "SENDLY_BASE_URL", "\"$sendlyUrl\"")
 
         // Push (Firebase Cloud Messaging). The Firebase values come from app/google-services.json
         // (downloaded from the Firebase console, kept out of git), read here instead of through
@@ -93,6 +96,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

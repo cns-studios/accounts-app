@@ -14,6 +14,7 @@ import com.cns.accounts.data.authenticator.AuthenticatorStore
 import com.cns.accounts.data.authenticator.TwoFactorManager
 import com.cns.accounts.data.push.Notifier
 import com.cns.accounts.data.push.PushRegistrar
+import com.cns.accounts.data.sendly.SendlySession
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.data.session.SecureStore
 import com.cns.accounts.data.session.SessionManager
@@ -39,13 +40,15 @@ class AppContainer(context: Context) {
     val authenticator = AuthenticatorStore(secureStore)
     val twoFactor = TwoFactorManager(api, account, authenticator, appScope)
     val preferences = AppPreferences(context)
-    val serviceLinks = ServiceLinks()
     val messages = UserMessages()
     val appLock = AppLock(preferences)
     val notifier = Notifier(context)
     val push = PushRegistrar(context, api, session, preferences, appScope)
     val verification = UserVerification()
     val approvals = Approvals(api, account, ApproverKeys(context), verification, preferences, notifier, appScope)
+    val serviceLinks = ServiceLinks(
+        account, SendlySession(api, account, approvals, secureStore), secureStore, preferences, verification, notifier, appScope,
+    )
 
     init {
         // Whatever ended the session (sign-out, account deletion, a refresh token the server
@@ -63,6 +66,7 @@ class AppContainer(context: Context) {
                 when (event.type) {
                     "approval_request" -> runCatching { approvals.refresh() }
                     "account_event" -> runCatching { account.refreshProfile() }
+                    "service_event" -> runCatching { serviceLinks.refresh() }
                 }
             }
         }
@@ -72,6 +76,7 @@ class AppContainer(context: Context) {
     fun onForeground() {
         if (session.authState.value != AuthState.SignedIn) return
         appScope.launch { runCatching { approvals.refresh() } }
+        appScope.launch { runCatching { serviceLinks.refresh() } }
     }
 }
 

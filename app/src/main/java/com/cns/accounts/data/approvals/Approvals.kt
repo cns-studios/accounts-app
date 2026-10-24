@@ -102,14 +102,23 @@ class Approvals(
         } catch (e: ApiException) {
             e.approval?.takeIf { e.code == "approval_required" } ?: throw e
         }
+        approveOrAwait(challenge, onWaiting)
+        return action(challenge.id)
+    }
+
+    /**
+     * Gets [challenge] (an action of the signed-in account) approved: by this device itself when it
+     * is the approver, otherwise by waiting for the approver ([onWaiting] first). Returns the poll
+     * result, which for a single sign-on carries the code.
+     */
+    suspend fun approveOrAwait(challenge: ApprovalChallenge, onWaiting: () -> Unit = {}): ApprovalPoll {
         val user = account.user.value
         if (user != null && keys.has(user.id)) {
             decide(user.id, challenge.id, challenge.action, challenge.nonce, challenge.expiresAtUnix, approve = true)
         } else {
             onWaiting()
-            awaitDecision(challenge)
         }
-        return action(challenge.id)
+        return awaitDecision(challenge)
     }
 
     /** The account id this device can approve a sign-in of [username] for, if it holds that key. */
