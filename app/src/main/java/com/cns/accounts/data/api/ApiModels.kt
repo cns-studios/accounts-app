@@ -17,6 +17,10 @@ data class AccountUser(
     val createdAt: Instant?,
     val lastLoginAt: Instant?,
     val totpEnabled: Boolean,
+    /** When the account's current 2FA key was confirmed; identifies that key. */
+    val totpEnabledAt: Instant? = null,
+    /** Require Security App: sign-ins and sensitive changes wait for the approver device. */
+    val requireAppApproval: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -25,6 +29,8 @@ data class AccountUser(
         .put("created_at", createdAt?.toString() ?: JSONObject.NULL)
         .put("last_login_at", lastLoginAt?.toString() ?: JSONObject.NULL)
         .put("totp_enabled", totpEnabled)
+        .put("totp_enabled_at", totpEnabledAt?.toString() ?: JSONObject.NULL)
+        .put("require_app_approval", requireAppApproval)
 
     companion object {
         fun fromJson(json: JSONObject) = AccountUser(
@@ -34,6 +40,8 @@ data class AccountUser(
             createdAt = json.optInstant("created_at"),
             lastLoginAt = json.optInstant("last_login_at"),
             totpEnabled = json.optBoolean("totp_enabled"),
+            totpEnabledAt = json.optInstant("totp_enabled_at"),
+            requireAppApproval = json.optBoolean("require_app_approval"),
         )
     }
 }
@@ -59,13 +67,44 @@ sealed interface LoginResult {
     data class SignedIn(val tokens: TokenPair, val user: AccountUser?) : LoginResult
     data class TwoFactorRequired(val loginToken: String) : LoginResult
 
+    /**
+     * Require Security App: the sign-in waits for the approver device. [loginToken] is the TOTP
+     * fallback for a lost phone; using it turns the requirement off.
+     */
+    data class ApprovalRequired(val approval: ApprovalChallenge, val loginToken: String?) : LoginResult
+
     companion object {
-        fun fromJson(json: JSONObject): LoginResult =
-            if (json.optBoolean("requires_2fa")) {
-                TwoFactorRequired(json.optString("login_token"))
-            } else {
-                SignedIn(TokenPair.fromJson(json), json.optJSONObject("user")?.let(AccountUser::fromJson))
+        fun fromJson(json: JSONObject): LoginResult {
+            val approval = json.optJSONObject("approval")
+            return when {
+                json.optBoolean("requires_approval") && approval != null ->
+                    ApprovalRequired(ApprovalChallenge.fromJson(approval), json.optStringOrNull("login_token"))
+                json.optBoolean("requires_2fa") -> TwoFactorRequired(json.optString("login_token"))
+                else -> SignedIn(TokenPair.fromJson(json), json.optJSONObject("user")?.let(AccountUser::fromJson))
             }
+        }
+    }
+}
+
+/**
+ * An action waiting for the approver device (auth-v2 Require Security App). [pollToken] lets the
+ * requester follow it; [nonce] and [expiresAtUnix] complete the message the approver signs.
+ */
+data class ApprovalChallenge(
+    val id: String,
+    val pollToken: String,
+    val action: String,
+    val nonce: String,
+    val expiresAtUnix: Long,
+) {
+    companion object {
+        fun fromJson(json: JSONObject) = ApprovalChallenge(
+            id = json.optString("approval_id"),
+            pollToken = json.optString("poll_token"),
+            action = json.optString("action"),
+            nonce = json.optString("nonce"),
+            expiresAtUnix = json.optLong("expires_at_unix"),
+        )
     }
 }
 

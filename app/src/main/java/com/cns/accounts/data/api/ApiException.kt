@@ -11,6 +11,8 @@ class ApiException(
     val status: Int,
     val code: String,
     message: String,
+    /** Set with [code] "approval_required": the action waits for the approver device. */
+    val approval: ApprovalChallenge? = null,
 ) : Exception(message) {
 
     val isUnauthorized: Boolean get() = status == 401
@@ -19,8 +21,10 @@ class ApiException(
     companion object {
         fun from(response: HttpResponse): ApiException {
             val fallbackCode = if (response.status == 401) "unauthorized" else "request_failed"
-            val error = runCatching { JSONObject(response.body).optJSONObject("error") }.getOrNull()
+            val body = runCatching { JSONObject(response.body) }.getOrNull()
+            val error = body?.optJSONObject("error")
             return ApiException(
+                approval = body?.optJSONObject("approval")?.let(ApprovalChallenge::fromJson),
                 status = response.status,
                 code = error?.optString("code")?.takeIf { it.isNotBlank() } ?: fallbackCode,
                 message = error?.optString("message")?.takeIf { it.isNotBlank() } ?: "Request failed (${response.status})",

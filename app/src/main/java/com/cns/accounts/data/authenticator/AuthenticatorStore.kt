@@ -21,6 +21,8 @@ data class AuthenticatorEntry(
     val userId: Long?,
     val username: String,
     val enrolledAt: Long,
+    /** The account's `totp_enabled_at` (epoch ms) for this key; null for keys from older builds. */
+    val keyStamp: Long? = null,
 ) {
     fun codeAt(timeMillis: Long): String? = Totp.decodeBase32(secret)?.let { Totp.code(it, timeMillis) }
 }
@@ -62,6 +64,7 @@ class AuthenticatorStore(private val secureStore: SecureStore) {
                         userId = if (json.isNull("user_id")) null else json.getLong("user_id"),
                         username = json.optString("username"),
                         enrolledAt = json.optLong("enrolled_at"),
+                        keyStamp = if (json.has("key_stamp")) json.getLong("key_stamp") else null,
                     )
                 }
             }.getOrDefault(emptyList())
@@ -96,7 +99,8 @@ class AuthenticatorStore(private val secureStore: SecureStore) {
                     .put("secret", entry.secret)
                     .put("user_id", entry.userId ?: JSONObject.NULL)
                     .put("username", entry.username)
-                    .put("enrolled_at", entry.enrolledAt),
+                    .put("enrolled_at", entry.enrolledAt)
+                    .apply { entry.keyStamp?.let { put("key_stamp", it) } },
             )
         }
         secureStore.put(Key, if (entries.isEmpty()) null else array.toString())

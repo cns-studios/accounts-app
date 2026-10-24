@@ -62,6 +62,10 @@ class TwoFactorManager(
         // Key first, then the profile flag, so the card never sees "on, but no key here".
         store.save(AuthenticatorEntry(setup.secret, user.id, user.username, enrolledAt))
         account.markTwoFactor(enabled = true)
+        // auth stamps the key it just confirmed; keep that stamp to recognise a later re-key.
+        runCatching { account.refreshProfile() }.getOrNull()?.totpEnabledAt?.let { stamp ->
+            store.entryFor(user.id)?.let { store.save(it.copy(keyStamp = stamp.toEpochMilli())) }
+        }
     }
 
     /** Turns 2FA off; [code] may be blank when this device holds the key. */
@@ -103,6 +107,11 @@ class TwoFactorManager(
             // enrolled moments ago is spared, as the profile may have been fetched before it.
             !user.totpEnabled -> if (System.currentTimeMillis() - entry.enrolledAt > FreshEnrollmentMillis) store.remove(entry.userId)
             entry.userId == null || entry.username != user.username -> store.save(entry.copy(userId = user.id, username = user.username))
+            // A key from before auth reported totp_enabled_at: once the activity feed shows it
+            // wasn't replaced, adopt the server's stamp so later re-keys are recognised exactly.
+            entry.keyStamp == null && user.totpEnabledAt != null && account.activity.value.loaded &&
+                !replacedSince(entry, account.activity.value.entries) ->
+                store.save(entry.copy(keyStamp = user.totpEnabledAt.toEpochMilli()))
         }
     }
 
@@ -116,6 +125,11 @@ internal fun resolveTwoFactorState(user: AccountUser?, entry: AuthenticatorEntry
     user ?: return TwoFactorState.Unknown
     if (!user.totpEnabled) return TwoFactorState.NotSetUp
     entry ?: return TwoFactorState.Elsewhere
+    // auth's totp_enabled_at changes with every newly confirmed key: an exact answer.
+    val serverStamp = user.totpEnabledAt?.toEpochMilli()
+    if (serverStamp != null && entry.keyStamp != null) {
+        return if (serverStamp == entry.keyStamp) TwoFactorState.Active(entry.secret) else TwoFactorState.Elsewhere
+    }
     return if (replacedSince(entry, activity)) TwoFactorState.Elsewhere else TwoFactorState.Active(entry.secret)
 }
 

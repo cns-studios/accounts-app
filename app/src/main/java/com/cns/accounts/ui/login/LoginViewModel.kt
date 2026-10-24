@@ -106,6 +106,10 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
                     )
                 }
             }
+            // Require Security App sign-ins are handled with the approver (next change).
+            is LoginResult.ApprovalRequired -> _uiState.update {
+                it.copy(isBusy = false, error = UserMessage(text = "Approve this sign-in in the CNS Accounts app."))
+            }
         }
     }
 

@@ -52,4 +52,26 @@ class TwoFactorStateTest {
         val events = listOf(event("2fa_enabled", enrolledAt.plusSeconds(600)))
         assertEquals(TwoFactorState.Active(legacy.secret), resolveTwoFactorState(user(totp = true), legacy, events))
     }
+
+    @Test
+    fun matchingKeyStampIsActiveRegardlessOfActivity() {
+        val stamped = key.copy(keyStamp = enrolledAt.toEpochMilli())
+        val user = user(totp = true).copy(totpEnabledAt = enrolledAt)
+        val events = listOf(event("2fa_enabled", enrolledAt.plusSeconds(600)))
+        assertEquals(TwoFactorState.Active(key.secret), resolveTwoFactorState(user, stamped, events))
+    }
+
+    @Test
+    fun differentKeyStampIsElsewhereEvenWithoutActivity() {
+        val stamped = key.copy(keyStamp = enrolledAt.toEpochMilli())
+        val user = user(totp = true).copy(totpEnabledAt = enrolledAt.plusSeconds(5))
+        assertEquals(TwoFactorState.Elsewhere, resolveTwoFactorState(user, stamped, emptyList()))
+    }
+
+    @Test
+    fun unstampedKeyFallsBackToTheActivityFeed() {
+        val user = user(totp = true).copy(totpEnabledAt = enrolledAt)
+        val events = listOf(event("2fa_enabled", enrolledAt.plusSeconds(600)))
+        assertEquals(TwoFactorState.Elsewhere, resolveTwoFactorState(user, key, events))
+    }
 }
