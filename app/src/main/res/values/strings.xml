@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">CNS Accounts</string>
     <string name="home">Home</string>
+    <string name="history_tab">History</string>
     <string name="sign_in_request">Sign-in request</string>
     <string name="deny">Deny</string>
     <string name="allow">Allow</string>
@@ -56,6 +57,19 @@
     <!-- App settings -->
     <string name="app_settings_title">Settings</string>
     <string name="about_version_inline">CNS Accounts %1$s (%2$d)</string>
+    <string name="lock_after">Lock after</string>
+    <string name="lock_after_immediately">Immediately</string>
+    <string name="lock_after_30_seconds">30 seconds</string>
+    <string name="lock_after_1_minute">1 minute</string>
+    <string name="lock_after_5_minutes">5 minutes</string>
+    <string name="lock_after_15_minutes">15 minutes</string>
+    <string name="language">Language</string>
+    <string name="language_system">System</string>
+    <string name="notify_event_new_login">New sign-ins</string>
+    <string name="notify_event_password">Password changes</string>
+    <string name="notify_event_username">Username changes</string>
+    <string name="notify_event_2fa">2FA on or off</string>
+    <string name="notify_event_security_app">Security App on or off</string>
 
     <!-- Sign-in -->
     <string name="welcome_title">Welcome to CNS</string>
@@ -117,6 +131,9 @@
     <string name="two_factor_transferred">2FA now runs on this device</string>
     <string name="two_factor_transfer_incomplete">2FA was turned off but couldn\'t be set up here. Tap Set Up to finish.</string>
     <string name="relative_now">now</string>
+    <string name="relative_minutes">%1$dm ago</string>
+    <string name="relative_hours">%1$dh ago</string>
+    <string name="relative_days">%1$dd ago</string>
 
     <!-- History -->
     <string name="history_title">Account activity</string>
@@ -164,6 +181,7 @@
     <string name="search_entry_security_app">Require the security app</string>
     <string name="search_entry_recovery_phrase">Set up a recovery phrase</string>
     <string name="search_entry_security_center">See how secure your account is</string>
+    <string name="search_entry_language">Change the app\'s language</string>
     <string name="search_entry_log_out">Log out of this device</string>
     <string name="search_entry_delete">Delete your account</string>
 

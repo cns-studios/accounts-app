@@ -261,6 +261,19 @@ private fun AppSettingsRoute(container: AppContainer, highlight: String?, onBack
             }
         },
         onLogOut = viewModel::logOut,
+        onLockDelayChange = viewModel::setLockDelay,
+        onToggleEvent = viewModel::setEventNotifications,
+        onLanguageChange = { tag ->
+            viewModel.setLanguage(tag)
+            // Every context picks the language up when it is created: rebuild the activity.
+            context.findActivity()?.recreate()
+        },
         highlight = highlight,
     )
+}
+
+private fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

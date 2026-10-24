@@ -16,9 +16,9 @@ fun relativeTime(instant: Instant?, now: Instant = Instant.now()): String {
     val elapsed = Duration.between(instant, now)
     return when {
         elapsed.toMinutes() < 1 -> stringResource(R.string.relative_now)
-        elapsed.toHours() < 1 -> "${elapsed.toMinutes()}m ago"
-        elapsed.toDays() < 1 -> "${elapsed.toHours()}h ago"
-        elapsed.toDays() < 7 -> "${elapsed.toDays()}d ago"
+        elapsed.toHours() < 1 -> stringResource(R.string.relative_minutes, elapsed.toMinutes())
+        elapsed.toDays() < 1 -> stringResource(R.string.relative_hours, elapsed.toHours())
+        elapsed.toDays() < 7 -> stringResource(R.string.relative_days, elapsed.toDays())
         else -> ShortDate.format(instant.atZone(ZoneId.systemDefault()))
     }
 }

@@ -22,7 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -61,10 +64,19 @@ fun SplashOverlay(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val isLoading by rememberUpdatedState(loading)
+    // The session the app was last revealed for, kept across activity recreation (a language
+    // change), so a recreated activity comes back without replaying the splash.
+    var revealedFor by rememberSaveable { mutableStateOf(NotRevealed) }
+    val sessionTag = sessionKey?.toString().orEmpty()
     // 0 = splash fully up, 1 = app fully revealed.
-    val reveal = remember { Animatable(0f) }
+    val reveal = remember { Animatable(if (revealedFor == sessionTag) 1f else 0f) }
     LaunchedEffect(sessionKey) {
-        if (sessionKey == null && reveal.value > 0f) return@LaunchedEffect
+        if (revealedFor == sessionTag && reveal.value >= 1f) return@LaunchedEffect
+        // Signed out after having been revealed: nothing new to load.
+        if (sessionKey == null && revealedFor != NotRevealed) {
+            revealedFor = sessionTag
+            return@LaunchedEffect
+        }
         if (reveal.value > 0f) reveal.animateTo(0f, tween(SplashReturnMillis, easing = FastOutSlowInEasing))
         val shownAt = System.currentTimeMillis()
         // Offline, cached data is still worth showing: don't hold the app hostage to the network.
@@ -72,6 +84,7 @@ fun SplashOverlay(
         val remaining = MinHoldMillis - (System.currentTimeMillis() - shownAt)
         if (remaining > 0) kotlinx.coroutines.delay(remaining)
         reveal.animateTo(1f, tween(RevealMillis, easing = RevealEasing))
+        revealedFor = sessionTag
     }
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -160,6 +173,7 @@ private fun SplashScreen(reveal: () -> Float) {
     }
 }
 
+private const val NotRevealed = "\u0000"
 private val LogoSize = 168.dp
 private val LogoBase = Color(0xFF4A4A4A)
 private const val SweepMillis = 1100

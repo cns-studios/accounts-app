@@ -344,14 +344,14 @@ private fun SegmentedTabControl(
             active = progress < 0.5f,
             activeFraction = 1f - progress,
             width = homeWidth,
-            label = "Home",
+            label = stringResource(R.string.home),
             onClick = { onTabSelected(HOME_TAB) },
         ) { tint -> TokenDotMark(tint) }
         TabSegment(
             active = progress >= 0.5f,
             activeFraction = progress,
             width = historyWidth,
-            label = "History",
+            label = stringResource(R.string.history_tab),
             onClick = { onTabSelected(HISTORY_TAB) },
         ) { tint -> TokenMiniDotMark(lerp(tint, colors.unreadHighlight, unread)) }
     }

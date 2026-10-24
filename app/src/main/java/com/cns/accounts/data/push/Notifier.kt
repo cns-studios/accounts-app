@@ -12,9 +12,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.cns.accounts.MainActivity
 import com.cns.accounts.R
+import com.cns.accounts.data.AppLanguage
 
 /** Android notifications for account events and requests waiting for this app's approval. */
-class Notifier(private val context: Context) {
+class Notifier(private val appContext: Context) {
+    // In the app's chosen language, even when that changed after the process started.
+    private val context: Context get() = AppLanguage.wrap(appContext)
+
     init {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(

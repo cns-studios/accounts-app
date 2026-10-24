@@ -23,11 +23,12 @@ private val SettingsEntries = listOf(
     SettingsEntry("password", R.string.search_entry_password, "password pw passphrase"),
     SettingsEntry("username", R.string.search_entry_username, "username name rename profile"),
     SettingsEntry("avatar", R.string.search_entry_avatar, "avatar photo picture image profile"),
-    SettingsEntry("biometric", R.string.search_entry_biometric, "biometric fingerprint face unlock lock"),
+    SettingsEntry("biometric", R.string.search_entry_biometric, "biometric fingerprint face unlock lock timeout delay"),
     SettingsEntry("notifications", R.string.search_entry_notifications, "notifications alerts notify push login password username 2fa changes"),
     SettingsEntry("security-app", R.string.search_entry_security_app, "security app approve sign-in request"),
     SettingsEntry("recovery-phrase", R.string.search_entry_recovery_phrase, "recovery phrase backup restore"),
     SettingsEntry("security-center", R.string.search_entry_security_center, "security center score"),
+    SettingsEntry("language", R.string.search_entry_language, "language sprache english deutsch german"),
     SettingsEntry("log-out", R.string.search_entry_log_out, "log out logout sign out signout"),
     SettingsEntry("delete", R.string.search_entry_delete, "delete remove account close"),
 )

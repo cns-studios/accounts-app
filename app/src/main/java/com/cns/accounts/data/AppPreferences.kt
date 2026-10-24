@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Device-local settings that never reach the API. */
 class AppPreferences(context: Context) {
-    private val prefs = context.getSharedPreferences("cns_preferences", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(Name, Context.MODE_PRIVATE)
 
     private val _biometricUnlock = MutableStateFlow(prefs.getBoolean(BiometricUnlockKey, false))
     val biometricUnlock: StateFlow<Boolean> = _biometricUnlock.asStateFlow()
@@ -52,11 +52,46 @@ class AppPreferences(context: Context) {
         _celebratedFactors.value = ids
     }
 
+    private val _lockAfterMillis = MutableStateFlow(prefs.getLong(LockAfterKey, LockDelay.Default.millis))
+
+    /** How long the app may sit in the background before biometric unlock locks it again. */
+    val lockAfterMillis: StateFlow<Long> = _lockAfterMillis.asStateFlow()
+
+    fun setLockAfterMillis(millis: Long) {
+        prefs.edit().putLong(LockAfterKey, millis).apply()
+        _lockAfterMillis.value = millis
+    }
+
+    private val _mutedEvents = MutableStateFlow(prefs.getStringSet(MutedEventsKey, null)?.toSet().orEmpty())
+
+    /** [NotificationEvent] ids the user turned off; everything else notifies while Notifications is on. */
+    val mutedEvents: StateFlow<Set<String>> = _mutedEvents.asStateFlow()
+
+    fun setEventNotifications(event: NotificationEvent, enabled: Boolean) {
+        val muted = if (enabled) _mutedEvents.value - event.id else _mutedEvents.value + event.id
+        prefs.edit().putStringSet(MutedEventsKey, muted).apply()
+        _mutedEvents.value = muted
+    }
+
+    private val _language = MutableStateFlow(prefs.getString(AppLanguage.Key, "").orEmpty())
+
+    /** The app's language tag ("en", "de"), or "" to follow the device. See [AppLanguage]. */
+    val language: StateFlow<String> = _language.asStateFlow()
+
+    fun setLanguage(tag: String) {
+        // commit(), not apply(): the activity is recreated right after and reads it back.
+        prefs.edit().putString(AppLanguage.Key, tag).commit()
+        _language.value = tag
+    }
+
     companion object {
+        const val Name = "cns_preferences"
         const val NotSeen = -1L
         private const val BiometricUnlockKey = "biometric_unlock"
         private const val NotificationsKey = "notifications"
         private const val HistorySeenAtKey = "history_seen_at"
         private const val CelebratedFactorsKey = "celebrated_security_factors"
+        private const val LockAfterKey = "lock_after_millis"
+        private const val MutedEventsKey = "muted_notification_events"
     }
 }

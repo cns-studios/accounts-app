@@ -38,6 +38,7 @@ internal enum class SettingsTarget(val id: String, val itemIndex: Int) {
 internal enum class AppSettingsTarget(val id: String, val itemIndex: Int?) {
     Biometric("biometric", 0),
     Notifications("notifications", 0),
+    Language("language", 0),
     LogOut("log-out", null),
     ;
 

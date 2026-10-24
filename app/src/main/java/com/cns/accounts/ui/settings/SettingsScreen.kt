@@ -228,19 +228,19 @@ private fun ProfileRow(
                     menuExpanded = false
                     action()
                 }
-                ProfileMenuItem(stringResource(R.string.edit_username), TokenIconKind.User, pick(onEditUsername))
-                MenuDivider()
-                ProfileMenuItem(
+                SettingsMenuItem(stringResource(R.string.edit_username), TokenIconKind.User, pick(onEditUsername))
+                SettingsMenuDivider()
+                SettingsMenuItem(
                     stringResource(if (hasAvatar) R.string.change_avatar else R.string.upload_avatar),
                     TokenIconKind.Image,
                     pick(onChangeAvatar),
                 )
                 if (hasAvatar) {
-                    MenuDivider()
-                    ProfileMenuItem(stringResource(R.string.remove_avatar), TokenIconKind.Trash, pick(onRemoveAvatar))
+                    SettingsMenuDivider()
+                    SettingsMenuItem(stringResource(R.string.remove_avatar), TokenIconKind.Trash, pick(onRemoveAvatar))
                 }
-                MenuDivider()
-                ProfileMenuItem(
+                SettingsMenuDivider()
+                SettingsMenuItem(
                     stringResource(if (data.toggles.twoFactorAuthentication) R.string.disable_2fa_menu else R.string.enable_2fa_menu),
                     TokenIconKind.Shield,
                     pick(onConfigureTwoFactor),
@@ -248,32 +248,6 @@ private fun ProfileRow(
             }
         }
     }
-}
-
-/** A compact menu row: an 18dp glyph sized to the 16sp label, with tight vertical padding. */
-@Composable
-private fun ProfileMenuItem(label: String, icon: TokenIconKind, onClick: () -> Unit) {
-    val colors = LocalAppColors.current
-    val haptic = LocalHapticFeedback.current
-    Row(
-        modifier = Modifier
-            .widthIn(min = 196.dp)
-            .clickable(role = Role.Button) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onClick()
-            }
-            .padding(horizontal = 16.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TokenIcon(icon, tint = colors.onSurface, modifier = Modifier.size(18.dp))
-        Text(label, color = colors.onSurface, style = SettingsValueText)
-    }
-}
-
-@Composable
-private fun MenuDivider() {
-    HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = LocalAppColors.current.elevatedSurface)
 }
 
 @Composable

@@ -1,10 +1,12 @@
 package com.cns.accounts
 
+import android.content.Context
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
+import com.cns.accounts.data.AppLanguage
 import com.cns.accounts.navigation.AppRoot
 import com.cns.accounts.ui.lock.Biometrics
 import com.cns.accounts.ui.theme.CNSAccountsTheme
@@ -16,6 +18,11 @@ import kotlin.coroutines.resume
 // A FragmentActivity (not just ComponentActivity) because androidx.biometric's prompt needs one.
 class MainActivity : FragmentActivity() {
     private val container get() = (application as CnsApplication).container
+
+    // The app's own language setting (see AppLanguage); changing it recreates this activity.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguage.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

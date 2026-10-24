@@ -12,18 +12,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -40,6 +47,8 @@ import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
+import com.cns.accounts.ui.theme.LocalRadii
+import com.cns.accounts.ui.theme.SettingsValueText
 import com.cns.accounts.ui.theme.ProfileNameText
 import com.cns.accounts.ui.theme.RequestMetaText
 
@@ -90,6 +99,8 @@ internal fun ToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     helpContentDescription: String? = null,
     helpHint: String? = null,
+    // A secondary row under another setting: smaller, muted label.
+    nested: Boolean = false,
 ) {
     val colors = LocalAppColors.current
     Row(
@@ -97,8 +108,17 @@ internal fun ToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = colors.onSurface, style = RequestMetaText)
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                color = if (nested) colors.dialogSubtitle else colors.onSurface,
+                style = if (nested) SettingsValueText else RequestMetaText,
+                maxLines = 1,
+            )
             if (helpContentDescription != null && helpHint != null) {
                 HelpTooltipIcon(contentDescription = helpContentDescription, hint = helpHint)
             }
@@ -172,5 +192,98 @@ internal fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier 
             maxLines = 1,
             autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 14.sp, maxFontSize = RequestMetaText.fontSize),
         )
+    }
+}
+
+/** A compact menu row: an optional 18dp glyph sized to the 16sp label, with tight vertical padding. */
+@Composable
+internal fun SettingsMenuItem(label: String, icon: TokenIconKind?, onClick: () -> Unit) {
+    val colors = LocalAppColors.current
+    val haptic = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .widthIn(min = 196.dp)
+            .clickable(role = Role.Button) {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) TokenIcon(icon, tint = colors.onSurface, modifier = Modifier.size(18.dp))
+        Text(label, color = colors.onSurface, style = SettingsValueText)
+    }
+}
+
+@Composable
+internal fun SettingsMenuDivider() {
+    HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = LocalAppColors.current.elevatedSurface)
+}
+
+/**
+ * A one-line setting with a choice: the label, and the current value in a small pill that opens
+ * the options as the app's dropdown (the chosen one ticked).
+ */
+@Composable
+internal fun <T> ChoiceRow(
+    modifier: Modifier,
+    label: String,
+    options: List<T>,
+    selected: T,
+    optionLabel: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    nested: Boolean = false,
+) {
+    val colors = LocalAppColors.current
+    val haptic = LocalHapticFeedback.current
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f, fill = false),
+            color = if (nested) colors.dialogSubtitle else colors.onSurface,
+            style = if (nested) SettingsValueText else RequestMetaText,
+            maxLines = 1,
+        )
+        Box {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(colors.elevatedSurface)
+                    .clickable(role = Role.DropdownList) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        expanded = true
+                    }
+                    .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(optionLabel(selected), color = colors.onSurface, style = SettingsValueText, maxLines = 1)
+                TokenIcon(TokenIconKind.ChevronRight, tint = colors.dialogSubtitle, modifier = Modifier.size(16.dp).rotate(90f))
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = colors.surface,
+                shape = RoundedCornerShape(LocalRadii.current.card),
+            ) {
+                options.forEachIndexed { index, option ->
+                    if (index > 0) SettingsMenuDivider()
+                    SettingsMenuItem(
+                        label = optionLabel(option),
+                        icon = if (option == selected) TokenIconKind.Check else null,
+                        onClick = {
+                            expanded = false
+                            if (option != selected) onSelect(option)
+                        },
+                    )
+                }
+            }
+        }
     }
 }

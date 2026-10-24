@@ -84,7 +84,7 @@ class AppContainer(context: Context) {
 
 /**
  * Biometric app lock: when enabled, the app is locked on a cold start and after it has been in
- * the background for [RelockAfterMillis]. Purely device-local; the API knows nothing about it.
+ * the background for the chosen delay ([AppPreferences.lockAfterMillis]). Purely device-local; the API knows nothing about it.
  */
 class AppLock(private val preferences: AppPreferences) {
     private val _locked = MutableStateFlow(preferences.biometricUnlock.value)
@@ -100,12 +100,8 @@ class AppLock(private val preferences: AppPreferences) {
     }
 
     fun onForeground(nowMillis: Long) {
-        if (preferences.biometricUnlock.value && backgroundedAt != 0L && nowMillis - backgroundedAt >= RelockAfterMillis) {
+        if (preferences.biometricUnlock.value && backgroundedAt != 0L && nowMillis - backgroundedAt >= preferences.lockAfterMillis.value) {
             _locked.value = true
         }
-    }
-
-    private companion object {
-        const val RelockAfterMillis = 30_000L
     }
 }
