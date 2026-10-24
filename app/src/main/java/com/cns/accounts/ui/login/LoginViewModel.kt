@@ -7,8 +7,12 @@ import com.cns.accounts.AppContainer
 import com.cns.accounts.R
 import com.cns.accounts.data.UserMessage
 import com.cns.accounts.data.api.ApiException
+import com.cns.accounts.data.api.ApprovalChallenge
+import com.cns.accounts.data.api.ApprovalPoll
 import com.cns.accounts.data.api.LoginResult
 import com.cns.accounts.data.toUserMessage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +27,10 @@ data class LoginUiState(
     // Non-null once the password was accepted and auth-v2 asked for a TOTP code.
     val loginToken: String? = null,
     val codePrefilled: Boolean = false,
+    // Require Security App: the sign-in waits for the approver phone ([loginToken] is the TOTP
+    // fallback). [usingFallback]: the user chose the code instead, which turns the requirement off.
+    val awaitingApproval: Boolean = false,
+    val usingFallback: Boolean = false,
     // false: the welcome page (Log In / Create Account); true: the username/password form.
     val showCredentials: Boolean = false,
     val isBusy: Boolean = false,
@@ -33,10 +41,14 @@ data class LoginUiState(
  * Password sign-in through auth-v2's mobile endpoints (`/api/auth/mobile/login` and `/login/2fa`),
  * which hand the refresh token back in the body for [com.cns.accounts.data.session.SessionManager]
  * to keep. When this device's authenticator holds the account's CNS key, the 2FA step is pre-filled.
+ * With Require Security App on, the sign-in waits for the approver: when that is this phone, it
+ * approves its own sign-in (after the screen-lock check); otherwise it waits, with the 2FA code as
+ * the way out for a lost phone.
  */
 class LoginViewModel(private val container: AppContainer) : ViewModel() {
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private var approvalJob: Job? = null
 
     fun updateUsername(value: String) = _uiState.update { it.copy(username = value, error = null) }
     fun updatePassword(value: String) = _uiState.update { it.copy(password = value, error = null) }
@@ -78,11 +90,23 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
     /** "Log In" on the welcome page. */
     fun showCredentials() = _uiState.update { it.copy(showCredentials = true, error = null) }
 
-    /** Back: from the 2FA step to the form, from the form to the welcome page. */
-    fun back() = _uiState.update { state ->
-        when {
-            state.isBusy -> state
-            state.loginToken != null -> LoginUiState(username = state.username, showCredentials = true)
+    /** "Use a 2FA code instead" while waiting for the approver phone. */
+    fun useCodeInstead() {
+        val state = _uiState.value
+        if (state.loginToken == null) return
+        approvalJob?.cancel()
+        val prefill = deviceCode(state.username)
+        _uiState.update {
+            it.copy(awaitingApproval = false, usingFallback = true, code = prefill.orEmpty(), codePrefilled = prefill != null, isBusy = false, error = null)
+        }
+    }
+
+    /** Back: from the 2FA or approval step to the form, from the form to the welcome page. */
+    fun back() {
+        val state = _uiState.value
+        if (state.awaitingApproval) approvalJob?.cancel() else if (state.isBusy) return
+        _uiState.value = when {
+            state.loginToken != null || state.awaitingApproval -> LoginUiState(username = state.username, showCredentials = true)
             else -> LoginUiState(username = state.username)
         }
     }
@@ -106,9 +130,27 @@ class LoginViewModel(private val container: AppContainer) : ViewModel() {
                     )
                 }
             }
-            // Require Security App sign-ins are handled with the approver (next change).
-            is LoginResult.ApprovalRequired -> _uiState.update {
-                it.copy(isBusy = false, error = UserMessage(text = "Approve this sign-in in the CNS Accounts app."))
+            is LoginResult.ApprovalRequired -> awaitApproval(result.approval, result.loginToken)
+        }
+    }
+
+    private fun awaitApproval(approval: ApprovalChallenge, loginToken: String?) {
+        val approvals = container.approvals
+        val ownUserId = approvals.approverFor(_uiState.value.username)
+        _uiState.update {
+            it.copy(password = "", loginToken = loginToken, awaitingApproval = ownUserId == null, isBusy = ownUserId != null, error = null)
+        }
+        approvalJob = viewModelScope.launch {
+            try {
+                // This phone is the approver: approve the sign-in it just started itself.
+                if (ownUserId != null) approvals.approveOwnSignIn(ownUserId, approval)
+                val done = approvals.awaitDecision(approval) as? ApprovalPoll.Completed
+                    ?: throw ApiException(200, "bad_response", "The server did not return a session")
+                handleResult(LoginResult.fromJson(done.json))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                _uiState.update { LoginUiState(username = it.username, showCredentials = true, error = e.toUserMessage()) }
             }
         }
     }

@@ -74,14 +74,16 @@ class AccountRepository(
         _connectedApps.update { apps -> apps?.filterNot { it.clientId == clientId } }
     }
 
-    suspend fun changeUsername(password: String, newUsername: String) {
+    // [approvalId]: see Approvals.gated (Require Security App).
+
+    suspend fun changeUsername(password: String, newUsername: String, approvalId: String? = null) {
         // auth-v2 revokes the session the request came from and returns a replacement pair.
-        session.establish(api.changeUsername(password, newUsername))
+        session.establish(api.changeUsername(password, newUsername, approvalId))
         refreshProfile()
     }
 
-    suspend fun changePassword(currentPassword: String, newPassword: String) =
-        api.changePassword(currentPassword, newPassword)
+    suspend fun changePassword(currentPassword: String, newPassword: String, approvalId: String? = null) =
+        api.changePassword(currentPassword, newPassword, approvalId)
 
     /** Reflects a 2FA change made through [com.cns.accounts.data.authenticator.TwoFactorManager] without a reload. */
     fun markTwoFactor(enabled: Boolean) {
@@ -103,8 +105,8 @@ class AccountRepository(
         _user.value?.let { setUser(it.copy(avatarUrl = null)) }
     }
 
-    suspend fun deleteAccount(password: String, code: String) {
-        api.deleteAccount(password, code)
+    suspend fun deleteAccount(password: String, code: String, approvalId: String? = null) {
+        api.deleteAccount(password, code, approvalId)
         session.signOutLocally()
     }
 

@@ -83,9 +83,11 @@ fun LoginScreen(
     onSubmitCode: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onUseCodeInstead: () -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     val step = when {
+        state.awaitingApproval -> LoginStep.Approval
         state.loginToken != null -> LoginStep.TwoFactor
         state.showCredentials -> LoginStep.Credentials
         else -> LoginStep.Welcome
@@ -126,13 +128,14 @@ fun LoginScreen(
                     LoginStep.Welcome -> WelcomeStep(onShowCredentials)
                     LoginStep.Credentials -> CredentialsStep(state, onUsernameChange, onPasswordChange, onSubmitCredentials, onBack)
                     LoginStep.TwoFactor -> TwoFactorStep(state, onCodeChange, onSubmitCode, onBack)
+                    LoginStep.Approval -> ApprovalStep(state, onUseCodeInstead, onBack)
                 }
             }
         }
     }
 }
 
-private enum class LoginStep { Welcome, Credentials, TwoFactor }
+private enum class LoginStep { Welcome, Credentials, TwoFactor, Approval }
 
 @Composable
 private fun WelcomeStep(onLogIn: () -> Unit) {
@@ -186,7 +189,13 @@ private fun TwoFactorStep(
 ) {
     Heading(
         stringResource(R.string.two_factor_title),
-        stringResource(if (state.codePrefilled) R.string.two_factor_subtitle_prefilled else R.string.two_factor_subtitle),
+        stringResource(
+            when {
+                state.usingFallback -> R.string.two_factor_subtitle_fallback
+                state.codePrefilled -> R.string.two_factor_subtitle_prefilled
+                else -> R.string.two_factor_subtitle
+            },
+        ),
         onBack = onBack,
     )
     ButtonColumn {
@@ -201,6 +210,21 @@ private fun TwoFactorStep(
         )
         ErrorText(state)
         OnboardingButton(stringResource(R.string.verify), isBusy = state.isBusy, onClick = onSubmit)
+    }
+}
+
+/** Require Security App: waiting for the approver phone, with the 2FA code as the way out. */
+@Composable
+private fun ApprovalStep(state: LoginUiState, onUseCodeInstead: () -> Unit, onBack: () -> Unit) {
+    Heading(stringResource(R.string.login_approval_title), stringResource(R.string.login_approval_subtitle), onBack = onBack)
+    ButtonColumn {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(modifier = Modifier.size(32.dp), color = LocalAppColors.current.onSurface, strokeWidth = 2.dp)
+        }
+        ErrorText(state)
+        if (state.loginToken != null) {
+            OnboardingButton(stringResource(R.string.login_approval_use_code), secondary = true, onClick = onUseCodeInstead)
+        }
     }
 }
 
@@ -305,6 +329,14 @@ private fun LoginWelcomePreview() {
 private fun LoginCredentialsPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
         LoginScreen(LoginUiState(username = "aaron", showCredentials = true), {}, {}, {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(name = "Login approval step", showBackground = true, widthDp = 402, heightDp = 874)
+@Composable
+private fun LoginApprovalPreview() {
+    com.cns.accounts.ui.theme.CNSAccountsTheme {
+        LoginScreen(LoginUiState(username = "aaron", loginToken = "token", awaitingApproval = true), {}, {}, {}, {}, {}, {}, {})
     }
 }
 

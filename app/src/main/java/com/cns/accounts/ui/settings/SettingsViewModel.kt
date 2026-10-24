@@ -29,9 +29,12 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
 /**
- * "Your Account": profile edits, 2FA (through [AppContainer.twoFactor]), password, avatar, sign-out and deletion against auth-v2,
- * plus the device-local biometric lock. Strong account protection, "require security app" and
- * the recovery phrase have no backend yet; their controls report that instead of pretending.
+ * "Your Account": profile edits, 2FA (through [AppContainer.twoFactor]), Require Security App
+ * (through [AppContainer.approvals]), password, avatar, sign-out and deletion against auth-v2,
+ * plus the device-local biometric lock. The recovery phrase has no backend yet; its control
+ * reports that instead of pretending. While Require Security App is on, the password, username
+ * and deletion requests wait for an approval, which this device gives itself when it is the
+ * approver.
  */
 class SettingsViewModel(
     private val container: AppContainer,
@@ -42,6 +45,7 @@ class SettingsViewModel(
     private val messages = container.messages
     private val dialog = MutableStateFlow<SettingsDialog?>(null)
     private val enablingTwoFactor = MutableStateFlow(false)
+    private val switchingRequireApp = MutableStateFlow<Boolean?>(null)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         account.user,
@@ -50,6 +54,7 @@ class SettingsViewModel(
         container.preferences.notifications,
         dialog,
         enablingTwoFactor,
+        switchingRequireApp,
     ) { values ->
         val user = values[0] as AccountUser?
         val twoFactorState = values[1] as TwoFactorState
@@ -58,6 +63,7 @@ class SettingsViewModel(
         @Suppress("UNCHECKED_CAST")
         val dialog = values[4] as SettingsDialog?
         val enabling = values[5] as Boolean
+        val switchingRequireApp = values[6] as Boolean?
         val twoFactor = user?.totpEnabled == true
         SettingsUiState(
             data = SettingsData(
@@ -68,6 +74,7 @@ class SettingsViewModel(
                     biometricUnlock = biometric,
                     notifications = notifications,
                     twoFactorAuthentication = twoFactor || enabling,
+                    requireSecurityApp = switchingRequireApp ?: (user?.requireAppApproval == true),
                 ),
             ),
             dialog = dialog,
@@ -76,6 +83,12 @@ class SettingsViewModel(
 
     /** Whether 2FA codes can come from this device, so dialogs needn't ask for one. */
     private val codeOnDevice get() = twoFactorManager.state.value is TwoFactorState.Active
+
+    private val requireAppOn get() = account.user.value?.requireAppApproval == true
+
+    private val approvals get() = container.approvals
+
+    private fun showApprovalWaiting() = messages.show(R.string.approval_waiting)
 
     init {
         viewModelScope.launch { runCatching { account.refreshProfile() } }
@@ -87,7 +100,12 @@ class SettingsViewModel(
     fun setBiometricUnlock(enabled: Boolean) = container.preferences.setBiometricUnlock(enabled)
 
     fun setTwoFactorAuthentication(enabled: Boolean) {
-        if (enabled) enableTwoFactor() else openDialog(SettingsDialogKind.DisableTwoFactor)
+        when {
+            enabled -> enableTwoFactor()
+            // auth-v2 refuses it (409): the 2FA code is the way back in if the phone is lost.
+            requireAppOn -> messages.show(R.string.require_app_blocks_2fa_off)
+            else -> openDialog(SettingsDialogKind.DisableTwoFactor)
+        }
     }
 
     /** Account-event notifications; the screen has asked for the notification permission first. */
@@ -99,7 +117,24 @@ class SettingsViewModel(
         container.preferences.setNotifications(enabled)
         if (enabled) messages.show(R.string.notifications_on)
     }
-    fun setRequireSecurityApp(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = unsupported()
+
+    /** On: asks for the password (and a code if needed) first. Off: approved by the approver, usually this device. */
+    fun setRequireSecurityApp(enabled: Boolean) {
+        if (switchingRequireApp.value != null) return
+        when {
+            enabled && !uiState.value.data.profile.twoFactorEnabled -> messages.show(R.string.require_app_needs_2fa)
+            enabled -> openDialog(SettingsDialogKind.EnableSecurityApp)
+            else -> {
+                switchingRequireApp.value = false
+                viewModelScope.launch {
+                    runCatching { container.approvals.disable(onWaiting = ::showApprovalWaiting) }
+                        .onSuccess { messages.show(R.string.require_app_off) }
+                        .onFailure(messages::show)
+                    switchingRequireApp.value = null
+                }
+            }
+        }
+    }
     fun setupRecoveryPhrase() = unsupported()
 
     private fun unsupported() = messages.show(UnsupportedFeatureException())
@@ -111,7 +146,9 @@ class SettingsViewModel(
         val askForCode = uiState.value.data.profile.twoFactorEnabled && !codeOnDevice
         val values = when (kind) {
             SettingsDialogKind.EditUsername -> listOf(uiState.value.data.profile.name, "")
-            SettingsDialogKind.DisableTwoFactor, SettingsDialogKind.DeleteAccount -> if (askForCode) listOf("", "") else listOf("")
+            SettingsDialogKind.DisableTwoFactor, SettingsDialogKind.EnableSecurityApp -> if (askForCode) listOf("", "") else listOf("")
+            // With Require Security App on, the approval replaces the code.
+            SettingsDialogKind.DeleteAccount -> if (askForCode && !requireAppOn) listOf("", "") else listOf("")
             SettingsDialogKind.ChangePassword -> listOf("", "", "")
             else -> emptyList()
         }
@@ -135,13 +172,19 @@ class SettingsViewModel(
         val values = current.values.map { it.trim() }
         when (current.kind) {
             SettingsDialogKind.EditUsername -> requireFilled(values) {
-                run(R.string.username_changed) { account.changeUsername(password = current.values[1], newUsername = values[0]) }
+                run(R.string.username_changed) {
+                    approvals.gated(::showApprovalWaiting) { approvalId ->
+                        account.changeUsername(password = current.values[1], newUsername = values[0], approvalId = approvalId)
+                    }
+                }
             }
             SettingsDialogKind.ChangePassword -> requireFilled(current.values) {
                 if (current.values[1] != current.values[2]) {
                     fail(UserMessage(resId = R.string.passwords_dont_match))
                 } else {
-                    run(R.string.password_changed) { account.changePassword(current.values[0], current.values[1]) }
+                    run(R.string.password_changed) {
+                        approvals.gated(::showApprovalWaiting) { approvalId -> account.changePassword(current.values[0], current.values[1], approvalId) }
+                    }
                 }
             }
             SettingsDialogKind.RemoveAvatar -> run(R.string.avatar_removed) { account.deleteAvatar() }
@@ -151,7 +194,14 @@ class SettingsViewModel(
             }
             SettingsDialogKind.DeleteAccount -> requireFilled(values) {
                 run(successMessage = null) {
-                    account.deleteAccount(password = current.values[0], code = values.getOrNull(1) ?: twoFactorManager.currentCode().orEmpty())
+                    val code = values.getOrNull(1) ?: twoFactorManager.currentCode().orEmpty()
+                    approvals.gated(::showApprovalWaiting) { approvalId -> account.deleteAccount(current.values[0], code, approvalId) }
+                }
+            }
+            SettingsDialogKind.EnableSecurityApp -> requireFilled(values) {
+                switchingRequireApp.value = true
+                run(R.string.require_app_on, onDone = { switchingRequireApp.value = null }) {
+                    approvals.enable(password = current.values[0], code = values.getOrNull(1) ?: twoFactorManager.currentCode().orEmpty())
                 }
             }
             // The "Choose Photo" button launches the system photo picker from the screen; the
@@ -226,7 +276,7 @@ class SettingsViewModel(
     }
 
     /** Runs a dialog's request with the busy spinner; closes on success, shows the error inline on failure. */
-    private fun run(successMessage: Int?, request: suspend () -> Unit) {
+    private fun run(successMessage: Int?, onDone: () -> Unit = {}, request: suspend () -> Unit) {
         dialog.update { it?.copy(isBusy = true, error = null) }
         viewModelScope.launch {
             runCatching { request() }
@@ -235,6 +285,7 @@ class SettingsViewModel(
                     successMessage?.let(messages::show)
                 }
                 .onFailure { fail(it.toUserMessage()) }
+            onDone()
         }
     }
 

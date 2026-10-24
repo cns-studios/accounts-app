@@ -776,6 +776,24 @@ private fun SettingsDialogHost(
             onDismissRequest = onDismiss,
             onPrimaryAction = onConfirm,
         )
+        SettingsDialogKind.EnableSecurityApp -> {
+            val needsCode = dialog.values.size > 1
+            ActionDialog(
+                title = stringResource(R.string.require_app_dialog_title),
+                subtitle = stringResource(if (needsCode) R.string.require_app_dialog_subtitle_code else R.string.require_app_dialog_subtitle),
+                primaryButtonLabel = stringResource(R.string.turn_on),
+                fields = if (needsCode) {
+                    fields(R.string.current_password_placeholder to FieldKind.Password, R.string.code_placeholder to FieldKind.Code)
+                } else {
+                    fields(R.string.current_password_placeholder to FieldKind.Password)
+                },
+                onFieldChange = onFieldChange,
+                errorText = error,
+                isBusy = dialog.isBusy,
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+        }
         SettingsDialogKind.DeleteAccount -> {
             val needsCode = dialog.values.size > 1
             ActionDialog(

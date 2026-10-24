@@ -3,6 +3,7 @@ package com.cns.accounts.ui.lock
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
@@ -24,6 +25,10 @@ object Biometrics {
         context: Context,
         title: String,
         subtitle: String,
+        // For a Keystore key bound to user authentication (the approver key): only a strong
+        // biometric or the screen lock unlock those. Strong-or-credential needs API 30; before
+        // that the prompt is the same as the app lock's and a weak biometric fails at signing.
+        unlocksKey: Boolean = false,
         onSuccess: () -> Unit,
         onFailure: () -> Unit = {},
     ) {
@@ -40,7 +45,9 @@ object Biometrics {
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle(title)
                 .setSubtitle(subtitle)
-                .setAllowedAuthenticators(Authenticators)
+                .setAllowedAuthenticators(
+                    if (unlocksKey && android.os.Build.VERSION.SDK_INT >= 30) BIOMETRIC_STRONG or DEVICE_CREDENTIAL else Authenticators,
+                )
                 .build(),
         )
     }

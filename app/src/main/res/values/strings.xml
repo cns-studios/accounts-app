@@ -195,4 +195,32 @@
     <string name="push_unavailable">This build has no push notifications set up.</string>
     <string name="notifications_blocked">Notifications are blocked for CNS Accounts in Android settings.</string>
     <string name="notifications_on">Notifications are on</string>
+
+    <!-- Require Security App (approvals) -->
+    <string name="approval_prompt_title">Confirm the request</string>
+    <string name="request_authorize">Sign in to %1$s</string>
+    <string name="request_authorize_unknown">Sign-in to an app</string>
+    <string name="request_password_change">Password change</string>
+    <string name="request_username_change">Username change</string>
+    <string name="request_username_change_to">Username change to %1$s</string>
+    <string name="request_account_delete">Delete account</string>
+    <string name="request_require_app_disable">Turn off Require Security App</string>
+    <string name="request_allowed">Allowed</string>
+    <string name="request_denied">Denied</string>
+    <string name="approval_denied">The request was denied in the CNS Accounts app.</string>
+    <string name="approval_expired">The request expired before it was approved. Try again.</string>
+    <string name="approval_cancelled">Not confirmed. Nothing was approved.</string>
+    <string name="approval_waiting">Approve this on the phone with Require Security App.</string>
+    <string name="require_app_dialog_title">Require Security App</string>
+    <string name="require_app_dialog_subtitle">Sign-ins and changes to your account will wait for your approval on this phone. Confirm with your password.</string>
+    <string name="require_app_dialog_subtitle_code">Sign-ins and changes to your account will wait for your approval on this phone. Confirm with your password and a current 2FA code.</string>
+    <string name="turn_on">Turn on</string>
+    <string name="require_app_on">Require Security App is on</string>
+    <string name="require_app_off">Require Security App is off</string>
+    <string name="require_app_needs_2fa">Turn on two-factor authentication first. Its code is the way back in if you lose this phone.</string>
+    <string name="require_app_blocks_2fa_off">Turn off Require Security App first. Its 2FA code is the way back in if you lose this phone.</string>
+    <string name="login_approval_title">Approve sign-in</string>
+    <string name="login_approval_subtitle">Open CNS Accounts on your phone and allow this sign-in.</string>
+    <string name="login_approval_use_code">Use a 2FA code instead</string>
+    <string name="two_factor_subtitle_fallback">Signing in with a code turns Require Security App off. Turn it on again on your new phone.</string>
 </resources>

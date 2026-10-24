@@ -18,6 +18,7 @@ enum class SettingsDialogKind {
     DisableTwoFactor,
     ChangePassword,
     DeleteAccount,
+    EnableSecurityApp,
 }
 
 /**

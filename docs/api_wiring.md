@@ -64,6 +64,15 @@ credentials step → the 2FA step; Create Account → the web sign-up.
   the device's code instead of asking for one when the key is here.
 - **Biometric unlock**: app lock on cold start and after 30s in the background
   (biometric or device credential).
+- **Notifications**: FCM data pushes from auth (`PUT /api/me/push`); account events become
+  notifications while the toggle is on, approval requests always do.
+- **Require Security App** (`data/approvals`, auth `docs/APPROVALS.md`): the toggle enrolls an
+  EC P-256 Keystore key (attested; bound to the screen lock when biometric unlock is on) with
+  the password and the device's 2FA code. While on, the red request card lists what waits for
+  this phone (sign-ins, password/username change, deletion, turning it off) and Allow/Deny sign
+  the decision. The app approves its own sign-in and its own gated changes itself; when the
+  approver is another phone it waits ("Approve sign-in"), with the 2FA code as the lost-phone
+  fallback (which turns the requirement off).
 - **Security center**: computed on device — 2FA on, password (always), App = this device holds
   the CNS authenticator key, recovery phrase (never; see below).
 - **Search**: local index over settings entries + loaded account activity.
@@ -73,10 +82,7 @@ credentials step → the 2FA step; Create Account → the web sign-up.
 | UI | What's missing in auth-v2 | Current behaviour |
 | --- | --- | --- |
 | Sendly Set Up, Sendly login requests (Services card) | this app as a trusted Sendly device (`docs/backend_plans.md` §4) | Sendly always shows the orange "not set up" dot; Continue in its Set Up dialog reports "not available yet" |
-| Sign-in request card (Allow/Deny) | push/approval flow: list pending sign-ins, approve/deny, "check your phone" login step | `SignInRequests` stub never yields a request, so the card is hidden; Allow/Deny would report "not available" |
-| Notifications toggle | background delivery of account events (2FA on/off, password/username change, new sign-in) — design pending | toggle stays off, snackbar "not available yet" |
-| Require Security App toggle | signed approvals (`docs/backend_plans.md` §3) | same |
-| Recovery phrase "Setup" | recovery phrase storage/verification | same |
+| Recovery phrase "Setup" | recovery phrase storage/verification | snackbar "not available yet" |
 | Search: Help / Q&A results | Help Center at help.cns-studios.com (+ its index) | kinds and icons exist, nothing produces them |
 
 Also not exposed in the app (API exists, no design yet): the session list / revoke

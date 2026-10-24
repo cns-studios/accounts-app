@@ -50,11 +50,12 @@ class HttpTransport(private val baseUrl: String = BuildConfig.CNS_API_BASE_URL) 
         path: String,
         body: RequestBody? = null,
         bearerToken: String? = null,
+        timeoutMillis: Int = TimeoutMillis,
     ): HttpResponse = withContext(Dispatchers.IO) {
         val connection = (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = TimeoutMillis
-            readTimeout = TimeoutMillis
+            readTimeout = timeoutMillis
             useCaches = false
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", userAgent)
@@ -96,7 +97,7 @@ class HttpTransport(private val baseUrl: String = BuildConfig.CNS_API_BASE_URL) 
         return out.toByteArray()
     }
 
-    private companion object {
+    companion object {
         const val TimeoutMillis = 15_000
     }
 }

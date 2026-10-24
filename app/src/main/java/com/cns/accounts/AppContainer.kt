@@ -4,10 +4,12 @@ import android.content.Context
 import com.cns.accounts.data.AccountRepository
 import com.cns.accounts.data.AppPreferences
 import com.cns.accounts.data.ServiceLinks
-import com.cns.accounts.data.SignInRequests
 import com.cns.accounts.data.UserMessages
 import com.cns.accounts.data.api.CnsApi
 import com.cns.accounts.data.api.HttpTransport
+import com.cns.accounts.data.approvals.ApproverKeys
+import com.cns.accounts.data.approvals.Approvals
+import com.cns.accounts.data.approvals.UserVerification
 import com.cns.accounts.data.authenticator.AuthenticatorStore
 import com.cns.accounts.data.authenticator.TwoFactorManager
 import com.cns.accounts.data.push.Notifier
@@ -37,12 +39,13 @@ class AppContainer(context: Context) {
     val authenticator = AuthenticatorStore(secureStore)
     val twoFactor = TwoFactorManager(api, account, authenticator, appScope)
     val preferences = AppPreferences(context)
-    val signInRequests = SignInRequests()
     val serviceLinks = ServiceLinks()
     val messages = UserMessages()
     val appLock = AppLock(preferences)
     val notifier = Notifier(context)
     val push = PushRegistrar(context, api, session, preferences, appScope)
+    val verification = UserVerification()
+    val approvals = Approvals(api, account, ApproverKeys(context), verification, preferences, notifier, appScope)
 
     init {
         // Whatever ended the session (sign-out, account deletion, a refresh token the server
@@ -54,7 +57,21 @@ class AppContainer(context: Context) {
             }
         }
         push.start()
+        // Pushes are ids only: reload what they point at.
+        appScope.launch {
+            push.events.collect { event ->
+                when (event.type) {
+                    "approval_request" -> runCatching { approvals.refresh() }
+                    "account_event" -> runCatching { account.refreshProfile() }
+                }
+            }
+        }
+    }
 
+    /** The app came to the foreground: requests may have arrived without a push. */
+    fun onForeground() {
+        if (session.authState.value != AuthState.SignedIn) return
+        appScope.launch { runCatching { approvals.refresh() } }
     }
 }
 

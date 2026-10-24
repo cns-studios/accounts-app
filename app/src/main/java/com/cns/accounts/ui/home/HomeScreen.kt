@@ -64,6 +64,7 @@ import com.cns.accounts.R
 import com.cns.accounts.data.SearchResultKind
 import com.cns.accounts.ui.search.SettingsResultPrefix
 import com.cns.accounts.data.SignInRequest
+import com.cns.accounts.ui.format.relativeTime
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.TimerSquareCount
 import com.cns.accounts.data.authenticator.Totp
@@ -246,8 +247,7 @@ fun HomeScreen(
                 item(key = "profile-request-gap", contentType = "spacer") {
                     androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 24.dp))
                 }
-                // Only shown while a sign-in waits for approval — which auth-v2 can't produce yet
-                // (see SignInRequests), so for now the account card follows the header directly.
+                // Only shown while a request waits for this device's approval (Require Security App).
                 val signInRequest = state.data.signInRequest
                 if (signInRequest != null) {
                     item(key = "request", contentType = "request") {
@@ -421,8 +421,8 @@ private fun SignInRequestCard(
                         .padding(horizontal = LocalSpacing.current.sm),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text(stringResource(R.string.sign_in_request), color = colors.onSurface, style = RequestTitleText)
-                    Text(request.timeLabel, color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
+                    Text(requestTitle(request), modifier = Modifier.weight(1f, fill = false), color = colors.onSurface, style = RequestTitleText)
+                    Text(relativeTime(request.createdAt), color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
                 }
                 Text(request.device, modifier = Modifier.padding(horizontal = LocalSpacing.current.sm), color = colors.onSurface.copy(alpha = 0.7f), style = RequestCaptionText)
             }
@@ -435,6 +435,17 @@ private fun SignInRequestCard(
             }
         }
     }
+}
+
+/** What the request would allow: a sign-in, or one of the sensitive changes auth-v2 holds back. */
+@Composable
+private fun requestTitle(request: SignInRequest): String = when (request.action) {
+    "authorize" -> request.detail?.let { stringResource(R.string.request_authorize, it) } ?: stringResource(R.string.request_authorize_unknown)
+    "password_change" -> stringResource(R.string.request_password_change)
+    "username_change" -> request.detail?.let { stringResource(R.string.request_username_change_to, it) } ?: stringResource(R.string.request_username_change)
+    "account_delete" -> stringResource(R.string.request_account_delete)
+    "require_app_disable" -> stringResource(R.string.request_require_app_disable)
+    else -> stringResource(R.string.sign_in_request)
 }
 
 @Composable

@@ -37,19 +37,23 @@ class CnsApi(
         authed("POST", "/api/me/connected-apps/${encodePath(clientId)}/disconnect")
     }
 
+    // [approvalId]: the approved request, when Require Security App made the first try wait for
+    // one (ApiException "approval_required", see data/approvals).
+
     /** Returns the fresh token pair: auth-v2 revokes the current session when the username changes. */
-    suspend fun changeUsername(password: String, newUsername: String): TokenPair {
-        val body = JSONObject().put("password", password).put("new_username", newUsername)
+    suspend fun changeUsername(password: String, newUsername: String, approvalId: String? = null): TokenPair {
+        val body = JSONObject().put("password", password).put("new_username", newUsername).putOpt("approval_id", approvalId)
         val json = authed("POST", "/api/me/username", body)
         return TokenPair.fromJson(json.optJSONObject("tokens") ?: JSONObject())
     }
 
-    suspend fun changePassword(currentPassword: String, newPassword: String) {
-        authed("POST", "/api/me/password", JSONObject().put("current_password", currentPassword).put("new_password", newPassword))
+    suspend fun changePassword(currentPassword: String, newPassword: String, approvalId: String? = null) {
+        val body = JSONObject().put("current_password", currentPassword).put("new_password", newPassword).putOpt("approval_id", approvalId)
+        authed("POST", "/api/me/password", body)
     }
 
-    suspend fun deleteAccount(password: String, code: String) {
-        authed("POST", "/api/me/delete", JSONObject().put("password", password).put("code", code))
+    suspend fun deleteAccount(password: String, code: String, approvalId: String? = null) {
+        authed("POST", "/api/me/delete", JSONObject().put("password", password).put("code", code).putOpt("approval_id", approvalId))
     }
 
     // --- 2FA ---
@@ -74,6 +78,65 @@ class CnsApi(
     /** Binds this session to its FCM token; [accountEvents] false keeps only approval pushes. */
     suspend fun registerPush(token: String, accountEvents: Boolean) {
         authed("PUT", "/api/me/push", JSONObject().put("token", token).put("platform", "android").put("account_events", accountEvents))
+    }
+
+    // --- Require Security App (approvals) ---
+
+    /**
+     * Follows an approval this client started. [wait] long-polls (the server holds the request up
+     * to 25s while it is pending). An approved sign-in is completed in this response, once.
+     */
+    suspend fun pollApproval(approval: ApprovalChallenge, wait: Boolean): ApprovalPoll {
+        val body = JSONObject().put("poll_token", approval.pollToken).put("wait", wait)
+        val response = transport.execute(
+            "POST", "/api/auth/approvals/${encodePath(approval.id)}/poll", RequestBody.Json(body),
+            timeoutMillis = if (wait) LongPollTimeoutMillis else HttpTransport.TimeoutMillis,
+        )
+        return when {
+            response.status == 202 -> ApprovalPoll.Pending
+            response.isSuccessful -> {
+                val json = response.json()
+                if (json.has("access_token") || json.has("code")) ApprovalPoll.Completed(json) else ApprovalPoll.Approved
+            }
+            response.status == 403 -> ApprovalPoll.Denied
+            response.status == 404 || response.status == 410 -> ApprovalPoll.Gone
+            else -> throw ApiException.from(response)
+        }
+    }
+
+    /** The approver's signed decision. No session: the device signature is the authentication. */
+    suspend fun decideApproval(id: String, approve: Boolean, signature: String) {
+        val body = JSONObject().put("decision", if (approve) "approve" else "deny").put("signature", signature)
+        call("POST", "/api/auth/approvals/${encodePath(id)}/decision", body)
+    }
+
+    suspend fun pendingApprovals(): List<PendingApproval> = PendingApproval.listFromJson(authed("GET", "/api/me/approvals"))
+
+    suspend fun approver(): ApproverInfo = ApproverInfo.fromJson(authed("GET", "/api/me/approver"))
+
+    /** A single-use enrollment challenge (base64) for this session. */
+    suspend fun approverChallenge(): String = authed("POST", "/api/me/approver/challenge").optString("challenge")
+
+    suspend fun enableApprover(
+        publicKey: String,
+        attestation: List<String>,
+        name: String,
+        password: String,
+        code: String,
+        signature: String,
+    ): ApproverInfo {
+        val body = JSONObject()
+            .put("public_key", publicKey)
+            .put("attestation", org.json.JSONArray(attestation))
+            .put("name", name)
+            .put("password", password)
+            .put("code", code)
+            .put("signature", signature)
+        return ApproverInfo.fromJson(authed("POST", "/api/me/approver", body))
+    }
+
+    suspend fun disableApprover(approvalId: String? = null) {
+        authed("DELETE", "/api/me/approver", JSONObject().putOpt("approval_id", approvalId))
     }
 
     // --- avatar ---
@@ -112,6 +175,11 @@ class CnsApi(
         }
         if (!response.isSuccessful) throw ApiException.from(response)
         return response
+    }
+
+    private companion object {
+        // Above the server's 25s hold, so a long poll ends on the server's side.
+        const val LongPollTimeoutMillis = 35_000
     }
 
     private fun encodePath(segment: String): String = java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")

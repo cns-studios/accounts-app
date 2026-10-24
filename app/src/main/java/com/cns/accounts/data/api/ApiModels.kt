@@ -108,6 +108,70 @@ data class ApprovalChallenge(
     }
 }
 
+/** What a poll of an [ApprovalChallenge] found. */
+sealed interface ApprovalPoll {
+    data object Pending : ApprovalPoll
+
+    /** An account action was approved: repeat it with the approval id. */
+    data object Approved : ApprovalPoll
+
+    /** An approved sign-in (or single sign-on), completed in the poll response. */
+    data class Completed(val json: JSONObject) : ApprovalPoll
+    data object Denied : ApprovalPoll
+
+    /** Expired, cancelled or already used. */
+    data object Gone : ApprovalPoll
+}
+
+/**
+ * A request waiting for this device's decision (`GET /api/me/approvals`). The context fields say where it
+ * comes from: the requester's IP and device, the app for a single sign-on, the new username.
+ */
+@Immutable
+data class PendingApproval(
+    val id: String,
+    val action: String,
+    val nonce: String,
+    val ip: String?,
+    val device: String?,
+    val clientName: String?,
+    val newUsername: String?,
+    val createdAt: Instant?,
+    val expiresAtUnix: Long,
+) {
+    companion object {
+        fun fromJson(json: JSONObject): PendingApproval {
+            val context = json.optJSONObject("context") ?: JSONObject()
+            return PendingApproval(
+                id = json.optString("id"),
+                action = json.optString("action"),
+                nonce = json.optString("nonce"),
+                ip = context.optStringOrNull("ip"),
+                device = context.optStringOrNull("device"),
+                clientName = context.optStringOrNull("client_name"),
+                newUsername = context.optStringOrNull("new_username"),
+                createdAt = json.optInstant("created_at"),
+                expiresAtUnix = json.optLong("expires_at_unix"),
+            )
+        }
+
+        fun listFromJson(json: JSONObject): List<PendingApproval> {
+            val items = json.optJSONArray("approvals") ?: return emptyList()
+            return (0 until items.length()).mapNotNull { i -> items.optJSONObject(i)?.let(::fromJson) }
+        }
+    }
+}
+
+/** The account's approver device (`GET /api/me/approver`); [deviceId] is null while it is off. */
+data class ApproverInfo(val enabled: Boolean, val deviceId: String?) {
+    companion object {
+        fun fromJson(json: JSONObject) = ApproverInfo(
+            enabled = json.optBoolean("enabled"),
+            deviceId = json.optJSONObject("device")?.optStringOrNull("id"),
+        )
+    }
+}
+
 @Immutable
 data class ActivityEntry(
     val id: Long,

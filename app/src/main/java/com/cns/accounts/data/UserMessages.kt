@@ -5,6 +5,9 @@ import androidx.annotation.StringRes
 import com.cns.accounts.R
 import com.cns.accounts.data.api.ApiException
 import com.cns.accounts.data.api.SessionExpiredException
+import com.cns.accounts.data.approvals.ApprovalCancelledException
+import com.cns.accounts.data.approvals.ApprovalDeniedException
+import com.cns.accounts.data.approvals.ApprovalExpiredException
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -33,6 +36,9 @@ class UserMessages {
 fun Throwable.toUserMessage(): UserMessage = when (this) {
     is SessionExpiredException -> UserMessage(resId = R.string.error_session_expired)
     is UnsupportedFeatureException -> UserMessage(resId = R.string.feature_unavailable)
+    is ApprovalDeniedException -> UserMessage(resId = R.string.approval_denied)
+    is ApprovalExpiredException -> UserMessage(resId = R.string.approval_expired)
+    is ApprovalCancelledException -> UserMessage(resId = R.string.approval_cancelled)
     is ApiException -> when {
         isRateLimited -> UserMessage(resId = R.string.error_rate_limited)
         status >= 500 -> UserMessage(resId = R.string.error_server)

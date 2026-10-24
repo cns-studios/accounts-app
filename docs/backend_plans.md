@@ -34,53 +34,12 @@ Recommendation: FCM, with polling as the fallback when Play services are missing
 by this same device (you changed the password here) are not notified. The same push channel
 carries sign-in approvals (section 3) and Sendly login requests (section 4).
 
-## 3. Require Security App (signed approvals)
+## 3. Require Security App (signed approvals) — implemented
 
-Turning it on makes this app instance the approver for sensitive actions. While on, those
-actions wait for an approval signed by this device instead of (or, where a 2FA code would be
-asked, in place of) a TOTP code. Off: plain password + TOTP as today. Independent of 2FA.
-
-**Device key.** On enabling, the app creates an EC P-256 key in the Android Keystore
-(StrongBox when available), non-exportable, usable only after biometric / device-credential
-auth for each signature. Enrollment sends the public key and the Keystore attestation chain;
-auth verifies the chain (hardware-backed, our package/signature) and stores it.
-
-**Enrolling** needs a fresh re-auth (password, plus a TOTP code if 2FA is on), so a stolen
-session alone can't register an approver. Turning it off, or replacing the approver device,
-needs an approval from the current approver (or the recovery path below).
-
-**Flow.**
-1. A gated action (password login, OAuth authorize for any client, password/username change,
-   2FA on/off, delete account, turning the setting off) creates an approval request:
-   `{id, user_id, action, ip, user agent, created_at, expires_at (2 min), nonce (32 bytes),
-   status}`. A login answers `{requires_approval: true, approval_id}` and the web/client waits
-   on `GET /api/auth/approvals/{id}` (long poll), which returns the tokens once approved.
-2. auth pushes the id to the approver (section 2); the app also lists
-   `GET /api/me/approvals/pending` when opened.
-3. The app shows the red sign-in request card (device, place, time; for logins also a
-   2-digit number shown on the signing-in screen, to defeat approve-spam).
-4. Allow / Deny: biometric prompt → Keystore signs
-   `cns-approval-v1|{id}|{action}|{nonce}|{decision}|{expires_at}` →
-   `POST /api/me/approvals/{id}` `{decision, number?, signature}`.
-5. auth verifies the signature with the stored key, that the request is pending, unexpired and
-   unanswered (single use), and the number; then completes the waiting action. Everything is
-   audited (`approval_requested/approved/denied/expired`).
-
-A stolen app access token can't approve anything: the signing key never leaves the Keystore and
-needs the user present for every signature.
-
-**Schema.** `approver_devices(id, user_id, public_key, attestation, name, created_at,
-last_used_at, revoked_at)`, `approval_requests(...)` as above, `users.require_app`.
-
-**Tests.** Go unit tests for signature verification, expiry, replay and wrong-key cases; the
-functional suite (`tests/functional`) for the enroll → login → approve/deny → complete flow.
-
-**Open questions**
-- Lost phone: is TOTP still accepted as a fallback while the setting is on, or is there a
-  recovery path (recovery phrase, support)? Without one, losing the phone locks the account.
-- One approver device per account, or several?
-- Which actions exactly (the list in step 1)? Should viewing account data stay ungated?
-- Number matching on logins: yes/no?
+Built as agreed: one approver device, TOTP as the lost-phone fallback (using it turns the
+requirement off), no number matching, the fingerprint/screen lock only when the app's biometric
+setting is on. Server side: auth `docs/APPROVALS.md`; app side: `data/approvals` (see
+`docs/api_wiring.md`).
 
 ## 4. Sendly: this app as a trusted device that approves Sendly logins
 

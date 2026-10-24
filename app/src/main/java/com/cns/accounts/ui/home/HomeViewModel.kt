@@ -8,6 +8,7 @@ import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.HomeData
 import com.cns.accounts.data.Profile
 import com.cns.accounts.data.Service
+import com.cns.accounts.data.SignInRequest
 import com.cns.accounts.data.isSendly
 import com.cns.accounts.data.api.ActivityEntry
 import com.cns.accounts.data.UserMessage
@@ -43,12 +44,20 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         account.user,
         account.connectedApps,
         container.twoFactor.state,
-        container.signInRequests.pending,
+        container.approvals.pending,
         container.serviceLinks.sendly,
-    ) { user, apps, twoFactor, request, sendly ->
+    ) { user, apps, twoFactor, approvals, sendly ->
         HomeData(
             profile = Profile(user?.username.orEmpty(), user?.totpEnabled == true, user?.avatarUrl),
-            signInRequest = request,
+            signInRequest = approvals.firstOrNull()?.let { request ->
+                SignInRequest(
+                    id = request.id,
+                    action = request.action,
+                    device = listOfNotNull(request.device, request.ip).joinToString(" · "),
+                    createdAt = request.createdAt,
+                    detail = request.clientName ?: request.newUsername,
+                )
+            },
             twoFactor = twoFactor,
             services = apps?.map { app ->
                 val sendlyApp = isSendly(app.clientId, app.name)
@@ -100,8 +109,9 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 async { runCatching { account.refreshProfile() } },
                 async { runCatching { account.refreshConnectedApps() } },
                 async { runCatching { account.refreshActivity() } },
+                async { runCatching { container.approvals.refresh() } },
             ).awaitAll().mapNotNull { it.exceptionOrNull() }
-            // Three parallel calls usually fail for the same reason (offline): report it once.
+            // Parallel calls usually fail for the same reason (offline): report it once.
             failures.firstOrNull()?.let(messages::show)
             local.update { it.copy(isRefreshing = false) }
         }
@@ -122,15 +132,18 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    // --- sign-in requests (not backed by auth-v2 yet; see SignInRequests) ---
+    // --- requests waiting for this device's approval (Require Security App) ---
 
     fun approveRequest() = respondToRequest(approve = true)
     fun denyRequest() = respondToRequest(approve = false)
 
     private fun respondToRequest(approve: Boolean) {
-        val request = uiState.value.data.signInRequest ?: return
+        val id = uiState.value.data.signInRequest?.id ?: return
+        val request = container.approvals.pending.value.firstOrNull { it.id == id } ?: return
         viewModelScope.launch {
-            runCatching { container.signInRequests.respond(request, approve) }.onFailure(messages::show)
+            runCatching { container.approvals.respond(request, approve) }
+                .onSuccess { messages.show(if (approve) R.string.request_allowed else R.string.request_denied) }
+                .onFailure(messages::show)
         }
     }
 

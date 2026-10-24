@@ -11,12 +11,18 @@ data class Profile(
     val avatarUrl: String? = null,
 )
 
-/** A pending sign-in to approve; always null until auth-v2 supports it (see [SignInRequests]). */
+/**
+ * A request waiting for this device's approval (Require Security App, see
+ * [com.cns.accounts.data.approvals.Approvals]): a sign-in or a sensitive change. [action] is
+ * auth-v2's action name; [detail] the app being signed in to or the requested new username.
+ */
 @Immutable
 data class SignInRequest(
     val id: String,
+    val action: String,
     val device: String,
-    val timeLabel: String,
+    val createdAt: Instant?,
+    val detail: String? = null,
 )
 
 /**
@@ -56,7 +62,7 @@ const val TimerSquareCount = 17
 
 fun sampleHomeData() = HomeData(
     profile = Profile("aaron", twoFactorEnabled = true),
-    signInRequest = SignInRequest("preview", "Firefox on Linux", "now"),
+    signInRequest = SignInRequest("preview", "login", "Firefox on Linux", Instant.now()),
     twoFactor = TwoFactorState.Active("JBSWY3DPEHPK3PXP"),
     services = listOf(Service("sendly", "Sendly", Instant.now(), needsSetup = true), Service("ilc", "ILC", Instant.now())),
 )

@@ -91,6 +91,7 @@ private fun LoginRoute() {
         onSubmitCredentials = viewModel::submitCredentials,
         onSubmitCode = viewModel::submitCode,
         onBack = viewModel::back,
+        onUseCodeInstead = viewModel::useCodeInstead,
     )
 }
 
