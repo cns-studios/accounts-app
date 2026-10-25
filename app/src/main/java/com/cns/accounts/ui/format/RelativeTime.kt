@@ -9,7 +9,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-/** "now", "5m ago", "22h ago", "3d ago", then a short date — the design's compact time labels. */
+/** "now", "5m ago", "22h ago", "3d ago", then a short date - the design's compact time labels. */
 @Composable
 fun relativeTime(instant: Instant?, now: Instant = Instant.now()): String {
     if (instant == null) return ""

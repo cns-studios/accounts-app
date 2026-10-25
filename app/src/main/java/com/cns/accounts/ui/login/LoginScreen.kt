@@ -86,8 +86,8 @@ import com.cns.accounts.ui.theme.RequestMetaText
 import com.cns.accounts.ui.theme.WelcomeTitleText
 
 // TEMP_ONBOARDING_TOKENS.json ("Onboarding"): black page, a centered serif "Welcome to CNS" over
-// a gray subtitle (278dp wide), 43dp gap, then a 324dp column of buttons 12dp apart — white
-// "Log In" and #2D2D2D "Create Account" — and a soft glow along the bottom edge. The buttons are
+// a gray subtitle (278dp wide), 43dp gap, then a 324dp column of buttons 12dp apart - white
+// "Log In" and #2D2D2D "Create Account" - and a soft glow along the bottom edge. The buttons are
 // 48dp pills. "Log In" splits in place into "Continue" (the credentials form, then the 2FA step)
 // and "Use Passkey"; "Create Account" is the web sign-up. Steps slide in the direction of travel;
 // the system back gesture steps back (there is no on-screen back button).

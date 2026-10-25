@@ -56,7 +56,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 // TEMP_SERVICE_CARD_TOKENS: the Services card (#2D2D2D, 17dp radius), with Home's even 16dp inset.
-// - StateDefault: a small muted "Services" label over rows 12dp apart — service name (20sp
+// - StateDefault: a small muted "Services" label over rows 12dp apart - service name (20sp
 //   medium) over a muted status line (last used / needs setup / login request), and a
 //   chevron-right in a #1A1A1A circle (8dp padding).
 // - StateAlert: a row with a pending login request gets a red dot after its name (the setup dot

@@ -59,7 +59,7 @@ import kotlin.random.Random
  * settings.tokens.json (Frame9 "Security center"): the completion percentage over one bar per
  * factor. Completed bars always sit on the left and missing ones on the right; when a factor
  * changes, its bar slides to its new place. A factor listed in [newlyCompleted] gets a one-time
- * celebration — its bar fills from left to right with a burst of dot particles — after which
+ * celebration - its bar fills from left to right with a burst of dot particles - after which
  * [onCelebrated] records it as seen.
  */
 @Composable
@@ -111,7 +111,7 @@ internal fun SecurityCenterCard(
 private val BarGap = 10.dp
 private val BarHeight = 7.dp
 
-// settings.tokens.json (Rectangle36-39): each factor is a 76x7px pill — solid white when
+// settings.tokens.json (Rectangle36-39): each factor is a 76x7px pill - solid white when
 // achieved, or an empty pill outlined with the accent red when still missing.
 @Composable
 private fun SecurityFactorBar(factor: SecurityFactor, celebrate: Boolean, onCelebrated: () -> Unit, modifier: Modifier = Modifier) {

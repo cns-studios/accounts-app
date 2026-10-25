@@ -47,8 +47,8 @@ data class RecoveryPhraseUiState(
 )
 
 /**
- * The recovery phrase page: create (or replace) it — password plus 2FA code or an approval, the
- * 12 words shown once, three typed back — or remove it. The words live only in this ViewModel,
+ * The recovery phrase page: create (or replace) it - password plus 2FA code or an approval, the
+ * 12 words shown once, three typed back - or remove it. The words live only in this ViewModel,
  * which goes away with the page.
  */
 class RecoveryPhraseViewModel(private val container: AppContainer) : ViewModel() {

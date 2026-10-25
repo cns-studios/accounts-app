@@ -352,7 +352,7 @@ private fun HoldToDeleteButton(onConfirmed: () -> Unit) {
                             onConfirmed()
                         }
                         // A tick per ~1/8th of the hold so the press itself feels alive, not just
-                        // its visual fill — separate from fillJob so it always stops on release.
+                        // its visual fill - separate from fillJob so it always stops on release.
                         val tickJob = scope.launch {
                             val tickInterval = HoldToDeleteDurationMillis / 8L
                             while (true) {

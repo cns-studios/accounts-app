@@ -98,7 +98,7 @@ fun TokenIcon(
             }
             TokenIconKind.LogOut -> {
                 fun p(x: Float, y: Float) = Offset(x * density, y * density)
-                // history.json (lucidelogout): lucide's "log-out" glyph — a door left open
+                // history.json (lucidelogout): lucide's "log-out" glyph - a door left open
                 // (rounded-rect missing its right edge) with an arrow pointing through it.
                 val door = androidx.compose.ui.graphics.Path().apply {
                     moveTo(p(9f, 21f).x, p(9f, 21f).y)

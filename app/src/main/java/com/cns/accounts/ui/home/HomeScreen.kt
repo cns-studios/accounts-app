@@ -131,8 +131,8 @@ fun HomeScreen(
 ) {
     var selectedTab by remember { androidx.compose.runtime.mutableStateOf("home") }
     // Home/history swipe: a drag on EITHER the segmented nav pill or the page background below
-    // drives this same liveSwipeProgress/isSwipeDragging pair — see onSwipeDragStarted/
-    // onSwipeSettle — so it doesn't matter which surface the user actually touches, and
+    // drives this same liveSwipeProgress/isSwipeDragging pair - see onSwipeDragStarted/
+    // onSwipeSettle - so it doesn't matter which surface the user actually touches, and
     // settleProgress springs from wherever the drag was released (or a tab is tapped directly).
     // None of these are read during HomeScreen's composition, only via the swipeProgress lambda
     // from graphicsLayer/the nav pill, so a swipe or settle animation redraws the two pages
@@ -170,7 +170,7 @@ fun HomeScreen(
     var pageWidthPx by remember { mutableFloatStateOf(1f) }
     // Only the discrete "how many squares are spent" bucket is ever shown on screen, so this is
     // only written when that bucket actually changes (a handful of times per 30s cycle) rather
-    // than on every 100ms tick — the ticks themselves still run every 100ms internally (for code
+    // than on every 100ms tick - the ticks themselves still run every 100ms internally (for code
     // rotation + exact timing), they just don't all trigger recomposition of the account card.
     var spentCount by remember { mutableIntStateOf(0) }
     val twoFactor = state.data.twoFactor
@@ -343,7 +343,7 @@ fun HomeScreen(
         )
         // search.tokens.json: an opaque full-screen overlay above Home/History while search is
         // active; closing it (the bar's X) just fades it away, revealing whichever tab was
-        // showing underneath — Home or History are untouched, not navigated away from.
+        // showing underneath - Home or History are untouched, not navigated away from.
         if (searchActive || searchOverlayShown) {
             val searchResults = com.cns.accounts.ui.search.rememberSearchResults(searchQuery, state.history.events)
             com.cns.accounts.ui.search.SearchScreen(
@@ -533,9 +533,9 @@ private fun formatAccountCode(code: String) = "${code.take(3)}-${code.drop(3)}"
 
 /**
  * The account's authenticator: this app holds the CNS account's TOTP key (see TwoFactorManager)
- * and shows its current code with the 30s timer row. Without a key here the card says why — 2FA
+ * and shows its current code with the 30s timer row. Without a key here the card says why - 2FA
  * is off ("Set Up" turns it on with this app as the authenticator) or it lives on another device
- * ("Transfer" moves it here) — and hides the code and timer.
+ * ("Transfer" moves it here) - and hides the code and timer.
  */
 @Composable
 private fun AccountCard(
@@ -548,7 +548,7 @@ private fun AccountCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
-    // Sized to content, not a fixed height — the exported accountCardHeight token (137dp)
+    // Sized to content, not a fixed height - the exported accountCardHeight token (137dp)
     // undershoots this card's real content (label + code row + timer squares + gaps ≈ 145dp),
     // which made AppCard's rounded-corner clip cut the bottom off the timer squares row.
     AppCard(modifier = modifier) {

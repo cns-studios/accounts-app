@@ -74,7 +74,7 @@ class SessionManager(
         )
         if (!response.isSuccessful) {
             // 401 = token rejected (revoked, expired, reused): the session is gone for good.
-            // Anything else (429, 5xx) is transient — keep the refresh token for the next try.
+            // Anything else (429, 5xx) is transient - keep the refresh token for the next try.
             if (response.status == 401) {
                 signOutLocally()
                 throw SessionExpiredException()

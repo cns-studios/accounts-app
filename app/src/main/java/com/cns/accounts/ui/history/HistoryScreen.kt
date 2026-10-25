@@ -46,7 +46,7 @@ import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
 import com.cns.accounts.ui.theme.ProfileNameText
 
-// history.json: the "History" tab — a page title and a scrollable feed of activity cards that
+// history.json: the "History" tab - a page title and a scrollable feed of activity cards that
 // fades out (history.json's Rectangle32 fade) before it reaches the bottom nav, and under the
 // title. The feed is auth-v2's `/api/me/activity`, paged by cursor as the list nears its end.
 @Immutable

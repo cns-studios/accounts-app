@@ -309,6 +309,6 @@ internal fun JSONObject.optStringOrNull(name: String): String? =
     if (isNull(name)) null else optString(name).takeIf { it.isNotBlank() }
 
 // Go encodes time.Time as RFC 3339 with an offset that isn't always "Z" (DB rows come back in the
-// server's zone), which Instant.parse rejects on older Android runtimes — OffsetDateTime takes both.
+// server's zone), which Instant.parse rejects on older Android runtimes - OffsetDateTime takes both.
 internal fun JSONObject.optInstant(name: String): Instant? =
     optStringOrNull(name)?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }

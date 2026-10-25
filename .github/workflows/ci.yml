@@ -33,14 +33,11 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests
-        run: ./gradlew --no-daemon :app:testDebugUnitTest
-
-      - name: Lint
-        run: ./gradlew --no-daemon :app:lintDebug
-
-      - name: Debug build
-        run: ./gradlew --no-daemon :app:assembleDebug
+      # One Gradle run for all three, so the debug sources compile once and the daemon is
+      # started (and the project configured) only once. --continue still runs lint and the
+      # build when a test fails, so one push reports everything.
+      - name: Unit tests, lint, debug build
+        run: ./gradlew --continue :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 
       - name: Upload test and lint reports
         if: failure()

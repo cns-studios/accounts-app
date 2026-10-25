@@ -90,11 +90,11 @@ credentials step → the 2FA step; Create Account → the web sign-up.
   (`/api/auth/recover`), which resets the password, turns 2FA and Require Security App off and
   signs out everywhere; the user then signs in normally. Phrase fields use a password keyboard so
   the words don't end up in the keyboard's dictionary.
-- **Security center**: computed on device — 2FA on, password (always), App = this device holds
+- **Security center**: computed on device - 2FA on, password (always), App = this device holds
   the CNS authenticator key, Phrase = a recovery phrase is set up.
 - **Search**: local index over settings entries + loaded account activity.
 
-## Not implemented — backend missing (UI kept)
+## Not implemented - backend missing (UI kept)
 
 | UI | What's missing in auth-v2 | Current behaviour |
 | --- | --- | --- |

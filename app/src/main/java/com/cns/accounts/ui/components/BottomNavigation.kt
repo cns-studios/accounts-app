@@ -81,7 +81,7 @@ private const val HOME_TAB = "home"
 private const val HISTORY_TAB = "history"
 
 // Shared with the page-background swipe in HomeScreen, which drives the exact same progress
-// value the segmented control below does — one flick-vs-drag threshold and one settle feel for
+// value the segmented control below does - one flick-vs-drag threshold and one settle feel for
 // both surfaces, so it doesn't matter which one the user actually touches.
 internal const val FLING_VELOCITY_THRESHOLD = 900f
 internal val TabSettleSpring = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
@@ -179,7 +179,7 @@ fun HomeBottomNavigation(
 }
 
 // search.tokens.json ("Nav" > "Frame2"): the same pill either collapsed to a plain search-icon
-// circle, or expanded to a full search bar (icon, text field, clear button) — one shape at every
+// circle, or expanded to a full search bar (icon, text field, clear button) - one shape at every
 // width, so the expand animation never needs to swap between a circle and a stadium shape.
 @Composable
 private fun SearchControl(
@@ -205,7 +205,7 @@ private fun SearchControl(
     }
     // Below the midpoint the bar is still narrow (down to a 54dp circle), so only the centered
     // icon renders there. The full icon+field+clear row only mounts once the bar is already more
-    // than half expanded — by then there's easily enough width for it — and crossfades in against
+    // than half expanded - by then there's easily enough width for it - and crossfades in against
     // the icon-only version fading out, rather than the two ever fighting for the same cramped space.
     val expandedContentAlpha = ((progress - 0.5f) / 0.5f).coerceIn(0f, 1f)
     Box(
@@ -315,7 +315,7 @@ private fun SegmentedTabControl(
     val progress = progress()
 
     // progress: 0f = Home active, 1f = History active. Owned by HomeScreen so a drag anywhere on
-    // the page background drives this same value — see HomeScreen's swipe state.
+    // the page background drives this same value - see HomeScreen's swipe state.
     // One dark pill slides between the two ends of the track: it carries the active tab's icon and
     // label, and the inactive tab's dimmed icon sits on the track in the end it uncovers.
     val travel = dimensions.navSelectedInnerHeight + 4.dp

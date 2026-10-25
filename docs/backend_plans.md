@@ -34,14 +34,14 @@ Recommendation: FCM, with polling as the fallback when Play services are missing
 by this same device (you changed the password here) are not notified. The same push channel
 carries sign-in approvals (section 3) and Sendly login requests (section 4).
 
-## 3. Require Security App (signed approvals) — implemented
+## 3. Require Security App (signed approvals) - implemented
 
 Built as agreed: one approver device, TOTP as the lost-phone fallback (using it turns the
 requirement off), no number matching, the fingerprint/screen lock only when the app's biometric
 setting is on. Server side: auth `docs/APPROVALS.md`; app side: `data/approvals` (see
 `docs/api_wiring.md`).
 
-## 4. Sendly: this app as a trusted device that approves Sendly logins — implemented
+## 4. Sendly: this app as a trusted device that approves Sendly logins - implemented
 
 Built as agreed: a Sendly-scoped token through the `sendly` OAuth client (needs the redirect URI
 `cnsaccounts://sendly-callback` on that client), the identity key kept on the phone encrypted

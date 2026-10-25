@@ -49,7 +49,7 @@ data class DialogField(
 )
 
 /**
- * settings.tokens.json ("Inputfield" Group12): the app's single-line input — a 53dp rounded
+ * settings.tokens.json ("Inputfield" Group12): the app's single-line input - a 53dp rounded
  * field-surface box with a muted placeholder, shared by [ActionDialog] and the sign-in screen.
  */
 @Composable

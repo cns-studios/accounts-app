@@ -43,7 +43,7 @@ import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalRadii
 
 /**
- * settings.tokens.json ("Inputfield"): the app's standard input/action dialog — a dark rounded
+ * settings.tokens.json ("Inputfield"): the app's standard input/action dialog - a dark rounded
  * card (title, subtitle, optional input fields, and one primary control) over a darkened scrim.
  * Use this whenever a flow needs a short piece of text input or a single confirmed action.
  *
@@ -54,7 +54,7 @@ import com.cns.accounts.ui.theme.LocalRadii
  * the controls while a request is in flight; [secondaryButtonLabel] adds a text button.
  *
  * The scrim darkens the screen behind the card and, tapping it (or the system back gesture)
- * dismisses the dialog via [onDismissRequest] — the card itself consumes its own taps so they
+ * dismisses the dialog via [onDismissRequest] - the card itself consumes its own taps so they
  * don't fall through to the scrim.
  */
 @Composable
