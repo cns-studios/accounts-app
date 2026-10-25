@@ -4,7 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -12,15 +12,18 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -36,20 +39,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -120,63 +123,74 @@ fun HomeBottomNavigation(
         animationSpec = SearchExpandSpec,
         label = "search-expand-progress",
     )
-    Row(
+    BoxWithConstraints(
         modifier = modifier
-            .width(dimensions.navWidth)
+            .widthIn(max = dimensions.navWidth)
+            .fillMaxWidth()
             .imePadding(),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .width(lerp(dimensions.navHeight, 0.dp, searchProgress))
-                .graphicsLayer { alpha = 1f - searchProgress },
+        // The two circles keep their size on every screen; a narrower screen takes its width from the
+        // tab switch in the middle instead, so the circles never get squeezed into ovals.
+        val tabsWidth = (maxWidth - dimensions.navHeight * 2 - NavGap * 2).coerceIn(0.dp, dimensions.navSelectedFrameWidth)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(NavGap),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (searchProgress < 1f) {
-                AccountNavButton(avatarUrl, onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onUserClick()
-                })
-            }
-        }
-        Box(
-            modifier = Modifier
-                .width(lerp(dimensions.navSelectedFrameWidth, 0.dp, searchProgress))
-                .graphicsLayer { alpha = 1f - searchProgress },
-        ) {
-            if (searchProgress < 1f) {
-                SegmentedTabControl(
-                    selectedTab = selectedTab,
-                    onTabSelected = { tab ->
+            Box(
+                modifier = Modifier
+                    .width(lerp(dimensions.navHeight, 0.dp, searchProgress))
+                    .graphicsLayer { alpha = 1f - searchProgress },
+            ) {
+                if (searchProgress < 1f) {
+                    AccountNavButton(avatarUrl, onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onTabSelected(tab)
-                    },
-                    progress = swipeProgress,
-                    historyUnread = historyUnread,
-                    onDragStarted = onSwipeDragStarted,
-                    onProgressDelta = onSwipeProgressDelta,
-                    onDragStopped = onSwipeDragStopped,
-                )
+                        onUserClick()
+                    })
+                }
             }
+            Box(
+                modifier = Modifier
+                    .width(lerp(tabsWidth, 0.dp, searchProgress))
+                    .graphicsLayer { alpha = 1f - searchProgress },
+            ) {
+                if (searchProgress < 1f) {
+                    SegmentedTabControl(
+                        width = tabsWidth,
+                        selectedTab = selectedTab,
+                        onTabSelected = { tab ->
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onTabSelected(tab)
+                        },
+                        progress = swipeProgress,
+                        historyUnread = historyUnread,
+                        onDragStarted = onSwipeDragStarted,
+                        onProgressDelta = onSwipeProgressDelta,
+                        onDragStopped = onSwipeDragStopped,
+                    )
+                }
+            }
+            SearchControl(
+                modifier = Modifier.weight(1f),
+                expanded = isSearchActive,
+                progress = searchProgress,
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onExpand = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onSearchActiveChange(true)
+                },
+                onCollapse = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onSearchQueryChange("")
+                    onSearchActiveChange(false)
+                },
+            )
         }
-        SearchControl(
-            modifier = Modifier.weight(1f),
-            expanded = isSearchActive,
-            progress = searchProgress,
-            query = searchQuery,
-            onQueryChange = onSearchQueryChange,
-            onExpand = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onSearchActiveChange(true)
-            },
-            onCollapse = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onSearchQueryChange("")
-                onSearchActiveChange(false)
-            },
-        )
     }
 }
+
+private val NavGap = 3.dp
 
 // search.tokens.json ("Nav" > "Frame2"): the same pill either collapsed to a plain search-icon
 // circle, or expanded to a full search bar (icon, text field, clear button) - one shape at every
@@ -299,6 +313,7 @@ private fun AccountNavButton(avatarUrl: String?, onClick: () -> Unit) {
 
 @Composable
 private fun SegmentedTabControl(
+    width: Dp,
     selectedTab: String,
     onTabSelected: (String) -> Unit,
     progress: () -> Float,
@@ -319,6 +334,8 @@ private fun SegmentedTabControl(
     // One dark pill slides between the two ends of the track: it carries the active tab's icon and
     // label, and the inactive tab's dimmed icon sits on the track in the end it uncovers.
     val travel = dimensions.navSelectedInnerHeight + 4.dp
+    // The pill covers the track but for the inactive tab's slot (194dp on the full 252dp track).
+    val pillWidth = (width - 8.dp - travel).coerceAtLeast(dimensions.navSelectedInnerHeight)
     val dragRangePx = with(density) { travel.toPx() }
     val historyTint = { tint: Color -> lerp(tint, colors.unreadHighlight, unread) }
     val iconInset = (dimensions.navSelectedInnerHeight - dimensions.navIconSize) / 2
@@ -328,7 +345,7 @@ private fun SegmentedTabControl(
 
     Box(
         modifier = Modifier
-            .width(dimensions.navSelectedFrameWidth)
+            .width(width)
             .height(dimensions.navHeight)
             .clip(RoundedCornerShape(radii.nav))
             .background(colors.elevatedSurface)
@@ -356,7 +373,7 @@ private fun SegmentedTabControl(
         Box(
             modifier = Modifier
                 .offset { IntOffset(x = (travel * progress).roundToPx(), y = 0) }
-                .width(dimensions.navSelectedWidth)
+                .width(pillWidth)
                 .height(dimensions.navSelectedInnerHeight)
                 .clip(RoundedCornerShape(radii.nav))
                 .background(colors.background),
@@ -410,39 +427,24 @@ private fun TrackSlot(
     }
 }
 
+// Home's cross of dots and History's scattered dots: 4dp round dots (top-left corners below),
+// drawn as vectors so they stay sharp at every density.
 @Composable
-private fun TokenDotMark(tint: Color) {
-    Box(modifier = Modifier.size(38.dp)) {
-        val positions = listOf(
-            0.dp to 7.dp, 7.dp to 7.dp, 14.dp to 7.dp,
-            7.dp to 0.dp, 7.dp to 14.dp,
-        )
-        positions.forEach { (x, y) ->
-            Image(
-                painter = painterResource(R.drawable.token_asset_0),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(tint),
-                modifier = Modifier
-                    .size(4.dp)
-                    .offset(x = x + 9.dp, y = y + 10.dp),
-            )
-        }
-    }
-}
+private fun TokenDotMark(tint: Color) = DotMark(tint, HomeDots, offsetX = 9.dp, offsetY = 10.dp)
 
 @Composable
-private fun TokenMiniDotMark(tint: Color) {
-    Box(modifier = Modifier.size(38.dp)) {
-        val positions = listOf(0.dp to 8.dp, 8.dp to 0.dp, 16.dp to 16.dp)
-        positions.forEach { (x, y) ->
-            Image(
-                painter = painterResource(R.drawable.token_asset_1),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(tint),
-                modifier = Modifier
-                    .size(4.dp)
-                    .offset(x = x + 9.dp, y = y + 9.dp),
-            )
+private fun TokenMiniDotMark(tint: Color) = DotMark(tint, HistoryDots, offsetX = 9.dp, offsetY = 9.dp)
+
+private val HomeDots = listOf(0.dp to 7.dp, 7.dp to 7.dp, 14.dp to 7.dp, 7.dp to 0.dp, 7.dp to 14.dp)
+private val HistoryDots = listOf(0.dp to 8.dp, 8.dp to 0.dp, 16.dp to 16.dp)
+private val DotSize = 4.dp
+
+@Composable
+private fun DotMark(tint: Color, dots: List<Pair<Dp, Dp>>, offsetX: Dp, offsetY: Dp) {
+    Canvas(modifier = Modifier.size(38.dp)) {
+        val radius = DotSize.toPx() / 2
+        dots.forEach { (x, y) ->
+            drawCircle(tint, radius, center = Offset((x + offsetX).toPx() + radius, (y + offsetY).toPx() + radius))
         }
     }
 }

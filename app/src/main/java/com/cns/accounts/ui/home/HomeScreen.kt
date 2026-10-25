@@ -376,7 +376,7 @@ fun HomeScreen(
             onSearchQueryChange = { searchQuery = it },
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomCenter)
-                .padding(bottom = dimensions.navBottomGap),
+                .padding(start = NavSideInset, end = NavSideInset, bottom = dimensions.navBottomGap),
         )
     }
     HomeDialogHost(state.dialog, onDialogFieldChange, onDialogConfirm, onDialogDismiss)
