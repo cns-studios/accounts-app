@@ -20,6 +20,8 @@ import com.cns.accounts.data.sendly.SendlySession
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.data.session.SecureStore
 import com.cns.accounts.data.session.SessionManager
+import com.cns.accounts.data.update.AppUpdates
+import com.cns.accounts.data.update.UpdateCheckWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +52,7 @@ class AppContainer(context: Context) {
     val push = PushRegistrar(context, api, session, preferences, appScope)
     val verification = UserVerification()
     val approvals = Approvals(api, account, ApproverKeys(context), verification, preferences, notifier, appScope)
+    val appUpdates = AppUpdates(context, notifier, appScope)
     val serviceLinks = ServiceLinks(
         account, SendlySession(api, account, approvals, secureStore), secureStore, preferences, verification, notifier, appScope,
     )
@@ -64,6 +67,7 @@ class AppContainer(context: Context) {
             }
         }
         push.start()
+        if (appUpdates.enabled) UpdateCheckWorker.schedule(context)
         // Pushes are ids only: reload what they point at.
         appScope.launch {
             push.events.collect { event ->
@@ -78,6 +82,7 @@ class AppContainer(context: Context) {
 
     /** The app came to the foreground: requests may have arrived without a push. */
     fun onForeground() {
+        appUpdates.checkIfDue()
         if (session.authState.value != AuthState.SignedIn) return
         appScope.launch { runCatching { approvals.refresh() } }
         appScope.launch { runCatching { serviceLinks.refresh() } }

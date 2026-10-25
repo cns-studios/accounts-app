@@ -3,7 +3,7 @@ package com.cns.accounts.ui.search
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import com.cns.accounts.R
 import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.SearchResult
@@ -37,18 +37,19 @@ private data class IndexedResult(val result: SearchResult, val haystack: String)
 
 @Composable
 fun rememberSearchResults(query: String, activity: List<HistoryEvent>): List<SearchResult> {
-    val context = LocalContext.current
-    val settingsTitle = context.getString(R.string.search_kind_settings)
-    val settingsIndex = remember(context) {
+    // LocalResources (not LocalContext) so a configuration change re-reads the strings.
+    val resources = LocalResources.current
+    val settingsTitle = resources.getString(R.string.search_kind_settings)
+    val settingsIndex = remember(resources) {
         SettingsEntries.map { entry ->
-            val description = context.getString(entry.description)
+            val description = resources.getString(entry.description)
             IndexedResult(
                 SearchResult("$SettingsResultPrefix${entry.id}", SearchResultKind.Settings, settingsTitle, description),
                 haystack = "$description ${entry.keywords}".lowercase(),
             )
         }
     }
-    val activityTitle = context.getString(R.string.search_kind_activity)
+    val activityTitle = resources.getString(R.string.search_kind_activity)
     val activityIndex = activity.map { event ->
         val description = listOfNotNull(eventTitle(event.eventType, event.data), event.subtitle).joinToString(" · ")
         IndexedResult(

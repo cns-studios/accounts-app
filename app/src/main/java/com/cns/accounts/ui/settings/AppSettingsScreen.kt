@@ -33,6 +33,8 @@ import com.cns.accounts.R
 import com.cns.accounts.data.AppLanguage
 import com.cns.accounts.data.LockDelay
 import com.cns.accounts.data.NotificationEvent
+import com.cns.accounts.data.update.AppRelease
+import com.cns.accounts.data.update.UpdateState
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalSpacing
 import com.cns.accounts.ui.theme.RequestCaptionText
@@ -54,6 +56,8 @@ fun AppSettingsScreen(
     onLockDelayChange: (LockDelay) -> Unit = {},
     onToggleEvent: (NotificationEvent, Boolean) -> Unit = { _, _ -> },
     onLanguageChange: (String) -> Unit = {},
+    onCheckForUpdates: () -> Unit = {},
+    onInstallUpdate: (AppRelease) -> Unit = {},
     highlight: String? = null,
 ) {
     val colors = LocalAppColors.current
@@ -146,6 +150,7 @@ fun AppSettingsScreen(
                 style = RequestCaptionText,
                 textAlign = TextAlign.Center,
             )
+            if (state.updatesEnabled) UpdateBlock(state.update, onCheckForUpdates, onInstallUpdate)
             ActionButton(
                 text = stringResource(R.string.log_out),
                 onClick = onLogOut,
@@ -154,6 +159,43 @@ fun AppSettingsScreen(
                     .searchHighlight(target == AppSettingsTarget.LogOut),
             )
         }
+    }
+}
+
+/** Check for updates, and what came of it: up to date, a version to install, its progress, or an error. */
+@Composable
+private fun UpdateBlock(update: UpdateState, onCheck: () -> Unit, onInstall: (AppRelease) -> Unit) {
+    val colors = LocalAppColors.current
+    val status = when (update) {
+        UpdateState.Idle, UpdateState.Checking -> null
+        UpdateState.UpToDate -> stringResource(R.string.update_up_to_date)
+        is UpdateState.Available -> stringResource(R.string.update_available, update.release.version.toString())
+        is UpdateState.Downloading -> stringResource(R.string.update_downloading, (update.progress * 100).toInt())
+        is UpdateState.Installing -> stringResource(R.string.update_installing)
+        is UpdateState.Failed -> stringResource(update.message)
+    }
+    if (status != null) {
+        Text(
+            status,
+            color = if (update is UpdateState.Failed) colors.onSurface else colors.mutedText,
+            style = RequestCaptionText,
+            textAlign = TextAlign.Center,
+        )
+    }
+    val release = (update as? UpdateState.Available)?.release ?: (update as? UpdateState.Failed)?.release
+    when {
+        release != null -> ActionButton(
+            text = stringResource(if (update is UpdateState.Failed) R.string.update_retry else R.string.update_install),
+            onClick = { onInstall(release) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        update is UpdateState.Downloading || update is UpdateState.Installing -> Unit
+        else -> ActionButton(
+            text = stringResource(if (update is UpdateState.Checking) R.string.update_checking else R.string.update_check),
+            onClick = { if (update !is UpdateState.Checking) onCheck() },
+            modifier = Modifier.fillMaxWidth(),
+            secondary = true,
+        )
     }
 }
 

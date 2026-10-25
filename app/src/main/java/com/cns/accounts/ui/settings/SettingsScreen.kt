@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -399,9 +400,10 @@ private fun SettingsDialogHost(
 ) {
     if (dialog == null) return
     val context = LocalContext.current
+    val resources = LocalResources.current
     val error = dialog.error?.resolve(context)
     fun fields(vararg specs: Pair<Int, FieldKind>) = specs.mapIndexed { index, (placeholder, kind) ->
-        DialogField(context.getString(placeholder), dialog.values.getOrElse(index) { "" }, kind)
+        DialogField(resources.getString(placeholder), dialog.values.getOrElse(index) { "" }, kind)
     }
     when (dialog.kind) {
         SettingsDialogKind.EditUsername -> ActionDialog(

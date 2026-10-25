@@ -370,4 +370,19 @@
     <string name="approval_outcome_cancelled_hint">Die Anfrage wurde vor einer Antwort zurückgezogen</string>
     <string name="approval_outcome_pending">wartet auf Bestätigung</string>
     <string name="approval_outcome_pending_hint">Beantworte sie in der CNS Accounts App</string>
+    <string name="notification_channel_updates">App-Updates</string>
+    <string name="notify_update_title">CNS Accounts %1$s ist verfügbar</string>
+    <string name="notify_update_body">Öffne die Einstellungen der App, um es zu installieren.</string>
+    <string name="update_check">Nach Updates suchen</string>
+    <string name="update_checking">Suche…</string>
+    <string name="update_up_to_date">Du hast die neueste Version</string>
+    <string name="update_available">Version %1$s ist verfügbar</string>
+    <string name="update_install">Update installieren</string>
+    <string name="update_downloading">Wird geladen… %1$d %%</string>
+    <string name="update_installing">Wird installiert…</string>
+    <string name="update_check_failed">Konnte nicht nach Updates suchen</string>
+    <string name="update_download_failed">Der Download ist fehlgeschlagen</string>
+    <string name="update_checksum_failed">Der Download passte nicht zum Release und wurde verworfen</string>
+    <string name="update_install_failed">Das Update wurde nicht installiert</string>
+    <string name="update_retry">Erneut versuchen</string>
 </resources>

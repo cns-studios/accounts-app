@@ -8,6 +8,8 @@ import com.cns.accounts.BuildConfig
 import com.cns.accounts.R
 import com.cns.accounts.data.LockDelay
 import com.cns.accounts.data.NotificationEvent
+import com.cns.accounts.data.update.AppRelease
+import com.cns.accounts.data.update.UpdateState
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -22,6 +24,9 @@ data class AppSettingsUiState(
     val mutedEvents: Set<String> = emptySet(),
     val language: String = "",
     val about: AboutInfo = AboutInfo(),
+    /** In-app updates; off (no update block) in debug and `.local` builds. */
+    val updatesEnabled: Boolean = false,
+    val update: UpdateState = UpdateState.Idle,
 )
 
 /** The app's version, shown above Log Out. */
@@ -52,8 +57,9 @@ class AppSettingsViewModel(private val container: AppContainer) : ViewModel() {
             lockDelay = LockDelay.of(lockAfter),
             mutedEvents = muted,
             language = language,
+            updatesEnabled = container.appUpdates.enabled,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettingsUiState())
+    }.combine(container.appUpdates.state) { state, update -> state.copy(update = update) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettingsUiState())
 
     /** Called only after the UI has confirmed the user with a biometric prompt (when enabling). */
     fun setBiometricUnlock(enabled: Boolean) = container.preferences.setBiometricUnlock(enabled)
@@ -74,6 +80,10 @@ class AppSettingsViewModel(private val container: AppContainer) : ViewModel() {
 
     /** "" follows the device. The screen recreates the activity afterwards so it takes effect. */
     fun setLanguage(tag: String) = container.preferences.setLanguage(tag)
+
+    fun checkForUpdates() = container.appUpdates.checkNow()
+
+    fun installUpdate(release: AppRelease) = container.appUpdates.install(release)
 
     fun logOut() {
         viewModelScope.launch { container.account.signOut() }

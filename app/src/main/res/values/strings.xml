@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CNS Accounts</string>
+    <string name="app_name" translatable="false">CNS Accounts</string>
     <string name="home">Home</string>
     <string name="history_tab">History</string>
     <string name="sign_in_request">Sign-in request</string>
@@ -370,4 +370,19 @@
     <string name="approval_outcome_cancelled_hint">The request was withdrawn before an answer</string>
     <string name="approval_outcome_pending">waiting for approval</string>
     <string name="approval_outcome_pending_hint">Answer it in the CNS Accounts app</string>
+    <string name="notification_channel_updates">App updates</string>
+    <string name="notify_update_title">CNS Accounts %1$s is available</string>
+    <string name="notify_update_body">Open the app\'s Settings to install it.</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You\'re on the latest version</string>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_install">Install update</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_check_failed">Couldn\'t check for updates</string>
+    <string name="update_download_failed">The download failed</string>
+    <string name="update_checksum_failed">The download didn\'t match the release and was discarded</string>
+    <string name="update_install_failed">The update wasn\'t installed</string>
+    <string name="update_retry">Try again</string>
 </resources>

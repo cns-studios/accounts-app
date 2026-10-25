@@ -296,6 +296,8 @@ private fun AppSettingsRoute(container: AppContainer, highlight: String?, onBack
             }
         },
         onLogOut = viewModel::logOut,
+        onCheckForUpdates = viewModel::checkForUpdates,
+        onInstallUpdate = viewModel::installUpdate,
         onLockDelayChange = viewModel::setLockDelay,
         onToggleEvent = viewModel::setEventNotifications,
         onLanguageChange = { tag ->

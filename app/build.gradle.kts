@@ -13,8 +13,15 @@ android {
         applicationId = "com.cns.accounts"
         minSdk = 28
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        // CI passes -PcnsVersionName=1.2.3 from the release tag; the code follows from it
+        // (MAJOR*10000 + MINOR*100 + PATCH, see data/update/AppRelease.kt). Local builds stay 1.0.
+        val releaseVersion = providers.gradleProperty("cnsVersionName").orNull
+        versionName = releaseVersion ?: "1.0"
+        versionCode = releaseVersion?.let { v ->
+            val (major, minor, patch) = (v.split(".").map(String::toInt) + listOf(0, 0)).take(3)
+            require(minor < 100 && patch < 100) { "version parts must be below 100: $v" }
+            major * 10_000 + minor * 100 + patch
+        } ?: 1
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -30,6 +37,10 @@ android {
         // Sendly, for this app as a trusted Sendly device (-PcnsSendlyUrl=... for a local one).
         val sendlyUrl = providers.gradleProperty("cnsSendlyUrl").getOrElse("https://sendly.cns-studios.com")
         buildConfigField("String", "SENDLY_BASE_URL", "\"$sendlyUrl\"")
+        // In-app updates: the latest GitHub release of this repository. Only release builds
+        // signed with the release key and talking to production check (see buildTypes).
+        buildConfigField("String", "UPDATE_RELEASES_URL", "\"https://api.github.com/repos/cns-studios/accounts-app/releases/latest\"")
+        buildConfigField("boolean", "UPDATES_ENABLED", "false")
 
         // Push (Firebase Cloud Messaging). The Firebase values come from app/google-services.json
         // (downloaded from the Firebase console, kept out of git), read here instead of through
@@ -58,15 +69,29 @@ android {
         buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebase("cnsFirebaseSenderId")}\"")
     }
 
+    // The release key comes from the environment (CI: repository secrets, see
+    // .github/workflows/release.yml). Without it the release variant is debug-signed, so it still
+    // installs straight from Android Studio for performance testing, and never offers updates.
+    val releaseKeystore = providers.environmentVariable("CNS_KEYSTORE_FILE").orNull
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("CNS_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("CNS_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("CNS_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             optimization {
                 enable = true
             }
-            // Debug-signed so the release variant installs straight from Android Studio for
-            // performance testing (debug builds are far slower in Compose). Swap for a real
-            // upload key before publishing.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
+            val production = providers.gradleProperty("cnsApiBaseUrl").orNull.let { it == null || it == "https://api.cns-studios.com" }
+            buildConfigField("boolean", "UPDATES_ENABLED", (releaseKeystore != null && production).toString())
         }
     }
     compileOptions {
@@ -96,6 +121,7 @@ dependencies {
     implementation(libs.androidx.fragment)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.androidx.work.runtime)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))

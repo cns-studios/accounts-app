@@ -16,11 +16,11 @@ data class PhraseCheck(val words: List<String>, val unknown: List<String>) {
  * for checking typed words as the user goes. Same rules as the server: any case, punctuation
  * and numbering ignored, and a word's first four letters are enough (they're unique in the list).
  */
-class RecoveryWords(private val resources: Resources) {
+class RecoveryWords(private val source: () -> Sequence<String>) {
+    constructor(resources: Resources) : this({ resources.openRawResource(R.raw.bip39_english).bufferedReader().readLines().asSequence() })
+
     private val words: Set<String> by lazy {
-        resources.openRawResource(R.raw.bip39_english).bufferedReader().useLines { lines ->
-            lines.map(String::trim).filter(String::isNotEmpty).toCollection(LinkedHashSet())
-        }
+        source().map(String::trim).filter(String::isNotEmpty).toCollection(LinkedHashSet())
     }
     private val prefixes: Map<String, String> by lazy {
         words.filter { it.length >= 4 }.associateBy { it.take(4) }

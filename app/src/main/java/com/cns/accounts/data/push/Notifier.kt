@@ -27,7 +27,14 @@ class Notifier(private val appContext: Context) {
         manager.createNotificationChannel(
             NotificationChannel(ApprovalChannel, context.getString(R.string.notification_channel_approvals), NotificationManager.IMPORTANCE_HIGH),
         )
+        manager.createNotificationChannel(
+            NotificationChannel(UpdateChannel, context.getString(R.string.notification_channel_updates), NotificationManager.IMPORTANCE_DEFAULT),
+        )
     }
+
+    /** A new version of the app is out (the daily update check). */
+    fun appUpdate(version: String) =
+        post(UpdateChannel, UpdateChannel.hashCode(), context.getString(R.string.notify_update_title, version), context.getString(R.string.notify_update_body))
 
     fun canPost(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED &&
@@ -82,5 +89,6 @@ class Notifier(private val appContext: Context) {
     private companion object {
         const val AccountChannel = "account_events"
         const val ApprovalChannel = "approvals"
+        const val UpdateChannel = "app_updates"
     }
 }
