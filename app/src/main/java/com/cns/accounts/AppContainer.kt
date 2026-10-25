@@ -44,7 +44,7 @@ class AppContainer(context: Context) {
     val authenticator = AuthenticatorStore(secureStore)
     val twoFactor = TwoFactorManager(api, account, authenticator, appScope)
     val preferences = AppPreferences(context)
-    val securityMilestones = SecurityMilestones(preferences, account, twoFactor, appScope)
+    val securityMilestones = SecurityMilestones(preferences, account, appScope)
     val messages = UserMessages()
     val recoveryWords = RecoveryWords(context.resources)
     val appLock = AppLock(preferences)

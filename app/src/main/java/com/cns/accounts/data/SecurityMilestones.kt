@@ -1,10 +1,7 @@
 package com.cns.accounts.data
 
-import com.cns.accounts.data.authenticator.TwoFactorManager
-import com.cns.accounts.data.authenticator.TwoFactorState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -17,16 +14,14 @@ import kotlinx.coroutines.launch
 class SecurityMilestones(
     private val preferences: AppPreferences,
     account: AccountRepository,
-    twoFactor: TwoFactorManager,
     scope: CoroutineScope,
 ) {
     val celebrated: StateFlow<Set<String>?> = preferences.celebratedFactors
 
     init {
         scope.launch {
-            combine(account.user, twoFactor.state) { user, state ->
-                user?.let { securityStatus(twoFactorEnabled = it.totpEnabled, authenticatorOnDevice = state is TwoFactorState.Active, recoveryPhrase = it.recoveryPhraseEnabled) }
-            }.collect { status ->
+            account.user.collect { user ->
+                val status = user?.let { securityStatus(twoFactorEnabled = it.totpEnabled, securityApp = it.requireAppApproval, recoveryPhrase = it.recoveryPhraseEnabled) }
                 // Signed out: nothing changed on the account, keep what was seen.
                 status ?: return@collect
                 val achieved = status.factors.filter { it.achieved }.mapTo(HashSet()) { it.id }

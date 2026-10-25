@@ -230,7 +230,7 @@ private val ParticleEasing = CubicBezierEasing(0.1f, 0.6f, 0.2f, 1f)
 private fun SecurityCenterCardPreview() {
     com.cns.accounts.ui.theme.CNSAccountsTheme {
         SecurityCenterCard(
-            securityStatus(twoFactorEnabled = true, authenticatorOnDevice = false),
+            securityStatus(twoFactorEnabled = true, securityApp = false),
             newlyCompleted = emptySet(),
             onCelebrated = {},
         )

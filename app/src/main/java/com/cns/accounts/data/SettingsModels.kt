@@ -36,7 +36,7 @@ data class SettingsToggles(
 @Immutable
 data class SettingsData(
     val profile: Profile = Profile("", twoFactorEnabled = false),
-    val security: SecurityStatus = securityStatus(twoFactorEnabled = false, authenticatorOnDevice = false),
+    val security: SecurityStatus = securityStatus(twoFactorEnabled = false, securityApp = false),
     val toggles: SettingsToggles = SettingsToggles(),
     // Completed factors the user hasn't been shown yet (see SecurityMilestones).
     val newlyCompletedFactors: Set<String> = emptySet(),
@@ -46,11 +46,12 @@ data class SettingsData(
  * The security center score. Factors: 2FA on the account; a password (every CNS account has
  * one); the app factor = this device holds the CNS authenticator key; a recovery phrase is set up.
  */
-fun securityStatus(twoFactorEnabled: Boolean, authenticatorOnDevice: Boolean, recoveryPhrase: Boolean = false): SecurityStatus {
+fun securityStatus(twoFactorEnabled: Boolean, securityApp: Boolean, recoveryPhrase: Boolean = false): SecurityStatus {
     val factors = listOf(
         SecurityFactor("2fa", "2FA", achieved = twoFactorEnabled),
         SecurityFactor("password", "PW", achieved = true),
-        SecurityFactor("app", "App", achieved = authenticatorOnDevice),
+        // Require Security App on the account (on this device or another).
+        SecurityFactor("app", "App", achieved = securityApp),
         SecurityFactor("phrase", "Phrase", achieved = recoveryPhrase),
     )
     return SecurityStatus(percentComplete = factors.count { it.achieved } * 100 / factors.size, factors = factors)
@@ -58,6 +59,6 @@ fun securityStatus(twoFactorEnabled: Boolean, authenticatorOnDevice: Boolean, re
 
 fun sampleSettingsData() = SettingsData(
     profile = Profile("aaron", twoFactorEnabled = true),
-    security = securityStatus(twoFactorEnabled = true, authenticatorOnDevice = true),
+    security = securityStatus(twoFactorEnabled = true, securityApp = true),
     toggles = SettingsToggles(twoFactorAuthentication = true),
 )

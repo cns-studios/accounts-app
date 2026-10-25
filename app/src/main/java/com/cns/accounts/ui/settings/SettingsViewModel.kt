@@ -47,7 +47,6 @@ class SettingsViewModel(
 
     val uiState: StateFlow<SettingsUiState> = combine(
         account.user,
-        twoFactorManager.state,
         container.securityMilestones.celebrated,
         dialog,
         enablingTwoFactor,
@@ -55,17 +54,16 @@ class SettingsViewModel(
         container.approvals.approverElsewhere,
     ) { values ->
         val user = values[0] as AccountUser?
-        val twoFactorState = values[1] as TwoFactorState
         @Suppress("UNCHECKED_CAST")
-        val celebrated = values[2] as Set<String>?
-        val dialog = values[3] as SettingsDialog?
-        val enabling = values[4] as Boolean
-        val switchingRequireApp = values[5] as Boolean?
-        val approverElsewhere = values[6] as String?
+        val celebrated = values[1] as Set<String>?
+        val dialog = values[2] as SettingsDialog?
+        val enabling = values[3] as Boolean
+        val switchingRequireApp = values[4] as Boolean?
+        val approverElsewhere = values[5] as String?
         val twoFactor = user?.totpEnabled == true
         val security = securityStatus(
             twoFactorEnabled = twoFactor,
-            authenticatorOnDevice = twoFactorState is TwoFactorState.Active,
+            securityApp = user?.requireAppApproval == true,
             recoveryPhrase = user?.recoveryPhraseEnabled == true,
         )
         SettingsUiState(

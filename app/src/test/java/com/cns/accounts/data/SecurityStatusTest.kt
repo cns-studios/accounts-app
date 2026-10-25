@@ -8,23 +8,23 @@ class SecurityStatusTest {
 
     @Test
     fun passwordAloneIsAQuarter() {
-        val status = securityStatus(twoFactorEnabled = false, authenticatorOnDevice = false, recoveryPhrase = false)
+        val status = securityStatus(twoFactorEnabled = false, securityApp = false, recoveryPhrase = false)
         assertEquals(25, status.percentComplete)
         assertEquals(listOf("password"), achieved(status))
     }
 
     @Test
     fun everyFactorIsFull() {
-        val status = securityStatus(twoFactorEnabled = true, authenticatorOnDevice = true, recoveryPhrase = true)
+        val status = securityStatus(twoFactorEnabled = true, securityApp = true, recoveryPhrase = true)
         assertEquals(100, status.percentComplete)
         assertEquals(listOf("2fa", "password", "app", "phrase"), achieved(status))
     }
 
     @Test
     fun eachFactorCountsOnItsOwn() {
-        assertEquals(50, securityStatus(twoFactorEnabled = true, authenticatorOnDevice = false).percentComplete)
-        assertEquals(50, securityStatus(twoFactorEnabled = false, authenticatorOnDevice = false, recoveryPhrase = true).percentComplete)
-        assertEquals(75, securityStatus(twoFactorEnabled = true, authenticatorOnDevice = false, recoveryPhrase = true).percentComplete)
+        assertEquals(50, securityStatus(twoFactorEnabled = true, securityApp = false).percentComplete)
+        assertEquals(50, securityStatus(twoFactorEnabled = false, securityApp = false, recoveryPhrase = true).percentComplete)
+        assertEquals(75, securityStatus(twoFactorEnabled = true, securityApp = false, recoveryPhrase = true).percentComplete)
     }
 
     @Test
