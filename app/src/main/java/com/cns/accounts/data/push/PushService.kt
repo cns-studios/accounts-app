@@ -28,7 +28,8 @@ class PushService : FirebaseMessagingService() {
                 val muted = NotificationEvent.forEvent(event)?.id in container.preferences.mutedEvents.value
                 if (container.preferences.notifications.value && !muted) container.notifier.accountEvent(event)
             }
-            "approval_request" -> data["id"]?.let(container.notifier::approvalRequest)
+            // Every signed-in device gets the push; only the approver can answer it.
+            "approval_request" -> data["id"]?.takeIf(container.approvals::shouldNotify)?.let(container.notifier::approvalRequest)
             "service_event" -> if (data["event"] == "sendly_enrollment") data["id"]?.let(container.notifier::sendlyEnrollment)
         }
     }

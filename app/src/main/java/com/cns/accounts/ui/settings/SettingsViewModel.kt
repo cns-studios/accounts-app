@@ -52,6 +52,7 @@ class SettingsViewModel(
         dialog,
         enablingTwoFactor,
         switchingRequireApp,
+        container.approvals.approverElsewhere,
     ) { values ->
         val user = values[0] as AccountUser?
         val twoFactorState = values[1] as TwoFactorState
@@ -60,6 +61,7 @@ class SettingsViewModel(
         val dialog = values[3] as SettingsDialog?
         val enabling = values[4] as Boolean
         val switchingRequireApp = values[5] as Boolean?
+        val approverElsewhere = values[6] as String?
         val twoFactor = user?.totpEnabled == true
         val security = securityStatus(
             twoFactorEnabled = twoFactor,
@@ -74,6 +76,7 @@ class SettingsViewModel(
                 toggles = SettingsToggles(
                     twoFactorAuthentication = twoFactor || enabling,
                     requireSecurityApp = switchingRequireApp ?: (user?.requireAppApproval == true),
+                    approverElsewhere = approverElsewhere.takeIf { user?.requireAppApproval == true },
                     recoveryPhrase = user?.recoveryPhraseEnabled == true,
                 ),
                 newlyCompletedFactors = if (user == null || celebrated == null) {

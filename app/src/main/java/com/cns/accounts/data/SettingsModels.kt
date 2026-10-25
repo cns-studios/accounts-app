@@ -27,6 +27,8 @@ data class SecurityStatus(
 data class SettingsToggles(
     val twoFactorAuthentication: Boolean = false,
     val requireSecurityApp: Boolean = false,
+    /** Require Security App is on with another device as the approver: its name ("" if unnamed). */
+    val approverElsewhere: String? = null,
     /** Not a toggle: the recovery phrase row shows "Set Up" or "Manage". */
     val recoveryPhrase: Boolean = false,
 )

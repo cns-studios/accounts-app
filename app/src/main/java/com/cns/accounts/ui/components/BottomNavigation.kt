@@ -50,7 +50,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.cns.accounts.R
@@ -314,16 +314,19 @@ private fun SegmentedTabControl(
     val density = LocalDensity.current
     val progress = progress()
 
-    // progress: 0f = Home fully active (expanded), 1f = History fully active (expanded). Owned
-    // by HomeScreen so a drag anywhere on the page background drives this same value — see
-    // HomeScreen's swipe state.
-    val dragRangePx = with(density) {
-        (dimensions.navSelectedWidth - dimensions.navSelectedInnerHeight).toPx()
-    }
-    val homeWidth = lerp(dimensions.navSelectedWidth, dimensions.navSelectedInnerHeight, progress)
-    val historyWidth = lerp(dimensions.navSelectedInnerHeight, dimensions.navSelectedWidth, progress)
+    // progress: 0f = Home active, 1f = History active. Owned by HomeScreen so a drag anywhere on
+    // the page background drives this same value — see HomeScreen's swipe state.
+    // One dark pill slides between the two ends of the track: it carries the active tab's icon and
+    // label, and the inactive tab's dimmed icon sits on the track in the end it uncovers.
+    val travel = dimensions.navSelectedInnerHeight + 4.dp
+    val dragRangePx = with(density) { travel.toPx() }
+    val historyTint = { tint: Color -> lerp(tint, colors.unreadHighlight, unread) }
+    val iconInset = (dimensions.navSelectedInnerHeight - dimensions.navIconSize) / 2
+    val homeActive = progress < 0.5f
+    // The pill's content swaps at the midpoint: the old tab fades out, the new one fades in.
+    val contentAlpha = (kotlin.math.abs(progress - 0.5f) * 2f).coerceIn(0f, 1f)
 
-    Row(
+    Box(
         modifier = Modifier
             .width(dimensions.navSelectedFrameWidth)
             .height(dimensions.navHeight)
@@ -337,71 +340,73 @@ private fun SegmentedTabControl(
                 onDragStopped = { velocity -> onDragStopped(velocity) },
             )
             .semantics { role = Role.Tab },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        TabSegment(
-            active = progress < 0.5f,
-            activeFraction = 1f - progress,
-            width = homeWidth,
+        TrackSlot(
+            modifier = Modifier.align(Alignment.CenterStart),
             label = stringResource(R.string.home),
+            enabled = selectedTab != HOME_TAB,
             onClick = { onTabSelected(HOME_TAB) },
-        ) { tint -> TokenDotMark(tint) }
-        TabSegment(
-            active = progress >= 0.5f,
-            activeFraction = progress,
-            width = historyWidth,
+        ) { TokenDotMark(colors.mutedSurface) }
+        TrackSlot(
+            modifier = Modifier.align(Alignment.CenterEnd),
             label = stringResource(R.string.history_tab),
+            enabled = selectedTab != HISTORY_TAB,
             onClick = { onTabSelected(HISTORY_TAB) },
-        ) { tint -> TokenMiniDotMark(lerp(tint, colors.unreadHighlight, unread)) }
+        ) { TokenMiniDotMark(historyTint(colors.mutedSurface)) }
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(x = (travel * progress).roundToPx(), y = 0) }
+                .width(dimensions.navSelectedWidth)
+                .height(dimensions.navSelectedInnerHeight)
+                .clip(RoundedCornerShape(radii.nav))
+                .background(colors.background),
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = iconInset)
+                    .size(dimensions.navIconSize)
+                    .graphicsLayer { alpha = contentAlpha },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (homeActive) TokenDotMark(colors.onSurface) else TokenMiniDotMark(historyTint(colors.onSurface))
+            }
+            Text(
+                stringResource(if (homeActive) R.string.home else R.string.history_tab),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = iconInset + dimensions.navIconSize + 4.dp)
+                    .graphicsLayer { alpha = contentAlpha },
+                color = colors.onSurface,
+                style = HomeNavigationText,
+            )
+        }
     }
 }
 
+/** An end of the tab track: the inactive tab's dimmed icon, uncovered when the pill is at the other end. */
 @Composable
-private fun TabSegment(
-    active: Boolean,
-    activeFraction: Float,
-    width: Dp,
+private fun TrackSlot(
+    modifier: Modifier,
     label: String,
+    enabled: Boolean,
     onClick: () -> Unit,
-    icon: @Composable (Color) -> Unit,
+    icon: @Composable () -> Unit,
 ) {
-    val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
     val radii = LocalRadii.current
-    val backgroundColor = lerp(Color.Transparent, colors.background, activeFraction)
-    val tint = lerp(colors.mutedSurface, colors.onSurface, activeFraction)
-    // The icon sits at a fixed offset rather than being centered together with the label, so it
-    // never has to jump to a new position when the label mounts/unmounts — every visual change
-    // here (background, tint, label reveal) is driven continuously by the same `activeFraction`.
-    val iconInset = (dimensions.navSelectedInnerHeight - dimensions.navIconSize) / 2
     Box(
-        modifier = Modifier
-            .width(width)
-            .height(dimensions.navSelectedInnerHeight)
+        modifier = modifier
+            .size(dimensions.navSelectedInnerHeight)
             .clip(RoundedCornerShape(radii.nav))
-            .background(backgroundColor)
-            .semantics { role = Role.Tab }
-            .clickable(enabled = !active) { onClick() },
+            .semantics {
+                role = Role.Tab
+                contentDescription = label
+            }
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = iconInset)
-                .size(dimensions.navIconSize),
-            contentAlignment = Alignment.Center,
-        ) {
-            icon(tint)
-        }
-        Text(
-            label,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = iconInset + dimensions.navIconSize + 4.dp)
-                .graphicsLayer { alpha = activeFraction },
-            color = colors.onSurface,
-            style = HomeNavigationText,
-        )
+        Box(modifier = Modifier.size(dimensions.navIconSize), contentAlignment = Alignment.Center) { icon() }
     }
 }
 

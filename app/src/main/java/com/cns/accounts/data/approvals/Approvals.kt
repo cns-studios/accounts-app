@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Require Security App on this device (auth-v2 `docs/APPROVALS.md`): turning it on makes this
@@ -43,10 +44,20 @@ class Approvals(
 ) {
     private val keyChanges = MutableStateFlow(0)
     private val _pending = MutableStateFlow<List<PendingApproval>>(emptyList())
+    private val _approverElsewhere = MutableStateFlow<String?>(null)
     private var expiryJob: Job? = null
+
+    // Requests this device raised and decides itself (gated): never a card or a notification.
+    private val decidedHere: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     /** Requests waiting for this device, oldest first. */
     val pending: StateFlow<List<PendingApproval>> = _pending.asStateFlow()
+
+    /**
+     * The approver's device name when Require Security App is on but another device (or an
+     * earlier install of this app) holds the key: requests go there, not to this app.
+     */
+    val approverElsewhere: StateFlow<String?> = _approverElsewhere.asStateFlow()
 
     /** Whether this device is the signed-in account's approver. */
     val isApprover: StateFlow<Boolean> = combine(account.user, keyChanges) { user, _ -> isApproverFor(user) }
@@ -61,8 +72,10 @@ class Approvals(
         val user = account.user.value
         if (user == null || !isApproverFor(user)) {
             _pending.value = emptyList()
+            _approverElsewhere.value = if (user?.requireAppApproval == true) api.approver().deviceName.orEmpty() else null
             return
         }
+        _approverElsewhere.value = null
         val server = api.approver()
         if (!server.enabled || server.deviceId != keys.deviceId(user.id)) {
             // Turned off (the TOTP fallback, or from the web) or moved to another device.
@@ -71,6 +84,9 @@ class Approvals(
         }
         setPending(api.pendingApprovals())
     }
+
+    /** Whether a pushed request [id] is one for this device to show (it is the approver, and didn't raise it itself). */
+    fun shouldNotify(id: String): Boolean = isApprover.value && id !in decidedHere
 
     /** Allow or Deny on the request card. */
     suspend fun respond(request: PendingApproval, approve: Boolean) {
@@ -114,7 +130,13 @@ class Approvals(
     suspend fun approveOrAwait(challenge: ApprovalChallenge, onWaiting: () -> Unit = {}): ApprovalPoll {
         val user = account.user.value
         if (user != null && keys.has(user.id)) {
-            decide(user.id, challenge.id, challenge.action, challenge.nonce, challenge.expiresAtUnix, approve = true)
+            // The user is right here asking for it: approve in place, no card or notification.
+            decidedHere += challenge.id
+            try {
+                decide(user.id, challenge.id, challenge.action, challenge.nonce, challenge.expiresAtUnix, approve = true)
+            } finally {
+                drop(challenge.id)
+            }
         } else {
             onWaiting()
         }
@@ -185,7 +207,7 @@ class Approvals(
 
     private fun setPending(list: List<PendingApproval>) {
         val now = System.currentTimeMillis() / 1000
-        val live = list.filter { it.expiresAtUnix > now }.sortedBy { it.expiresAtUnix }
+        val live = list.filter { it.expiresAtUnix > now && it.id !in decidedHere }.sortedBy { it.expiresAtUnix }
         _pending.value = live
         // Drop each card when its request expires.
         expiryJob?.cancel()

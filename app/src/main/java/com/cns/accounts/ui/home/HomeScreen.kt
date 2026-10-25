@@ -255,7 +255,6 @@ fun HomeScreen(
                 .graphicsLayer {
                     val progress = swipeProgress()
                     translationX = -progress * size.width
-                    alpha = 1f - progress
                 },
         ) {
             LazyColumn(
@@ -340,7 +339,6 @@ fun HomeScreen(
             modifier = Modifier.graphicsLayer {
                 val progress = swipeProgress()
                 translationX = (1f - progress) * size.width
-                alpha = progress
             },
         )
         // search.tokens.json: an opaque full-screen overlay above Home/History while search is

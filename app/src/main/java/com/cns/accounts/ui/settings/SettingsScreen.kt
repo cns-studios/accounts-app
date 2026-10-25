@@ -275,6 +275,13 @@ private fun ToggleGroup(
             checked = toggles.requireSecurityApp,
             onCheckedChange = onToggleRequireSecurityApp,
         )
+        toggles.approverElsewhere?.let { name ->
+            Text(
+                if (name.isBlank()) stringResource(R.string.require_app_elsewhere_unnamed) else stringResource(R.string.require_app_elsewhere, name),
+                color = colors.mutedText,
+                style = RequestCaptionText,
+            )
+        }
         HorizontalDivider(color = colors.elevatedSurface, thickness = 2.dp)
         Row(
             modifier = Modifier

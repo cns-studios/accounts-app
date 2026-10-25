@@ -185,11 +185,12 @@ data class PendingApproval(
 }
 
 /** The account's approver device (`GET /api/me/approver`); [deviceId] is null while it is off. */
-data class ApproverInfo(val enabled: Boolean, val deviceId: String?) {
+data class ApproverInfo(val enabled: Boolean, val deviceId: String?, val deviceName: String? = null) {
     companion object {
         fun fromJson(json: JSONObject) = ApproverInfo(
             enabled = json.optBoolean("enabled"),
             deviceId = json.optJSONObject("device")?.optStringOrNull("id"),
+            deviceName = json.optJSONObject("device")?.optStringOrNull("name"),
         )
     }
 }

@@ -242,6 +242,8 @@
     <string name="approval_denied">The request was denied in the CNS Accounts app.</string>
     <string name="approval_expired">The request expired before it was approved. Try again.</string>
     <string name="approval_cancelled">Not confirmed. Nothing was approved.</string>
+    <string name="require_app_elsewhere">Requests go to %1$s, not to this device. Lost it? Sign out, then sign in with your 2FA code to turn this off.</string>
+    <string name="require_app_elsewhere_unnamed">Requests go to another device, not to this one. Lost it? Sign out, then sign in with your 2FA code to turn this off.</string>
     <string name="approval_waiting">Approve this on the phone with Require Security App.</string>
     <string name="require_app_dialog_title">Require Security App</string>
     <string name="require_app_dialog_subtitle">Sign-ins and changes to your account will wait for your approval on this phone. Confirm with your password.</string>

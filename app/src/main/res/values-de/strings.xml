@@ -242,6 +242,8 @@
     <string name="approval_denied">Die Anfrage wurde in der CNS Accounts App abgelehnt.</string>
     <string name="approval_expired">Die Anfrage ist abgelaufen, bevor sie bestätigt wurde. Versuch es noch einmal.</string>
     <string name="approval_cancelled">Nicht bestätigt. Es wurde nichts freigegeben.</string>
+    <string name="require_app_elsewhere">Anfragen gehen an %1$s, nicht an dieses Gerät. Verloren? Melde dich ab und mit deinem 2FA-Code wieder an, um das auszuschalten.</string>
+    <string name="require_app_elsewhere_unnamed">Anfragen gehen an ein anderes Gerät, nicht an dieses. Verloren? Melde dich ab und mit deinem 2FA-Code wieder an, um das auszuschalten.</string>
     <string name="approval_waiting">Bestätige das auf dem Handy mit „Security App erforderlich“.</string>
     <string name="require_app_dialog_title">Security App erforderlich</string>
     <string name="require_app_dialog_subtitle">Anmeldungen und Änderungen an deinem Konto warten auf deine Freigabe auf diesem Handy. Bestätige mit deinem Passwort.</string>
