@@ -34,6 +34,10 @@ android {
         val accountsWebUrl = providers.gradleProperty("cnsAccountsWebUrl").getOrElse("https://accounts.cns-studios.com")
         buildConfigField("String", "CNS_API_BASE_URL", "\"$apiBaseUrl\"")
         buildConfigField("String", "CNS_ACCOUNTS_WEB_URL", "\"$accountsWebUrl\"")
+        // Login QR codes link to <accounts site>/qr; the camera app opens them in this app.
+        val accountsSite = uri(accountsWebUrl)
+        manifestPlaceholders["accountsScheme"] = accountsSite.scheme
+        manifestPlaceholders["accountsHost"] = accountsSite.host
         // Sendly, for this app as a trusted Sendly device (-PcnsSendlyUrl=... for a local one).
         val sendlyUrl = providers.gradleProperty("cnsSendlyUrl").getOrElse("https://sendly.cns-studios.com")
         buildConfigField("String", "SENDLY_BASE_URL", "\"$sendlyUrl\"")
@@ -125,6 +129,11 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.work.runtime)
+    // The in-app QR code scanner (login QR codes): CameraX preview + ZXing decoding.
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.zxing.core)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -33,6 +33,10 @@ class UserMessages {
     fun show(error: Throwable) {
         _messages.tryEmit(error.toUserMessage().copy(isError = true))
     }
+
+    fun show(message: UserMessage) {
+        _messages.tryEmit(message)
+    }
 }
 
 /** Maps a failure to copy a user can act on (auth-v2's own messages are already user-facing). */

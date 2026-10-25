@@ -389,4 +389,41 @@
     <string name="update_checksum_failed">Der Download passte nicht zum Release und wurde verworfen</string>
     <string name="update_install_failed">Das Update wurde nicht installiert</string>
     <string name="update_retry">Erneut versuchen</string>
+
+    <!-- QR code login (data/qr, ui/scan) -->
+    <string name="cancel">Abbrechen</string>
+    <string name="request_qr_login">Neues Gerät anmelden</string>
+    <string name="approval_subject_qr_login">QR-Code-Anmeldung</string>
+    <string name="event_login_qr">Mit QR-Code angemeldet</string>
+    <string name="event_login_qr_hint">In der CNS Accounts App bestätigt</string>
+    <string name="event_qr_login_cancelled">QR-Code-Anmeldung abgelehnt</string>
+    <string name="event_qr_login_cancelled_hint">Du hast eine Anmeldung in der CNS Accounts App abgelehnt</string>
+    <string name="qr_scan_card_title">Scannen</string>
+    <string name="qr_scan_card_body">Scanne den QR-Code auf einem anderen Gerät, um es anzumelden</string>
+    <string name="qr_scan_button">QR-Code scannen</string>
+    <string name="qr_scan_title">QR-Code scannen</string>
+    <string name="qr_scan_hint">Richte die Kamera auf den QR-Code auf der Anmeldeseite.</string>
+    <string name="qr_scan_camera_off">Tippen, um die Kamera zu öffnen</string>
+    <string name="qr_scan_camera_denied">Der Kamerazugriff ist aus. Tippe, um ihn in den Einstellungen zu erlauben.</string>
+    <string name="qr_scan_camera_icon">Kamera</string>
+    <string name="qr_scan_not_login">Das ist kein CNS-Anmeldecode.</string>
+    <string name="qr_login_title">Neues Gerät</string>
+    <string name="qr_login_warning">„Anmelden“ meldet dein Konto auf einem anderen Gerät an. Bestätige nie Anmeldungen, die du nicht selbst gestartet hast.</string>
+    <string name="qr_login_device">Angefragt von %1$s</string>
+    <string name="qr_login_log_in">Anmelden</string>
+    <string name="qr_login_code_title">2FA-Code eingeben</string>
+    <string name="qr_login_code_body">Dein Authenticator ist auf einem anderen Gerät. Gib seinen aktuellen 6-stelligen Code ein, um das neue Gerät anzumelden.</string>
+    <string name="qr_login_code_placeholder">6-stelliger Code</string>
+    <string name="qr_login_waiting_title">Auf deinem anderen Gerät bestätigen</string>
+    <string name="qr_login_waiting_body">„Security App erforderlich“ ist an. Erlaube diese Anmeldung in der CNS Accounts App auf %1$s.</string>
+    <string name="qr_login_waiting_body_unknown">„Security App erforderlich“ ist an. Erlaube diese Anmeldung in der CNS Accounts App auf deinem Bestätigungsgerät.</string>
+    <string name="qr_login_done">Das neue Gerät ist angemeldet.</string>
+    <string name="qr_login_cancelled">Anmeldung abgelehnt.</string>
+    <string name="qr_login_expired">Dieser QR-Code ist abgelaufen. Lass dir auf dem anderen Gerät einen neuen anzeigen.</string>
+    <string name="qr_login_used">Dieser QR-Code wurde schon verwendet.</string>
+    <string name="qr_login_app_only">Melde dich in dieser App neu an und scanne den Code dann noch einmal.</string>
+    <string name="qr_login_invalid_code">Der Code stimmt nicht. Gib den aktuellen ein.</string>
+    <string name="qr_login_enter_code">Gib den 6-stelligen Code ein.</string>
+    <string name="qr_login_not_ours">Dieser Link ist kein CNS-Anmeldecode.</string>
+    <string name="qr_login_sign_in_first">Melde dich zuerst in der App an und scanne den Code dann noch einmal.</string>
 </resources>

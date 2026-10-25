@@ -1,6 +1,7 @@
 package com.cns.accounts
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.compose.setContent
@@ -44,6 +45,8 @@ class MainActivity : FragmentActivity() {
         }
         container.verification.prompt = prompt
         verificationPrompt = prompt
+        // Recreated (a language change): the link was already taken.
+        if (savedInstanceState == null) openLink(intent)
         setContent {
             CNSAccountsTheme {
                 AppRoot(container)
@@ -52,6 +55,20 @@ class MainActivity : FragmentActivity() {
     }
 
     private var verificationPrompt: (suspend () -> Boolean)? = null
+
+    // singleTask: a link opened while the app runs arrives here.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openLink(intent)
+    }
+
+    /** A login QR code the camera app (or the accounts site) opened here; Home shows it. */
+    private fun openLink(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val link = intent.dataString ?: return
+        if (!container.qrLogins.offer(link)) container.messages.show(R.string.qr_login_not_ours)
+    }
 
     override fun onStart() {
         super.onStart()

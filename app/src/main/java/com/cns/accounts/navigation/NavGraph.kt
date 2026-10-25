@@ -44,12 +44,14 @@ import com.cns.accounts.ui.components.AppToastHost
 import com.cns.accounts.ui.components.LocalDialogsShown
 import com.cns.accounts.ui.components.SplashOverlay
 import com.cns.accounts.ui.components.ToastState
+import com.cns.accounts.ui.home.HomeDialog
 import com.cns.accounts.ui.home.HomeScreen
 import com.cns.accounts.ui.home.HomeViewModel
 import com.cns.accounts.ui.lock.Biometrics
 import com.cns.accounts.ui.lock.LockScreen
 import com.cns.accounts.ui.login.LoginScreen
 import com.cns.accounts.ui.login.LoginViewModel
+import com.cns.accounts.ui.scan.ScanScreen
 import com.cns.accounts.ui.settings.AppSettingsScreen
 import com.cns.accounts.ui.settings.AppSettingsViewModel
 import com.cns.accounts.ui.settings.RecoveryPhraseScreen
@@ -79,6 +81,14 @@ fun AppRoot(container: AppContainer) {
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val signedIn = authState == AuthState.SignedIn
     val isLocked = signedIn && biometricUnlock && locked
+    // A scanned login QR code (the scanner, or the camera app via a link): Home shows it once
+    // the app is unlocked. Signed out, there is no account to log anything in with.
+    val pendingQrLogin by container.qrLogins.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingQrLogin, signedIn, isLocked, homeState.isLoadingAccount) {
+        if (pendingQrLogin == null || isLocked || homeState.isLoadingAccount) return@LaunchedEffect
+        val code = container.qrLogins.take() ?: return@LaunchedEffect
+        if (signedIn) homeViewModel.openQrLogin(code) else container.messages.show(R.string.qr_login_sign_in_first)
+    }
     SplashOverlay(
         loading = signedIn && homeState.isLoadingAccount,
         sessionKey = authState.takeIf { signedIn },
@@ -150,6 +160,11 @@ private const val UnderlayAlpha = 0.3f
 private fun AppNavGraph(container: AppContainer, viewModel: HomeViewModel, codeHapticsAllowed: Boolean) {
     val navController = rememberNavController()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // "New device" for a scanned QR code shows on Home, wherever the app was.
+    val showsQrLogin = state.dialog is HomeDialog.QrLogin
+    LaunchedEffect(showsQrLogin) {
+        if (showsQrLogin) navController.popBackStack("home", inclusive = false)
+    }
     NavHost(
         navController = navController,
         startDestination = "home",
@@ -183,6 +198,7 @@ private fun AppNavGraph(container: AppContainer, viewModel: HomeViewModel, codeH
                 onDenyRequest = viewModel::denyRequest,
                 onSetUpTwoFactor = viewModel::setUpTwoFactor,
                 onTransferTwoFactor = viewModel::showTransferTwoFactor,
+                onScanClick = { navController.navigate("scan") { launchSingleTop = true } },
                 onToggleService = viewModel::toggleService,
                 onDisconnectService = viewModel::showDisconnectApp,
                 onSetUpService = viewModel::showSetUpService,
@@ -202,6 +218,15 @@ private fun AppNavGraph(container: AppContainer, viewModel: HomeViewModel, codeH
                 highlight = entry.arguments?.getString("highlight"),
                 onBack = { navController.popBackStack() },
                 onOpenRecoveryPhrase = { navController.navigate("recovery-phrase") { launchSingleTop = true } },
+            )
+        }
+        composable("scan") {
+            ScanScreen(
+                onBack = { navController.popBackStack() },
+                // A login code goes back to Home, which shows "New device" for it.
+                onScanned = { text ->
+                    container.qrLogins.offer(text).also { taken -> if (taken) navController.popBackStack("home", inclusive = false) }
+                },
             )
         }
         composable("recovery-phrase") {

@@ -184,6 +184,34 @@ data class PendingApproval(
     }
 }
 
+/**
+ * A scanned login QR code (`POST /api/me/qr/{id}/scan`): the browser that asks ([device], e.g.
+ * "Windows · Chrome") and what confirming it takes.
+ */
+@Immutable
+data class QrLoginRequest(
+    val id: String,
+    val device: String,
+    val requestedAt: Instant?,
+    val requires: QrLoginRequirement,
+) {
+    companion object {
+        fun fromJson(json: JSONObject) = QrLoginRequest(
+            id = json.optString("id"),
+            device = json.optStringOrNull("device") ?: "",
+            requestedAt = json.optInstant("requested_at"),
+            requires = when (json.optString("requires")) {
+                "approval" -> QrLoginRequirement.Approval
+                "code" -> QrLoginRequirement.Code
+                else -> QrLoginRequirement.Nothing
+            },
+        )
+    }
+}
+
+/** Mirrors a password sign-in: Require Security App wants an approval, otherwise 2FA a code. */
+enum class QrLoginRequirement { Approval, Code, Nothing }
+
 /** The account's approver device (`GET /api/me/approver`); [deviceId] is null while it is off. */
 data class ApproverInfo(val enabled: Boolean, val deviceId: String?, val deviceName: String? = null) {
     companion object {

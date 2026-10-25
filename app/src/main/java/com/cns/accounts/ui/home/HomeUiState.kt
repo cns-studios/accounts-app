@@ -4,6 +4,8 @@ import androidx.compose.runtime.Immutable
 import com.cns.accounts.data.HomeData
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.UserMessage
+import com.cns.accounts.data.api.QrLoginRequest
+import com.cns.accounts.data.qr.QrLoginCode
 import com.cns.accounts.ui.history.HistoryUiState
 
 @Immutable
@@ -44,4 +46,21 @@ sealed interface HomeDialog {
         val error: UserMessage? = null,
         val waitingCode: String? = null,
     ) : HomeDialog
+
+    /**
+     * A scanned login QR code: "New device" (Log In / Cancel), then, if this device can't
+     * supply it, the 2FA code to type or the wait for the approver device.
+     */
+    data class QrLogin(
+        val code: QrLoginCode,
+        val request: QrLoginRequest,
+        val step: QrLoginStep = QrLoginStep.Confirm,
+        val typedCode: String = "",
+        val isBusy: Boolean = false,
+        val error: UserMessage? = null,
+        // The approver device's name, while waiting for it.
+        val approverName: String? = null,
+    ) : HomeDialog
 }
+
+enum class QrLoginStep { Confirm, EnterCode, WaitingForApproval }
