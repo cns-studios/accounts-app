@@ -143,6 +143,8 @@
     <string name="event_signup_hint">Willkommen bei CNS Studios</string>
     <string name="event_login_success">Angemeldet</string>
     <string name="event_login_success_hint">Erfolgreiche Anmeldung</string>
+    <string name="event_login_app">Bei %1$s angemeldet</string>
+    <string name="event_login_app_hint">%1$s hat über dein CNS-Konto Zugriff erhalten</string>
     <string name="event_login_failure">Anmeldung fehlgeschlagen</string>
     <string name="event_login_failure_hint">Falsche Zugangsdaten oder blockierter Versuch</string>
     <string name="event_logout">Abgemeldet</string>
@@ -288,6 +290,12 @@
     <string name="recovery_phrase_show_body">In dieser Reihenfolge, auf Papier oder in einem Passwortmanager. Du siehst sie nicht noch einmal.</string>
     <string name="recovery_phrase_warning">Wer diese Wörter hat, kann dein Konto übernehmen. CNS fragt dich nie danach.</string>
     <string name="recovery_phrase_tap_to_reveal">Tippe, um deine Wörter anzuzeigen</string>
+    <string name="recovery_phrase_save_file">Als Datei speichern</string>
+    <string name="recovery_phrase_file_saved">Gespeichert. Bewahre die Datei offline und privat auf.</string>
+    <string name="recovery_phrase_file_failed">Die Datei konnte nicht gespeichert werden</string>
+    <string name="recovery_phrase_file_heading">CNS-Wiederherstellungsphrase für %1$s</string>
+    <string name="recovery_phrase_file_created">Erstellt am %1$s</string>
+    <string name="recovery_phrase_file_warning">Wer diese Wörter hat, kann dein Konto übernehmen. Bewahre sie offline und privat auf.</string>
     <string name="recovery_phrase_saved_it">Ich habe meine Wiederherstellungsphrase sicher aufbewahrt</string>
     <string name="recovery_phrase_confirm_title">Phrase bestätigen</string>
     <string name="recovery_phrase_confirm_body">Gib diese Wörter aus deiner Phrase ein, damit wir sicher sind, dass du sie hast.</string>
@@ -329,7 +337,7 @@
     <string name="event_require_app_disabled_code_hint">Ausgeschaltet, weil du dich mit einem 2FA-Code angemeldet hast</string>
     <string name="event_approval_bad_signature">Gefälschte Bestätigung blockiert</string>
     <string name="event_approval_bad_signature_hint">Eine Bestätigung mit ungültiger Signatur wurde abgelehnt</string>
-    <string name="event_recovery_phrase_created">Wiederherstellungsphrase eingerichtet</string>
+    <string name="event_recovery_phrase_created">Wiederherstellungsphrase aktiviert</string>
     <string name="event_recovery_phrase_created_hint">Damit kannst du dein Konto jetzt wiederherstellen</string>
     <string name="event_recovery_phrase_replaced">Neue Wiederherstellungsphrase</string>
     <string name="event_recovery_phrase_replaced_hint">Sie ersetzt deine bisherige Wiederherstellungsphrase</string>

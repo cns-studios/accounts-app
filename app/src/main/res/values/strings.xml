@@ -143,6 +143,8 @@
     <string name="event_signup_hint">Welcome to CNS Studios</string>
     <string name="event_login_success">Signed in</string>
     <string name="event_login_success_hint">Successful sign-in to your account</string>
+    <string name="event_login_app">Signed in to %1$s</string>
+    <string name="event_login_app_hint">%1$s got access through your CNS account</string>
     <string name="event_login_failure">Failed sign-in</string>
     <string name="event_login_failure_hint">Wrong password or a blocked attempt</string>
     <string name="event_logout">Signed out</string>
@@ -288,6 +290,12 @@
     <string name="recovery_phrase_show_body">In this order, on paper or in a password manager. You won\'t see them again.</string>
     <string name="recovery_phrase_warning">Anyone with these words can take over your account. CNS will never ask you for them.</string>
     <string name="recovery_phrase_tap_to_reveal">Tap to show your words</string>
+    <string name="recovery_phrase_save_file">Save as file</string>
+    <string name="recovery_phrase_file_saved">Saved. Keep the file offline and private.</string>
+    <string name="recovery_phrase_file_failed">Couldn\'t save the file</string>
+    <string name="recovery_phrase_file_heading">CNS account recovery phrase for %1$s</string>
+    <string name="recovery_phrase_file_created">Created %1$s</string>
+    <string name="recovery_phrase_file_warning">Anyone with these words can take over your account. Keep them offline and private.</string>
     <string name="recovery_phrase_saved_it">I\'ve saved my recovery phrase somewhere safe</string>
     <string name="recovery_phrase_confirm_title">Confirm your phrase</string>
     <string name="recovery_phrase_confirm_body">Type these words from your phrase to make sure you have it.</string>
@@ -329,7 +337,7 @@
     <string name="event_require_app_disabled_code_hint">Turned off because you signed in with a 2FA code</string>
     <string name="event_approval_bad_signature">Forged approval blocked</string>
     <string name="event_approval_bad_signature_hint">An approval with an invalid signature was rejected</string>
-    <string name="event_recovery_phrase_created">Recovery phrase set up</string>
+    <string name="event_recovery_phrase_created">Recovery phrase enabled</string>
     <string name="event_recovery_phrase_created_hint">You can now recover your account with it</string>
     <string name="event_recovery_phrase_replaced">New recovery phrase</string>
     <string name="event_recovery_phrase_replaced_hint">It replaced your previous recovery phrase</string>

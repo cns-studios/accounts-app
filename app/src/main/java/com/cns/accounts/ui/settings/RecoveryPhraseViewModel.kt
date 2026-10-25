@@ -10,11 +10,15 @@ import com.cns.accounts.data.api.ApiException
 import com.cns.accounts.data.api.RecoveryPhraseDraft
 import com.cns.accounts.data.authenticator.TwoFactorState
 import com.cns.accounts.data.toUserMessage
+import android.content.ContentResolver
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 enum class RecoveryPhraseStep { Overview, Verify, Show, Confirm }
@@ -31,6 +35,8 @@ data class RecoveryPhraseUiState(
     /** A 2FA code field: the account has 2FA, this device can't supply the code and no approval replaces it. */
     val askForCode: Boolean = false,
     val draft: RecoveryPhraseDraft? = null,
+    /** For the saved file's name and heading. */
+    val username: String = "",
     val revealed: Boolean = false,
     val savedIt: Boolean = false,
     val answers: List<String> = emptyList(),
@@ -57,6 +63,7 @@ class RecoveryPhraseViewModel(private val container: AppContainer) : ViewModel()
             step = if (enabled) RecoveryPhraseStep.Overview else RecoveryPhraseStep.Verify,
             enabled = enabled,
             createdAt = user?.recoveryPhraseCreatedAt,
+            username = user?.username.orEmpty(),
             askForCode = needsTypedCode(),
         )
     }
@@ -88,6 +95,18 @@ class RecoveryPhraseViewModel(private val container: AppContainer) : ViewModel()
     }
 
     fun reveal() = _uiState.update { it.copy(revealed = true) }
+
+    /** Writes [text] (the words and a warning) to the file the user picked in the system file picker. */
+    fun savePhraseFile(resolver: ContentResolver, uri: Uri, text: String) {
+        viewModelScope.launch {
+            val saved = runCatching {
+                withContext(Dispatchers.IO) {
+                    resolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) } ?: error("no output stream")
+                }
+            }.isSuccess
+            container.messages.show(if (saved) R.string.recovery_phrase_file_saved else R.string.recovery_phrase_file_failed, isError = !saved)
+        }
+    }
     fun setSavedIt(saved: Boolean) = _uiState.update { it.copy(savedIt = saved) }
     fun toConfirm() = _uiState.update { if (it.revealed && it.savedIt) it.copy(step = RecoveryPhraseStep.Confirm, error = null) else it }
 

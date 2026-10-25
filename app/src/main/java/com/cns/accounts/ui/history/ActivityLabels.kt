@@ -84,6 +84,7 @@ fun eventTitle(eventType: String, data: Map<String, String> = emptyMap()): Strin
         stringResource(R.string.approval_event_title, subject, stringResource(outcome(data).word))
     }
     eventType == "recovery_phrase_created" && data["replaced"] == "true" -> stringResource(R.string.event_recovery_phrase_replaced)
+    eventType == "login_success" && !data["client_name"].isNullOrBlank() -> stringResource(R.string.event_login_app, data.getValue("client_name"))
     else -> EventCopies[eventType]?.let { stringResource(it.label) } ?: humanize(eventType)
 }
 
@@ -92,6 +93,7 @@ fun eventDescription(eventType: String, data: Map<String, String> = emptyMap()):
     eventType == "approval" -> stringResource(outcome(data).hint)
     eventType == "require_app_disabled" && data["via"] == "2fa_code" -> stringResource(R.string.event_require_app_disabled_code_hint)
     eventType == "recovery_phrase_created" && data["replaced"] == "true" -> stringResource(R.string.event_recovery_phrase_replaced_hint)
+    eventType == "login_success" && !data["client_name"].isNullOrBlank() -> stringResource(R.string.event_login_app_hint, data.getValue("client_name"))
     else -> stringResource(EventCopies[eventType]?.hint ?: R.string.event_unknown_hint)
 }
 

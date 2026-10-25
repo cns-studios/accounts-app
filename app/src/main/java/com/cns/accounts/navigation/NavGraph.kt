@@ -246,6 +246,7 @@ private fun SettingsRoute(highlight: String?, onBack: () -> Unit, onOpenRecovery
 private fun RecoveryPhraseRoute(onBack: () -> Unit) {
     val viewModel = containerViewModel { c, _ -> RecoveryPhraseViewModel(c) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     RecoveryPhraseScreen(
         state = state,
         onBack = onBack,
@@ -255,6 +256,7 @@ private fun RecoveryPhraseRoute(onBack: () -> Unit) {
         onNewPhrase = viewModel::startNewPhrase,
         onRemove = viewModel::startRemove,
         onReveal = viewModel::reveal,
+        onSaveFile = { uri, text -> viewModel.savePhraseFile(context.contentResolver, uri, text) },
         onSavedItChange = viewModel::setSavedIt,
         onContinueToConfirm = viewModel::toConfirm,
         onAnswerChange = viewModel::updateAnswer,

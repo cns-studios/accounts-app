@@ -1,6 +1,9 @@
 package com.cns.accounts.ui.settings
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +67,7 @@ fun RecoveryPhraseScreen(
     onNewPhrase: () -> Unit,
     onRemove: () -> Unit,
     onReveal: () -> Unit,
+    onSaveFile: (Uri, String) -> Unit,
     onSavedItChange: (Boolean) -> Unit,
     onContinueToConfirm: () -> Unit,
     onAnswerChange: (Int, String) -> Unit,
@@ -101,7 +105,7 @@ fun RecoveryPhraseScreen(
             when (state.step) {
                 RecoveryPhraseStep.Overview -> OverviewStep(state, onNewPhrase, onRemove)
                 RecoveryPhraseStep.Verify -> VerifyStep(state, onPasswordChange, onCodeChange, onSubmitVerify)
-                RecoveryPhraseStep.Show -> ShowStep(state, onReveal, onSavedItChange, onContinueToConfirm)
+                RecoveryPhraseStep.Show -> ShowStep(state, onReveal, onSaveFile, onSavedItChange, onContinueToConfirm)
                 RecoveryPhraseStep.Confirm -> ConfirmStep(state, onAnswerChange, onSubmitConfirm)
             }
         }
@@ -191,11 +195,26 @@ private fun VerifyStep(
 private fun ShowStep(
     state: RecoveryPhraseUiState,
     onReveal: () -> Unit,
+    onSaveFile: (Uri, String) -> Unit,
     onSavedItChange: (Boolean) -> Unit,
     onContinue: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     val draft = state.draft ?: return
+    // The same text file the web page downloads. The system picker decides where it goes (no
+    // storage permission, no copy kept by the app).
+    val created = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault()).format(java.time.Instant.now())
+    val fileText = listOf(
+        stringResource(R.string.recovery_phrase_file_heading, state.username),
+        stringResource(R.string.recovery_phrase_file_created, created),
+        "",
+        draft.words.mapIndexed { i, word -> "${i + 1}. $word" }.joinToString("\n"),
+        "",
+        stringResource(R.string.recovery_phrase_file_warning),
+    ).joinToString("\n", postfix = "\n")
+    val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) onSaveFile(uri, fileText)
+    }
     Intro(stringResource(R.string.recovery_phrase_show_title), stringResource(R.string.recovery_phrase_show_body))
     Text(stringResource(R.string.recovery_phrase_warning), color = colors.onSurface, style = RequestCaptionText)
     Box(
@@ -230,6 +249,14 @@ private fun ShowStep(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+    if (state.revealed) {
+        ActionButton(
+            stringResource(R.string.recovery_phrase_save_file),
+            onClick = { saveFile.launch("cns-recovery-phrase-${state.username}.txt") },
+            modifier = Modifier.fillMaxWidth(),
+            secondary = true,
+        )
     }
     Row(
         modifier = Modifier
@@ -292,7 +319,7 @@ private fun RecoveryPhraseShowPreview() {
                 ),
             ),
             onBack = {}, onPasswordChange = {}, onCodeChange = {}, onSubmitVerify = {}, onNewPhrase = {}, onRemove = {},
-            onReveal = {}, onSavedItChange = {}, onContinueToConfirm = {}, onAnswerChange = { _, _ -> }, onSubmitConfirm = {},
+            onReveal = {}, onSaveFile = { _, _ -> }, onSavedItChange = {}, onContinueToConfirm = {}, onAnswerChange = { _, _ -> }, onSubmitConfirm = {},
             onStepBack = { false },
         )
     }
