@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Require Security App on this device (auth-v2 `docs/APPROVALS.md`): turning it on makes this
@@ -49,6 +50,12 @@ class Approvals(
 
     // Requests this device raised and decides itself (gated): never a card or a notification.
     private val decidedHere: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    // Gated calls of this device in flight. The request one raises can be pushed before the
+    // response names it, so meanwhile new requests are held back (no card, no notification);
+    // anything held back is shown once the calls are done.
+    private val ownRequestsInFlight = AtomicInteger(0)
+    @Volatile private var heldBack = false
 
     /** Requests waiting for this device, oldest first. */
     val pending: StateFlow<List<PendingApproval>> = _pending.asStateFlow()
@@ -91,7 +98,14 @@ class Approvals(
     }
 
     /** Whether a pushed request [id] is one for this device to show (it is the approver, and didn't raise it itself). */
-    fun shouldNotify(id: String): Boolean = isApprover.value && id !in decidedHere
+    fun shouldNotify(id: String): Boolean {
+        if (!isApprover.value || id in decidedHere) return false
+        if (ownRequestsInFlight.get() > 0) {
+            heldBack = true
+            return false
+        }
+        return true
+    }
 
     /** Allow or Deny on the request card. */
     suspend fun respond(request: PendingApproval, approve: Boolean) {
@@ -118,13 +132,33 @@ class Approvals(
      * with the approval. [onWaiting] is called when the decision has to come from another device.
      */
     suspend fun <T> gated(onWaiting: () -> Unit = {}, action: suspend (approvalId: String?) -> T): T {
-        val challenge = try {
-            return action(null)
-        } catch (e: ApiException) {
-            e.approval?.takeIf { e.code == "approval_required" } ?: throw e
+        val challenge = raisingOwnRequest {
+            val challenge = try {
+                return action(null)
+            } catch (e: ApiException) {
+                e.approval?.takeIf { e.code == "approval_required" } ?: throw e
+            }
+            // Ours, decided right here: never a card or a notification, even if its push is late.
+            account.user.value?.let { if (keys.has(it.id)) decidedHere += challenge.id }
+            challenge
         }
         approveOrAwait(challenge, onWaiting)
         return action(challenge.id)
+    }
+
+    private inline fun <R> raisingOwnRequest(block: () -> R): R {
+        ownRequestsInFlight.incrementAndGet()
+        try {
+            return block()
+        } finally {
+            if (ownRequestsInFlight.decrementAndGet() == 0 && heldBack) {
+                heldBack = false
+                scope.launch {
+                    runCatching { refresh() }
+                    _pending.value.filter { shouldNotify(it.id) }.forEach { notifier.approvalRequest(it.id) }
+                }
+            }
+        }
     }
 
     /**
@@ -212,7 +246,13 @@ class Approvals(
 
     private fun setPending(list: List<PendingApproval>) {
         val now = System.currentTimeMillis() / 1000
-        val live = list.filter { it.expiresAtUnix > now && it.id !in decidedHere }.sortedBy { it.expiresAtUnix }
+        val shown = _pending.value.mapTo(HashSet()) { it.id }
+        val live = list.filter { it.expiresAtUnix > now && it.id !in decidedHere }
+            .filter { request ->
+                // A new request while this device raises its own may be that one: wait and see.
+                (ownRequestsInFlight.get() == 0 || request.id in shown).also { if (!it) heldBack = true }
+            }
+            .sortedBy { it.expiresAtUnix }
         _pending.value = live
         // Drop each card when its request expires.
         expiryJob?.cancel()
