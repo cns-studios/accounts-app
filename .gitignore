@@ -31,3 +31,6 @@ output-metadata.json
 
 # Firebase client config, per developer (see app/build.gradle.kts)
 google-services.json
+
+docs/
+tools/
