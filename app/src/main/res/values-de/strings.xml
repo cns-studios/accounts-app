@@ -177,6 +177,7 @@
     <!-- Search -->
     <string name="search_kind_settings">Einstellungen</string>
     <string name="search_kind_activity">Aktivität</string>
+    <string name="search_matched_keyword">Stichwort: %1$s</string>
     <string name="search_entry_2fa">2FA-Einstellungen ändern</string>
     <string name="search_entry_password">Passwort ändern</string>
     <string name="search_entry_username">Benutzernamen ändern</string>

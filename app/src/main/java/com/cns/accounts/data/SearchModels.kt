@@ -1,6 +1,7 @@
 package com.cns.accounts.data
 
 import androidx.compose.runtime.Immutable
+import java.time.Instant
 
 // search.tokens.json ("Search"): result cards shown once the user starts typing; whichever
 // substring of the query matches is highlighted within each one's description. Results come
@@ -15,6 +16,10 @@ data class SearchResult(
     val kind: SearchResultKind,
     val title: String,
     val description: String,
+    // When it happened (activity results).
+    val timestamp: Instant? = null,
+    // The keyword the query matched when it isn't in the visible text; the card shows it.
+    val matchedKeyword: String? = null,
 )
 
 fun sampleSearchResults(): List<SearchResult> = listOf(

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,12 +24,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.cns.accounts.R
 import com.cns.accounts.data.SearchResult
 import com.cns.accounts.data.SearchResultKind
 import com.cns.accounts.data.sampleSearchResults
@@ -36,6 +39,8 @@ import com.cns.accounts.ui.components.AppCard
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.components.TokenIconKind
 import com.cns.accounts.ui.components.fadingEdges
+import com.cns.accounts.ui.format.relativeTime
+import com.cns.accounts.ui.theme.HistoryEventTimeText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalDimensions
 import com.cns.accounts.ui.theme.LocalRadii
@@ -59,7 +64,9 @@ fun SearchScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background),
+            .background(colors.background)
+            // With the keyboard open the nav sits on top of it, and the list ends above the nav.
+            .imePadding(),
     ) {
         if (query.isNotBlank()) {
             // Same edges as History: results stop (fading) above the search bar instead of running
@@ -107,12 +114,25 @@ private fun SearchResultCard(result: SearchResult, query: String, onClick: () ->
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TokenIcon(iconFor(result.kind), tint = colors.onSurface)
-                Text(result.title, color = colors.onSurface, style = SearchResultTitleText)
+                Text(
+                    highlightMatches(result.title, query, baseColor = colors.onSurface, matchColor = colors.accent),
+                    modifier = Modifier.weight(1f),
+                    style = SearchResultTitleText,
+                )
+                result.timestamp?.let {
+                    Text(relativeTime(it), color = colors.mutedText, style = HistoryEventTimeText, maxLines = 1, softWrap = false)
+                }
             }
             Text(
                 highlightMatches(result.description, query, baseColor = colors.onSurface, matchColor = colors.accent),
                 style = RequestMetaText,
             )
+            result.matchedKeyword?.let { keyword ->
+                Text(
+                    highlightKeyword(stringResource(R.string.search_matched_keyword, keyword), keyword, query, colors.mutedText, colors.accent),
+                    style = RequestMetaText,
+                )
+            }
         }
     }
 }
@@ -122,6 +142,23 @@ private fun iconFor(kind: SearchResultKind): TokenIconKind = when (kind) {
     SearchResultKind.Activity -> TokenIconKind.User
     SearchResultKind.Help -> TokenIconKind.LifeBuoy
     SearchResultKind.QuestionAnswer -> TokenIconKind.MessageQuestion
+}
+
+/** [text] showing [keyword], with the part of the keyword that [query] matched (its start) highlighted. */
+private fun highlightKeyword(text: String, keyword: String, query: String, baseColor: Color, matchColor: Color): AnnotatedString {
+    val at = text.lastIndexOf(keyword)
+    val length = query.trim().length.coerceAtMost(keyword.length)
+    return buildAnnotatedString {
+        withStyle(SpanStyle(color = baseColor)) {
+            if (at < 0) {
+                append(text)
+            } else {
+                append(text.substring(0, at))
+                withStyle(SpanStyle(color = matchColor)) { append(text.substring(at, at + length)) }
+                append(text.substring(at + length))
+            }
+        }
+    }
 }
 
 private fun highlightMatches(text: String, query: String, baseColor: Color, matchColor: Color): AnnotatedString {

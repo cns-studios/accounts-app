@@ -8,13 +8,16 @@ import com.cns.accounts.R
 import com.cns.accounts.data.HistoryEvent
 import com.cns.accounts.data.SearchResult
 import com.cns.accounts.data.SearchResultKind
-import com.cns.accounts.ui.history.eventDescription
 import com.cns.accounts.ui.history.eventTitle
 
 /**
  * The local search index: every settings entry (with extra keywords so "pw" or "mfa" find the
  * right row) plus the recent account activity already loaded for the History tab. The Help
  * Center and FAQ results the design also shows need help.cns-studios.com, which isn't built yet.
+ *
+ * A result is only listed when the query shows up somewhere on its card, so there is always a
+ * highlight: in its description, in its title (for queries of [MinTitleMatch]+ characters), or
+ * in the keyword it was found by, which the card then shows.
  */
 private class SettingsEntry(val id: String, @param:StringRes val description: Int, val keywords: String)
 
@@ -33,7 +36,26 @@ private val SettingsEntries = listOf(
     SettingsEntry("delete", R.string.search_entry_delete, "delete remove account close"),
 )
 
-private data class IndexedResult(val result: SearchResult, val haystack: String)
+/** A result before matching: what its card shows, and the keywords that also find it. */
+internal data class SearchCandidate(val result: SearchResult, val keywords: List<String> = emptyList())
+
+/**
+ * The candidates [query] finds, in order, as results ready to show. Matching ignores case; a
+ * keyword has to start with the query, which needs [MinKeywordMatch]+ characters.
+ */
+internal fun searchCandidates(query: String, candidates: List<SearchCandidate>, limit: Int = MaxResults): List<SearchResult> {
+    val needle = query.trim().lowercase()
+    if (needle.isEmpty()) return emptyList()
+    return candidates.asSequence().mapNotNull { candidate ->
+        val result = candidate.result
+        when {
+            needle in result.description.lowercase() -> result
+            needle.length >= MinTitleMatch && needle in result.title.lowercase() -> result
+            needle.length >= MinKeywordMatch -> candidate.keywords.firstOrNull { it.startsWith(needle) }?.let { result.copy(matchedKeyword = it) }
+            else -> null
+        }
+    }.take(limit).toList()
+}
 
 @Composable
 fun rememberSearchResults(query: String, activity: List<HistoryEvent>): List<SearchResult> {
@@ -42,29 +64,26 @@ fun rememberSearchResults(query: String, activity: List<HistoryEvent>): List<Sea
     val settingsTitle = resources.getString(R.string.search_kind_settings)
     val settingsIndex = remember(resources) {
         SettingsEntries.map { entry ->
-            val description = resources.getString(entry.description)
-            IndexedResult(
-                SearchResult("$SettingsResultPrefix${entry.id}", SearchResultKind.Settings, settingsTitle, description),
-                haystack = "$description ${entry.keywords}".lowercase(),
+            SearchCandidate(
+                SearchResult("$SettingsResultPrefix${entry.id}", SearchResultKind.Settings, settingsTitle, resources.getString(entry.description)),
+                keywords = entry.keywords.split(' '),
             )
         }
     }
     val activityTitle = resources.getString(R.string.search_kind_activity)
     val activityIndex = activity.map { event ->
         val description = listOfNotNull(eventTitle(event.eventType, event.data), event.subtitle).joinToString(" · ")
-        IndexedResult(
-            SearchResult("activity-${event.id}", SearchResultKind.Activity, activityTitle, description),
-            haystack = "$description ${eventDescription(event.eventType, event.data)}".lowercase(),
-        )
+        SearchCandidate(SearchResult("$ActivityResultPrefix${event.id}", SearchResultKind.Activity, activityTitle, description, timestamp = event.createdAt))
     }
-    val needle = query.trim().lowercase()
-    return remember(needle, settingsIndex, activityIndex) {
-        if (needle.isEmpty()) emptyList()
-        else (settingsIndex + activityIndex).filter { needle in it.haystack }.map { it.result }.take(MaxResults)
-    }
+    return remember(query, settingsIndex, activityIndex) { searchCandidates(query, settingsIndex + activityIndex) }
 }
 
 private const val MaxResults = 30
+private const val MinTitleMatch = 3
+private const val MinKeywordMatch = 2
 
 /** Settings results are ids "settings-<entry id>"; the entry id is what Settings highlights. */
 const val SettingsResultPrefix = "settings-"
+
+/** Activity results are ids "activity-<event id>"; History scrolls to and highlights that event. */
+const val ActivityResultPrefix = "activity-"
