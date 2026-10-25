@@ -1,5 +1,6 @@
 *.iml
 .gradle
+.kotlin/
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -7,12 +8,24 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/deploymentTargetDropDown.xml
 .DS_Store
 /build
+build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+*.log
+
+# Build outputs
+*.apk
+*.aab
+output-metadata.json
+
+# Signing keys never go in the repo
+*.jks
+*.keystore
 
 # Firebase client config, per developer (see app/build.gradle.kts)
 google-services.json
