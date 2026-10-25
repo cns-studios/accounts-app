@@ -377,11 +377,11 @@
     <string name="notification_channel_updates">App updates</string>
     <string name="notify_update_title">CNS Accounts %1$s is available</string>
     <string name="notify_update_body">Open the app\'s Settings to install it.</string>
-    <string name="update_check">Check for updates</string>
-    <string name="update_checking">Checking…</string>
-    <string name="update_up_to_date">You\'re on the latest version</string>
-    <string name="update_available">Version %1$s is available</string>
-    <string name="update_install">Install update</string>
+    <string name="version">Version</string>
+    <string name="update_check_short">Check</string>
+    <string name="update_up_to_date_short">Up to date</string>
+    <string name="update_install_short">Update</string>
+    <string name="update_progress_short">%1$d%%</string>
     <string name="update_downloading">Downloading… %1$d%%</string>
     <string name="update_installing">Installing…</string>
     <string name="update_check_failed">Couldn\'t check for updates</string>
