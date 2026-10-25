@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,12 @@ import com.cns.accounts.ui.theme.DialogSubtitleText
 import com.cns.accounts.ui.theme.DialogTitleText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalRadii
+
+/**
+ * False while the app lock covers the app. A dialog is its own window, above the lock screen,
+ * so dialogs stay hidden until the app is unlocked again (their state is kept meanwhile).
+ */
+val LocalDialogsShown = compositionLocalOf { true }
 
 /**
  * settings.tokens.json ("Inputfield"): the app's standard input/action dialog - a dark rounded
@@ -76,7 +83,16 @@ fun ActionDialog(
     isBusy: Boolean = false,
     secondaryButtonLabel: String? = null,
     onSecondaryAction: () -> Unit = {},
+    // The subtitle as a warning (accent red), e.g. before logging in another device.
+    subtitleIsWarning: Boolean = false,
+    // A small grey line under the subtitle, e.g. which device asks.
+    note: String? = null,
+    // The secondary action as a full-width button under the primary one, not a text link.
+    secondaryAsButton: Boolean = false,
+    // A spinner above the buttons, for a step that waits on something else.
+    showProgress: Boolean = false,
 ) {
+    if (!LocalDialogsShown.current) return
     val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
     val allFields = if (fieldValue != null && fieldPlaceholder != null) listOf(DialogField(fieldPlaceholder, fieldValue)) + fields else fields
@@ -134,7 +150,13 @@ fun ActionDialog(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(title, color = colors.onSurface, style = DialogTitleText, textAlign = TextAlign.Center)
-                    Text(subtitle, color = colors.dialogSubtitle, style = DialogSubtitleText, textAlign = TextAlign.Center)
+                    Text(subtitle, color = if (subtitleIsWarning) colors.accent else colors.dialogSubtitle, style = DialogSubtitleText, textAlign = TextAlign.Center)
+                    if (note != null) {
+                        Text(note, color = colors.dialogSubtitle, style = DialogNoteText, textAlign = TextAlign.Center)
+                    }
+                }
+                if (showProgress) {
+                    RefreshSpinner(phase = { BusySpinnerPhase }, size = 26.dp)
                 }
                 if (detail != null) {
                     SelectionContainer {
@@ -178,7 +200,22 @@ fun ActionDialog(
                         }
                     }
                 }
-                if (secondaryButtonLabel != null) {
+                if (secondaryButtonLabel != null && secondaryAsButton) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(53.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(SecondaryButtonColor)
+                            .clickable(enabled = !isBusy) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSecondaryAction()
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(secondaryButtonLabel, color = Color.White, style = DialogButtonText)
+                    }
+                } else if (secondaryButtonLabel != null) {
                     Text(
                         secondaryButtonLabel,
                         modifier = Modifier
@@ -198,6 +235,10 @@ fun ActionDialog(
 }
 
 private val DialogDetailText = AccountCodeText.copy(fontSize = 18.sp, lineHeight = 24.sp)
+private val DialogNoteText = DialogSubtitleText.copy(fontSize = 13.sp, lineHeight = 18.sp)
+
+// The dark secondary button (#1A1A1A, white text), the same as the Home scan card's.
+internal val SecondaryButtonColor = Color(0xFF1A1A1A)
 
 @Preview(name = "Action dialog with field", showBackground = true, widthDp = 390, heightDp = 500)
 @Composable

@@ -81,6 +81,7 @@ import com.cns.accounts.data.authenticator.Totp
 import com.cns.accounts.data.authenticator.TwoFactorState
 import com.cns.accounts.data.sampleHomeData
 import com.cns.accounts.ui.components.ActionDialog
+import com.cns.accounts.ui.components.SecondaryButtonColor
 import com.cns.accounts.ui.components.DialogField
 import com.cns.accounts.ui.components.FieldKind
 import com.cns.accounts.ui.components.AppCard
@@ -120,6 +121,7 @@ fun HomeScreen(
     onDenyRequest: () -> Unit,
     onSetUpTwoFactor: () -> Unit,
     onTransferTwoFactor: () -> Unit,
+    onScanClick: () -> Unit,
     onToggleService: (Service) -> Unit,
     onDisconnectService: (Service) -> Unit,
     onSetUpService: (Service) -> Unit,
@@ -333,7 +335,20 @@ fun HomeScreen(
                         )
                     }
                 }
-                item(key = "account-services-gap", contentType = "spacer") {
+                item(key = "account-scan-gap", contentType = "spacer") {
+                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
+                }
+                item(key = "scan", contentType = "scan") {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = NavSideInset),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        ScanCard(onScan = onScanClick, modifier = Modifier.navAlignedWidth())
+                    }
+                }
+                item(key = "scan-services-gap", contentType = "spacer") {
                     androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 17.dp))
                 }
                 item(key = "services", contentType = "services") {
@@ -468,7 +483,83 @@ private fun HomeDialogHost(
                 onPrimaryAction = onConfirm,
             )
         }
+        is HomeDialog.QrLogin -> when (dialog.step) {
+            QrLoginStep.Confirm -> ActionDialog(
+                title = stringResource(R.string.qr_login_title),
+                subtitle = stringResource(R.string.qr_login_warning),
+                subtitleIsWarning = true,
+                note = dialog.request.device.takeIf { it.isNotBlank() }?.let { stringResource(R.string.qr_login_device, it) },
+                primaryButtonLabel = stringResource(R.string.qr_login_log_in),
+                secondaryButtonLabel = stringResource(R.string.cancel),
+                secondaryAsButton = true,
+                onSecondaryAction = onDismiss,
+                errorText = dialog.error?.resolve(LocalContext.current),
+                isBusy = dialog.isBusy,
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+            QrLoginStep.EnterCode -> ActionDialog(
+                title = stringResource(R.string.qr_login_code_title),
+                subtitle = stringResource(R.string.qr_login_code_body),
+                fields = listOf(DialogField(stringResource(R.string.qr_login_code_placeholder), dialog.typedCode, FieldKind.Code)),
+                onFieldChange = onFieldChange,
+                primaryButtonLabel = stringResource(R.string.continue_label),
+                secondaryButtonLabel = stringResource(R.string.abort),
+                secondaryAsButton = true,
+                onSecondaryAction = onDismiss,
+                errorText = dialog.error?.resolve(LocalContext.current),
+                isBusy = dialog.isBusy,
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+            QrLoginStep.WaitingForApproval -> ActionDialog(
+                title = stringResource(R.string.qr_login_waiting_title),
+                subtitle = dialog.approverName?.let { stringResource(R.string.qr_login_waiting_body, it) }
+                    ?: stringResource(R.string.qr_login_waiting_body_unknown),
+                showProgress = true,
+                primaryButtonLabel = stringResource(R.string.abort),
+                onDismissRequest = onDismiss,
+                onPrimaryAction = onConfirm,
+            )
+        }
         null -> Unit
+    }
+}
+
+/** "Scan": logs another device in by the QR code its login page shows (ui/scan). */
+@Composable
+private fun ScanCard(onScan: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    val haptic = LocalHapticFeedback.current
+    AppCard(modifier = modifier) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(CardPadding),
+            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
+        ) {
+            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.qr_scan_card_title), color = colors.dialogSubtitle, style = CardLabelText)
+                Text(stringResource(R.string.qr_scan_card_body), color = colors.onSurface, style = CardSupportingText)
+            }
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(SecondaryButtonColor)
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onScan()
+                    }
+                    .semantics { role = Role.Button },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(R.string.qr_scan_button),
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+                )
+            }
+        }
     }
 }
 
@@ -524,6 +615,7 @@ private fun requestTitle(request: SignInRequest): String = when (request.action)
     "require_app_disable" -> stringResource(R.string.request_require_app_disable)
     "recovery_phrase_create" -> stringResource(R.string.request_recovery_phrase_create)
     "recovery_phrase_remove" -> stringResource(R.string.request_recovery_phrase_remove)
+    "qr_login" -> stringResource(R.string.request_qr_login)
     else -> stringResource(R.string.sign_in_request)
 }
 
@@ -750,6 +842,7 @@ private fun HomeScreenPreview() {
             onDenyRequest = {},
             onSetUpTwoFactor = {},
             onTransferTwoFactor = {},
+            onScanClick = {},
             onToggleService = {},
             onDisconnectService = {},
             onSetUpService = {},
@@ -847,6 +940,7 @@ private fun HomeScreenDarkPreview() {
             onDenyRequest = {},
             onSetUpTwoFactor = {},
             onTransferTwoFactor = {},
+            onScanClick = {},
             onToggleService = {},
             onDisconnectService = {},
             onSetUpService = {},

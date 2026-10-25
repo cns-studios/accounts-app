@@ -165,6 +165,21 @@ class CnsApi(
         authed("DELETE", "/api/me/approver", JSONObject().putOpt("approval_id", approvalId))
     }
 
+    // --- QR code login: this app logs a browser in ---
+
+    suspend fun scanQrLogin(id: String, secret: String): QrLoginRequest =
+        QrLoginRequest.fromJson(authed("POST", "/api/me/qr/${encodePath(id)}/scan", JSONObject().put("secret", secret)))
+
+    /** [code]: the 2FA code when 2FA is on; [approvalId]: the approval with Require Security App (see Approvals.gated). */
+    suspend fun confirmQrLogin(id: String, secret: String, code: String? = null, approvalId: String? = null) {
+        val body = JSONObject().put("secret", secret).putOpt("code", code).putOpt("approval_id", approvalId)
+        authed("POST", "/api/me/qr/${encodePath(id)}/confirm", body)
+    }
+
+    suspend fun cancelQrLogin(id: String, secret: String) {
+        authed("POST", "/api/me/qr/${encodePath(id)}/cancel", JSONObject().put("secret", secret))
+    }
+
     // --- signing this app in to another CNS app (Sendly) ---
 
     /**

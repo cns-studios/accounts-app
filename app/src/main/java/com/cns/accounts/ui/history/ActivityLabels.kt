@@ -38,6 +38,7 @@ private val EventCopies = mapOf(
     "recovery_phrase_used" to EventCopy(R.string.event_recovery_phrase_used, R.string.event_recovery_phrase_used_hint, TokenIconKind.Shield),
     "recovery_failed" to EventCopy(R.string.event_recovery_failed, R.string.event_recovery_failed_hint, TokenIconKind.CircleX),
     "admin_action" to EventCopy(R.string.event_admin_action, R.string.event_admin_action_hint, TokenIconKind.Shield),
+    "qr_login_cancelled" to EventCopy(R.string.event_qr_login_cancelled, R.string.event_qr_login_cancelled_hint, TokenIconKind.CircleX),
 )
 
 // "approval": one Require Security App request (auth-v2 folds its requested/decided/used rows
@@ -51,6 +52,7 @@ private val ApprovalSubjects = mapOf(
     "require_app_disable" to R.string.approval_subject_require_app_disable,
     "recovery_phrase_create" to R.string.approval_subject_recovery_phrase_create,
     "recovery_phrase_remove" to R.string.approval_subject_recovery_phrase_remove,
+    "qr_login" to R.string.approval_subject_qr_login,
 )
 
 private class OutcomeCopy(@param:StringRes val word: Int, @param:StringRes val hint: Int)
@@ -84,6 +86,7 @@ fun eventTitle(eventType: String, data: Map<String, String> = emptyMap()): Strin
         stringResource(R.string.approval_event_title, subject, stringResource(outcome(data).word))
     }
     eventType == "recovery_phrase_created" && data["replaced"] == "true" -> stringResource(R.string.event_recovery_phrase_replaced)
+    eventType == "login_success" && data["via"] == "qr" -> stringResource(R.string.event_login_qr)
     eventType == "login_success" && !data["client_name"].isNullOrBlank() -> stringResource(R.string.event_login_app, data.getValue("client_name"))
     else -> EventCopies[eventType]?.let { stringResource(it.label) } ?: humanize(eventType)
 }
@@ -93,6 +96,7 @@ fun eventDescription(eventType: String, data: Map<String, String> = emptyMap()):
     eventType == "approval" -> stringResource(outcome(data).hint)
     eventType == "require_app_disabled" && data["via"] == "2fa_code" -> stringResource(R.string.event_require_app_disabled_code_hint)
     eventType == "recovery_phrase_created" && data["replaced"] == "true" -> stringResource(R.string.event_recovery_phrase_replaced_hint)
+    eventType == "login_success" && data["via"] == "qr" -> stringResource(R.string.event_login_qr_hint)
     eventType == "login_success" && !data["client_name"].isNullOrBlank() -> stringResource(R.string.event_login_app_hint, data.getValue("client_name"))
     else -> stringResource(EventCopies[eventType]?.hint ?: R.string.event_unknown_hint)
 }

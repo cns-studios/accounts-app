@@ -16,6 +16,7 @@ import com.cns.accounts.data.authenticator.AuthenticatorStore
 import com.cns.accounts.data.authenticator.TwoFactorManager
 import com.cns.accounts.data.push.Notifier
 import com.cns.accounts.data.push.PushRegistrar
+import com.cns.accounts.data.qr.QrLogins
 import com.cns.accounts.data.sendly.SendlySession
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.data.session.SecureStore
@@ -56,6 +57,7 @@ class AppContainer(context: Context) {
     val serviceLinks = ServiceLinks(
         account, SendlySession(api, account, approvals, secureStore), secureStore, preferences, verification, notifier, appScope,
     )
+    val qrLogins = QrLogins(api, approvals, twoFactor, BuildConfig.CNS_ACCOUNTS_WEB_URL)
 
     init {
         // Whatever ended the session (sign-out, account deletion, a refresh token the server

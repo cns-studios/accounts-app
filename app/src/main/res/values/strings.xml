@@ -389,4 +389,41 @@
     <string name="update_checksum_failed">The download didn\'t match the release and was discarded</string>
     <string name="update_install_failed">The update wasn\'t installed</string>
     <string name="update_retry">Try again</string>
+
+    <!-- QR code login (data/qr, ui/scan) -->
+    <string name="cancel">Cancel</string>
+    <string name="request_qr_login">Log in a new device</string>
+    <string name="approval_subject_qr_login">QR code login</string>
+    <string name="event_login_qr">Signed in with a QR code</string>
+    <string name="event_login_qr_hint">Confirmed in the CNS Accounts app</string>
+    <string name="event_qr_login_cancelled">QR code login declined</string>
+    <string name="event_qr_login_cancelled_hint">You declined a login in the CNS Accounts app</string>
+    <string name="qr_scan_card_title">Scan</string>
+    <string name="qr_scan_card_body">Scan the QR Code on another device to Log In</string>
+    <string name="qr_scan_button">Scan QR Code</string>
+    <string name="qr_scan_title">Scan QR Code</string>
+    <string name="qr_scan_hint">Point the camera at the QR code on the login page.</string>
+    <string name="qr_scan_camera_off">Tap to open the camera</string>
+    <string name="qr_scan_camera_denied">Camera access is off. Tap to allow it in the settings.</string>
+    <string name="qr_scan_camera_icon">Camera</string>
+    <string name="qr_scan_not_login">That isn\'t a CNS login code.</string>
+    <string name="qr_login_title">New device</string>
+    <string name="qr_login_warning">Clicking \'Log In\' will log your account into another device. Never accept remote logins you didn\'t initiate.</string>
+    <string name="qr_login_device">Requested by %1$s</string>
+    <string name="qr_login_log_in">Log In</string>
+    <string name="qr_login_code_title">Enter your 2FA code</string>
+    <string name="qr_login_code_body">Your authenticator is on another device. Enter its current 6-digit code to log in the new device.</string>
+    <string name="qr_login_code_placeholder">6-digit code</string>
+    <string name="qr_login_waiting_title">Approve on your other device</string>
+    <string name="qr_login_waiting_body">Require Security App is on. Allow this login in the CNS Accounts app on %1$s.</string>
+    <string name="qr_login_waiting_body_unknown">Require Security App is on. Allow this login in the CNS Accounts app on your approver device.</string>
+    <string name="qr_login_done">The new device is logged in.</string>
+    <string name="qr_login_cancelled">Login declined.</string>
+    <string name="qr_login_expired">This QR code expired. Show a new one on the other device.</string>
+    <string name="qr_login_used">This QR code was already used.</string>
+    <string name="qr_login_app_only">Log in to this app again, then scan the code.</string>
+    <string name="qr_login_invalid_code">That code isn\'t right. Enter the current one.</string>
+    <string name="qr_login_enter_code">Enter the 6-digit code.</string>
+    <string name="qr_login_not_ours">This link isn\'t a CNS login code.</string>
+    <string name="qr_login_sign_in_first">Log in to the app first, then scan the code again.</string>
 </resources>

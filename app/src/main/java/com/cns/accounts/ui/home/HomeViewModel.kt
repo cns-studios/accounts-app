@@ -14,6 +14,9 @@ import com.cns.accounts.data.SignInRequest
 import com.cns.accounts.data.isSendly
 import com.cns.accounts.data.api.ActivityEntry
 import com.cns.accounts.data.UserMessage
+import com.cns.accounts.data.api.ApiException
+import com.cns.accounts.data.qr.QrLoginCode
+import com.cns.accounts.data.qr.QrLogins
 import com.cns.accounts.data.authenticator.TwoFactorMoveIncompleteException
 import com.cns.accounts.data.toUserMessage
 import com.cns.accounts.data.session.AuthState
@@ -45,6 +48,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     private val local = MutableStateFlow(LocalState(isLoadingAccount = signedInAtStart))
     private var loadMoreJob: Job? = null
     private var setUpJob: Job? = null
+    private var qrJob: Job? = null
 
     private val homeData = combine(
         account.user,
@@ -193,8 +197,12 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     fun showTransferTwoFactor() = local.update { it.copy(dialog = HomeDialog.TransferTwoFactor()) }
 
     fun updateDialogField(index: Int, value: String) = local.update { state ->
-        val dialog = state.dialog as? HomeDialog.TransferTwoFactor ?: return@update state
-        state.copy(dialog = if (index == 0) dialog.copy(password = value, error = null) else dialog.copy(code = value, error = null))
+        when (val dialog = state.dialog) {
+            is HomeDialog.TransferTwoFactor ->
+                state.copy(dialog = if (index == 0) dialog.copy(password = value, error = null) else dialog.copy(code = value, error = null))
+            is HomeDialog.QrLogin -> state.copy(dialog = dialog.copy(typedCode = value.filter(Char::isDigit).take(6), error = null))
+            else -> state
+        }
     }
 
     fun confirmDialog() {
@@ -202,6 +210,11 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             is HomeDialog.TransferTwoFactor -> transferTwoFactor(dialog)
             is HomeDialog.DisconnectApp -> disconnect(dialog)
             is HomeDialog.SetUpService -> if (dialog.waitingCode != null) abortSetUp() else setUpService(dialog)
+            is HomeDialog.QrLogin -> when (dialog.step) {
+                QrLoginStep.Confirm -> logInQr(dialog)
+                QrLoginStep.EnterCode -> logInQr(dialog, typedCode = dialog.typedCode)
+                QrLoginStep.WaitingForApproval -> cancelQr()
+            }
             null -> Unit
         }
     }
@@ -209,6 +222,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     fun dismissDialog() {
         // Closing the "approve this app" step withdraws the request.
         if ((local.value.dialog as? HomeDialog.SetUpService)?.waitingCode != null) return abortSetUp()
+        // Cancel, Abort or Back on a QR login declines it, so the browser isn't left waiting.
+        if (local.value.dialog is HomeDialog.QrLogin) return cancelQr()
         dismissIdleDialog()
     }
 
@@ -217,9 +232,82 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             is HomeDialog.DisconnectApp -> dialog.isBusy
             is HomeDialog.TransferTwoFactor -> dialog.isBusy
             is HomeDialog.SetUpService -> dialog.isBusy
+            is HomeDialog.QrLogin -> dialog.isBusy
             null -> false
         }
         if (busy) state else state.copy(dialog = null)
+    }
+
+    // --- QR code login: this device logs another one in ---
+
+    /**
+     * A login QR code was scanned (here or with the camera app): asks auth-v2 which browser it
+     * belongs to and shows "New device". A newer code replaces one still on screen.
+     */
+    fun openQrLogin(code: QrLoginCode) {
+        (local.value.dialog as? HomeDialog.QrLogin)?.let { if (it.code != code) cancelQr() else return }
+        qrJob = viewModelScope.launch {
+            runCatching { container.qrLogins.scan(code) }
+                .onSuccess { request -> local.update { it.copy(dialog = HomeDialog.QrLogin(code, request)) } }
+                .onFailure { messages.show(QrLogins.messageFor(it)) }
+        }
+    }
+
+    /**
+     * Log In (or Continue with a typed 2FA code). What the login needs that this device has, it
+     * sends without asking: its 2FA code, its own approval as the Security App. Only what has
+     * to come from elsewhere becomes another step.
+     */
+    private fun logInQr(dialog: HomeDialog.QrLogin, typedCode: String? = null) {
+        if (dialog.isBusy) return
+        if (typedCode != null && typedCode.length != 6) {
+            local.update { it.copy(dialog = dialog.copy(error = UserMessage(resId = R.string.qr_login_enter_code))) }
+            return
+        }
+        local.update { it.copy(dialog = dialog.copy(isBusy = true, error = null)) }
+        qrJob = viewModelScope.launch {
+            val onWaiting = {
+                updateQrDialog { it.copy(step = QrLoginStep.WaitingForApproval, isBusy = false, approverName = container.approvals.approverElsewhere.value) }
+            }
+            val result = runCatching { container.qrLogins.confirm(dialog.code, dialog.request, typedCode, onWaiting) }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            result
+                .onSuccess { done ->
+                    if (done) {
+                        local.update { it.copy(dialog = null) }
+                        messages.show(R.string.qr_login_done)
+                    } else {
+                        updateQrDialog { it.copy(step = QrLoginStep.EnterCode, isBusy = false) }
+                    }
+                }
+                .onFailure { error ->
+                    val wrongCode = (error as? ApiException)?.code == "invalid_code"
+                    if (wrongCode && (typedCode != null || dialog.step == QrLoginStep.EnterCode)) {
+                        updateQrDialog { it.copy(step = QrLoginStep.EnterCode, isBusy = false, typedCode = "", error = QrLogins.messageFor(error)) }
+                    } else if (wrongCode) {
+                        // This device's own code was refused (just used elsewhere): ask for one instead.
+                        updateQrDialog { it.copy(step = QrLoginStep.EnterCode, isBusy = false) }
+                    } else {
+                        local.update { it.copy(dialog = null) }
+                        messages.show(QrLogins.messageFor(error))
+                    }
+                }
+        }
+    }
+
+    private fun cancelQr() {
+        val dialog = local.value.dialog as? HomeDialog.QrLogin ?: return
+        qrJob?.cancel()
+        local.update { it.copy(dialog = null) }
+        viewModelScope.launch {
+            runCatching { container.qrLogins.cancel(dialog.code) }
+            messages.show(R.string.qr_login_cancelled)
+        }
+    }
+
+    private fun updateQrDialog(change: (HomeDialog.QrLogin) -> HomeDialog.QrLogin) = local.update { state ->
+        val current = state.dialog as? HomeDialog.QrLogin ?: return@update state
+        state.copy(dialog = change(current))
     }
 
     private fun transferTwoFactor(dialog: HomeDialog.TransferTwoFactor) {
