@@ -88,6 +88,9 @@ android {
         release {
             optimization {
                 enable = true
+                keepRules {
+                    files.add(file("proguard-rules.pro"))
+                }
             }
             signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
             val production = providers.gradleProperty("cnsApiBaseUrl").orNull.let { it == null || it == "https://api.cns-studios.com" }
