@@ -229,7 +229,6 @@ fun HomeScreen(
             }
         }
     }
-    val spacing = LocalSpacing.current
     val dimensions = LocalDimensions.current
     androidx.compose.foundation.layout.Box(
         modifier = modifier
@@ -285,7 +284,7 @@ fun HomeScreen(
                         androidx.compose.foundation.layout.Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = spacing.xl),
+                                .padding(horizontal = NavSideInset),
                             contentAlignment = Alignment.Center,
                         ) {
                             SignInRequestCard(signInRequest, onApproveRequest, onDenyRequest, modifier = Modifier.navAlignedWidth())
@@ -455,8 +454,8 @@ private fun SignInRequestCard(
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(CardPadding),
-            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.lg),
+                .padding(RequestCardPadding),
+            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
         ) {
             androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 androidx.compose.foundation.layout.Row(
@@ -525,6 +524,8 @@ private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier
 
 // Home's cards: the same inset on every side.
 private val CardPadding = 16.dp
+// The request card is a tighter, denser card than the account card below it.
+private val RequestCardPadding = 10.dp
 // Keeps the column off the screen edges on phones narrower than the bottom nav.
 private val NavSideInset = 12.dp
 private const val HistorySeenDelayMillis = 450L
