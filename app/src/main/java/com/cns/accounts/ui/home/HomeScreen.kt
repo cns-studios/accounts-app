@@ -29,6 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -69,6 +71,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import com.cns.accounts.R
 import com.cns.accounts.data.SearchResultKind
+import com.cns.accounts.ui.search.ActivityResultPrefix
 import com.cns.accounts.ui.search.SettingsResultPrefix
 import com.cns.accounts.data.SignInRequest
 import com.cns.accounts.ui.format.relativeTime
@@ -129,7 +132,8 @@ fun HomeScreen(
     // False while something covers Home (the lock screen): the code's rollover buzz stays quiet.
     codeHapticsAllowed: Boolean = true,
 ) {
-    var selectedTab by remember { androidx.compose.runtime.mutableStateOf("home") }
+    // Saveable: opening Settings from a search result and coming back finds Home as it was left.
+    var selectedTab by rememberSaveable { androidx.compose.runtime.mutableStateOf("home") }
     // Home/history swipe: a drag on EITHER the segmented nav pill or the page background below
     // drives this same liveSwipeProgress/isSwipeDragging pair - see onSwipeDragStarted/
     // onSwipeSettle - so it doesn't matter which surface the user actually touches, and
@@ -179,8 +183,30 @@ fun HomeScreen(
     var accountCode by remember(secretBytes) {
         androidx.compose.runtime.mutableStateOf(secretBytes?.let { formatAccountCode(Totp.code(it, System.currentTimeMillis())) }.orEmpty())
     }
-    var searchActive by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var searchQuery by remember { androidx.compose.runtime.mutableStateOf("") }
+    var searchActive by rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var searchQuery by rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    // An activity result opens History on its event; Back from there reopens the search.
+    var historyFocusId by remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+    var searchToReturnTo by rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    fun closeSearch() {
+        searchQuery = ""
+        searchActive = false
+    }
+    // Android Back walks back through Home instead of leaving the app: search, then History, then out.
+    BackHandler(enabled = searchActive) {
+        searchToReturnTo = null
+        closeSearch()
+    }
+    BackHandler(enabled = !searchActive && selectedTab == "history") {
+        val query = searchToReturnTo
+        searchToReturnTo = null
+        if (query != null) {
+            searchQuery = query
+            searchActive = true
+        } else {
+            selectTab("home")
+        }
+    }
     val searchAlpha = animateFloatAsState(
         targetValue = if (searchActive) 1f else 0f,
         animationSpec = tween(280),
@@ -335,6 +361,8 @@ fun HomeScreen(
             state = state.history,
             onRefresh = onRefreshHistory,
             onLoadMore = onLoadMoreHistory,
+            focusEventId = historyFocusId,
+            onFocusShown = { historyFocusId = null },
             modifier = Modifier.graphicsLayer {
                 val progress = swipeProgress()
                 translationX = (1f - progress) * size.width
@@ -349,10 +377,14 @@ fun HomeScreen(
                 query = searchQuery,
                 results = searchResults,
                 onResultClick = { result ->
-                    searchActive = false
-                    searchQuery = ""
                     when (result.kind) {
-                        SearchResultKind.Activity -> selectTab("history")
+                        SearchResultKind.Activity -> {
+                            searchToReturnTo = searchQuery
+                            closeSearch()
+                            historyFocusId = result.id.removePrefix(ActivityResultPrefix).toLongOrNull()
+                            selectTab("history")
+                        }
+                        // The search stays open underneath, so Back from Settings returns to it.
                         SearchResultKind.Settings -> onOpenSetting(result.id.removePrefix(SettingsResultPrefix))
                         else -> onAccountClick()
                     }
@@ -371,7 +403,10 @@ fun HomeScreen(
             avatarUrl = state.data.profile.avatarUrl,
             historyUnread = state.historyUnread,
             isSearchActive = searchActive,
-            onSearchActiveChange = { searchActive = it },
+            onSearchActiveChange = {
+                searchActive = it
+                if (it) searchToReturnTo = null
+            },
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
             modifier = Modifier

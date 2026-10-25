@@ -38,6 +38,8 @@ import com.cns.accounts.ui.components.fadingEdges
 import com.cns.accounts.ui.components.navAlignedWidth
 import com.cns.accounts.ui.components.TokenIcon
 import com.cns.accounts.ui.format.relativeTime
+import com.cns.accounts.ui.settings.searchHighlight
+import kotlinx.coroutines.delay
 import com.cns.accounts.ui.theme.HistoryEventDetailText
 import com.cns.accounts.ui.theme.HistoryEventTimeText
 import com.cns.accounts.ui.theme.HistoryEventTitleText
@@ -63,6 +65,9 @@ private const val LoadMoreThreshold = 3
 private val TitleBottom = 98.dp
 private val NavFadeGap = 8.dp
 private val FadeLength = 40.dp
+private const val FocusScrollDelayMillis = 250L
+// Covers searchHighlight's whole flash; ending it sooner would cut the fade short.
+private const val FocusHighlightMillis = 2_500L
 
 @Composable
 fun HistoryScreen(
@@ -70,6 +75,9 @@ fun HistoryScreen(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
+    // An event to scroll to and flash briefly (opened from a search result); [onFocusShown] consumes it.
+    focusEventId: Long? = null,
+    onFocusShown: () -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
@@ -96,7 +104,25 @@ fun HistoryScreen(
     }
     val newestId = state.events.firstOrNull()?.id
     LaunchedEffect(newestId) {
-        if (newestId != null) listState.animateScrollToItem(0)
+        if (newestId != null && focusEventId == null) listState.animateScrollToItem(0)
+    }
+    var highlightedId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(focusEventId) {
+        val id = focusEventId ?: return@LaunchedEffect
+        val index = state.events.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            // Let the swipe over to History settle first.
+            delay(FocusScrollDelayMillis)
+            listState.animateScrollToItem(index)
+            highlightedId = id
+        }
+        // Last: consuming it restarts (cancels) this effect.
+        onFocusShown()
+    }
+    LaunchedEffect(highlightedId) {
+        if (highlightedId == null) return@LaunchedEffect
+        delay(FocusHighlightMillis)
+        highlightedId = null
     }
     Box(modifier = modifier.fillMaxSize()) {
         Text(
@@ -128,7 +154,7 @@ fun HistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(17.dp),
             ) {
                 items(state.events, key = { it.id }) { event ->
-                    HistoryEventCard(event, modifier = Modifier.navAlignedWidth().animateItem())
+                    HistoryEventCard(event, modifier = Modifier.navAlignedWidth().animateItem().searchHighlight(event.id == highlightedId))
                 }
                 if (state.isLoaded && state.events.isEmpty()) {
                     item(key = "empty") {
