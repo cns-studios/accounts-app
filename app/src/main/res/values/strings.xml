@@ -30,6 +30,9 @@
     <string name="setup">Setup</string>
     <string name="change_password">Change Password</string>
     <string name="log_out">Log Out</string>
+    <string name="log_out_blocked_authenticator">This device is your authenticator. Move it to another device or turn off 2FA before logging out.</string>
+    <string name="log_out_blocked_security_app">This device is your Security App. Move it to another device or turn off Require Security App before logging out.</string>
+    <string name="log_out_blocked_both">This device is your authenticator and Security App. Move them to another device or turn them off before logging out.</string>
     <string name="delete_account_title">Delete your account</string>
     <string name="delete_account_description">This action is permanent and cannot be undone. Proceed with caution.</string>
     <string name="hold_to_delete">Hold to delete</string>

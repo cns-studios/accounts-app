@@ -41,9 +41,9 @@ import com.cns.accounts.ui.theme.RequestCaptionText
 
 /**
  * The app Settings page, opened from the profile header's gear (the account itself is Your
- * Account, behind the bottom nav's user button). Built like Your Account's toggle list — one-line
+ * Account, behind the bottom nav's user button). Built like Your Account's toggle list - one-line
  * rows between dividers, a setting's options (lock delay, which events notify) unfolding under
- * it while it is on — with the app version above a Log Out button kept at the bottom.
+ * it while it is on - with the app version above a Log Out button kept at the bottom.
  */
 @Composable
 fun AppSettingsScreen(
@@ -151,12 +151,21 @@ fun AppSettingsScreen(
                 textAlign = TextAlign.Center,
             )
             if (state.updatesEnabled) UpdateBlock(state.update, onCheckForUpdates, onInstallUpdate)
+            state.logOutBlock?.let { block ->
+                Text(
+                    stringResource(block.message),
+                    color = colors.mutedText,
+                    style = RequestCaptionText,
+                    textAlign = TextAlign.Center,
+                )
+            }
             ActionButton(
                 text = stringResource(R.string.log_out),
                 onClick = onLogOut,
                 modifier = Modifier
                     .fillMaxWidth()
                     .searchHighlight(target == AppSettingsTarget.LogOut),
+                enabled = state.logOutBlock == null,
             )
         }
     }

@@ -31,6 +31,9 @@
     <string name="setup">Einrichten</string>
     <string name="change_password">Passwort ändern</string>
     <string name="log_out">Abmelden</string>
+    <string name="log_out_blocked_authenticator">Dieses Gerät ist dein Authenticator. Verschiebe ihn auf ein anderes Gerät oder schalte 2FA aus, bevor du dich abmeldest.</string>
+    <string name="log_out_blocked_security_app">Dieses Gerät ist deine Security-App. Verschiebe sie auf ein anderes Gerät oder schalte die Security-App-Bestätigung aus, bevor du dich abmeldest.</string>
+    <string name="log_out_blocked_both">Dieses Gerät ist dein Authenticator und deine Security-App. Verschiebe beides auf ein anderes Gerät oder schalte es aus, bevor du dich abmeldest.</string>
     <string name="delete_account_title">Konto löschen</string>
     <string name="delete_account_description">Das ist endgültig und kann nicht rückgängig gemacht werden. Sei vorsichtig.</string>
     <string name="hold_to_delete">Gedrückt halten zum Löschen</string>

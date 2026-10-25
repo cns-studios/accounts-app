@@ -168,7 +168,13 @@ internal fun SettingsToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit
 
 /** A full-height action button: white (primary) or the elevated surface with white text (secondary). */
 @Composable
-internal fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, secondary: Boolean = false) {
+internal fun ActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    secondary: Boolean = false,
+    enabled: Boolean = true,
+) {
     val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
     Button(
@@ -177,11 +183,22 @@ internal fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier 
             onClick()
         },
         modifier = modifier.height(LocalDimensions.current.actionHeight),
+        enabled = enabled,
         shape = RoundedCornerShape(11.dp),
         colors = if (secondary) {
-            ButtonDefaults.buttonColors(containerColor = colors.elevatedSurface, contentColor = Color.White)
+            ButtonDefaults.buttonColors(
+                containerColor = colors.elevatedSurface,
+                contentColor = Color.White,
+                disabledContainerColor = colors.elevatedSurface,
+                disabledContentColor = colors.mutedText,
+            )
         } else {
-            ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+            ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black,
+                disabledContainerColor = colors.elevatedSurface,
+                disabledContentColor = colors.mutedText,
+            )
         },
         contentPadding = PaddingValues(horizontal = 12.dp),
     ) {
