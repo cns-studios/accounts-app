@@ -95,12 +95,16 @@ class ServiceLinks(
     suspend fun refresh() {
         val userId = account.user.value?.id ?: return
         val device = device(userId)
+        val since = System.currentTimeMillis()
         if (identity(userId) == null || device == null) {
             _sendly.update { it.copy(pendingLogin = null, pending = emptyList()) }
+            notifier.dismissSendlyExcept(emptySet(), since)
             return
         }
         // Our own enrollment (during setup) is in the same list; it isn't a request for us.
         val pending = sendlyApi.pendingEnrollments().filter { it.requestDeviceId != device.id }
+        // Approved on another trusted device, withdrawn or expired: its notification goes too.
+        notifier.dismissSendlyExcept(pending.mapTo(HashSet()) { it.id }, since)
         _sendly.update { link ->
             link.copy(
                 pending = pending,

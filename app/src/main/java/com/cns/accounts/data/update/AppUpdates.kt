@@ -109,8 +109,10 @@ class AppUpdates(private val context: Context, private val notifier: Notifier, p
     private suspend fun latest(): AppRelease? {
         val json = withContext(Dispatchers.IO) { JSONObject(get(BuildConfig.UPDATE_RELEASES_URL).decodeToString()) }
         prefs.edit().putLong(LastCheckKey, System.currentTimeMillis()).apply()
-        val release = AppRelease.fromGitHub(json) ?: return null
-        return release.takeIf { current != null && it.version > current }
+        val release = AppRelease.fromGitHub(json)?.takeIf { current != null && it.version > current }
+        // Up to date (the update was installed): the update notification has served its purpose.
+        if (release == null) notifier.dismissAppUpdate()
+        return release
     }
 
     private suspend fun download(release: AppRelease): File = withContext(Dispatchers.IO) {

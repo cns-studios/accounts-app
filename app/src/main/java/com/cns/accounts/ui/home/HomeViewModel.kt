@@ -115,10 +115,11 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    /** The History tab is on screen: everything it shows now has been seen. */
+    /** The History tab is on screen: everything it shows now has been seen, notifications included. */
     fun markHistorySeen() {
         val feed = account.activity.value
         if (feed.loaded) container.preferences.setHistorySeenAt(newestEventMillis(feed))
+        container.notifier.dismissAccountEvents()
     }
 
     private fun newestEventMillis(feed: ActivityFeed): Long =

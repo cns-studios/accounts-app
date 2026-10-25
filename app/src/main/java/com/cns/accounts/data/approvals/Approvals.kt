@@ -70,8 +70,10 @@ class Approvals(
     /** Reloads the waiting requests; also notices when this device stopped being the approver. */
     suspend fun refresh() {
         val user = account.user.value
+        val since = System.currentTimeMillis()
         if (user == null || !isApproverFor(user)) {
             _pending.value = emptyList()
+            notifier.dismissApprovalsExcept(emptySet(), since)
             _approverElsewhere.value = if (user?.requireAppApproval == true) api.approver().deviceName.orEmpty() else null
             return
         }
@@ -82,7 +84,10 @@ class Approvals(
             forget(user.id)
             return
         }
-        setPending(api.pendingApprovals())
+        val pending = api.pendingApprovals()
+        setPending(pending)
+        // Decided on the web or another way, withdrawn, or expired: its notification goes too.
+        notifier.dismissApprovalsExcept(pending.mapTo(HashSet()) { it.id }, since)
     }
 
     /** Whether a pushed request [id] is one for this device to show (it is the approver, and didn't raise it itself). */
@@ -222,6 +227,7 @@ class Approvals(
         keys.remove(userId)
         keyChanges.update { it + 1 }
         setPending(emptyList())
+        notifier.dismissApprovalsExcept(emptySet(), since = Long.MAX_VALUE)
     }
 
     /** Keeps the local key in step with the account: renamed, or retired once it was turned off. */

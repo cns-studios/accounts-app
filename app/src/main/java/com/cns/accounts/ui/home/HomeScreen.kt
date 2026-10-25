@@ -223,10 +223,10 @@ fun HomeScreen(
         codeHapticsAllowed && lifecycleState.isAtLeast(Lifecycle.State.RESUMED) &&
             selectedTab == "home" && !searchActive && state.dialog == null,
     )
-    // History on screen: its events count as seen, so the nav's unread mark goes away (also
-    // for new ones a refresh brings in while the tab is open).
+    // History on screen: its events count as seen, so the nav's unread mark and their
+    // notifications go away (also for new ones a refresh brings in while the tab is open).
     LaunchedEffect(selectedTab, state.historyUnread) {
-        if (selectedTab == "history" && state.historyUnread) {
+        if (selectedTab == "history") {
             delay(HistorySeenDelayMillis)
             onHistorySeen()
         }
