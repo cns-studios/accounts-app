@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import com.cns.accounts.AppContainer
 import com.cns.accounts.R
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.ui.components.AppToastHost
+import com.cns.accounts.ui.components.LocalDialogsShown
 import com.cns.accounts.ui.components.SplashOverlay
 import com.cns.accounts.ui.components.ToastState
 import com.cns.accounts.ui.home.HomeScreen
@@ -90,7 +92,13 @@ fun AppRoot(container: AppContainer) {
             },
             label = "auth-state",
         ) { isSignedIn ->
-            if (isSignedIn) AppNavGraph(container, homeViewModel, codeHapticsAllowed = !isLocked) else LoginRoute()
+            if (isSignedIn) {
+                CompositionLocalProvider(LocalDialogsShown provides !isLocked) {
+                    AppNavGraph(container, homeViewModel, codeHapticsAllowed = !isLocked)
+                }
+            } else {
+                LoginRoute()
+            }
         }
         if (isLocked) {
             LockScreen(onUnlocked = container.appLock::unlock)

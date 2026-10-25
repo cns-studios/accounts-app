@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +44,12 @@ import com.cns.accounts.ui.theme.DialogSubtitleText
 import com.cns.accounts.ui.theme.DialogTitleText
 import com.cns.accounts.ui.theme.LocalAppColors
 import com.cns.accounts.ui.theme.LocalRadii
+
+/**
+ * False while the app lock covers the app. A dialog is its own window, above the lock screen,
+ * so dialogs stay hidden until the app is unlocked again (their state is kept meanwhile).
+ */
+val LocalDialogsShown = compositionLocalOf { true }
 
 /**
  * settings.tokens.json ("Inputfield"): the app's standard input/action dialog - a dark rounded
@@ -77,6 +84,7 @@ fun ActionDialog(
     secondaryButtonLabel: String? = null,
     onSecondaryAction: () -> Unit = {},
 ) {
+    if (!LocalDialogsShown.current) return
     val colors = LocalAppColors.current
     val haptic = LocalHapticFeedback.current
     val allFields = if (fieldValue != null && fieldPlaceholder != null) listOf(DialogField(fieldPlaceholder, fieldValue)) + fields else fields
