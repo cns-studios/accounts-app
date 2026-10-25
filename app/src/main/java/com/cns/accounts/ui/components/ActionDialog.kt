@@ -5,6 +5,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
@@ -87,7 +89,10 @@ fun ActionDialog(
     }
     Dialog(
         onDismissRequest = { if (!isBusy) onDismissRequest() },
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
+        // decorFitsSystemWindows = false: the window spans the whole screen and only the padding
+        // below makes room for the keyboard. Left fitting, the window shrank for the keyboard and
+        // the padding took the keyboard's height off again, squashing the card.
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false, decorFitsSystemWindows = false),
     ) {
         Box(
             modifier = Modifier
@@ -96,8 +101,8 @@ fun ActionDialog(
                 .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                     if (!isBusy) onDismissRequest()
                 }
-                .imePadding()
-                .padding(horizontal = 24.dp),
+                .safeDrawingPadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             // The card springs in from slightly smaller, and shakes on a failed submit.
@@ -118,6 +123,8 @@ fun ActionDialog(
                     .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                         // Consume taps on the card itself so they don't dismiss via the scrim below.
                     }
+                    // Too little room (keyboard open on a small screen): scroll rather than squeeze.
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp),
