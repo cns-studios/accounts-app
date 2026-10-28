@@ -27,11 +27,11 @@ android {
 
         // Override per machine with -PcnsApiBaseUrl=... (e.g. a local auth-v2 on http://10.0.2.2:3845
         // from the emulator; plain-http hosts also need a network security config entry).
-        val apiBaseUrl = providers.gradleProperty("cnsApiBaseUrl").getOrElse("https://api.cns-studios.com")
+        val apiBaseUrl = providers.gradleProperty("cnsApiBaseUrl").getOrElse("https://api.cns.ad")
         // A build against another backend installs next to the real app instead of over it, so
         // its sessions and 2FA keys never mix with the production ones on the same device.
-        if (apiBaseUrl != "https://api.cns-studios.com") applicationIdSuffix = ".local"
-        val accountsWebUrl = providers.gradleProperty("cnsAccountsWebUrl").getOrElse("https://accounts.cns-studios.com")
+        if (apiBaseUrl != "https://api.cns.ad") applicationIdSuffix = ".local"
+        val accountsWebUrl = providers.gradleProperty("cnsAccountsWebUrl").getOrElse("https://accounts.cns.ad")
         buildConfigField("String", "CNS_API_BASE_URL", "\"$apiBaseUrl\"")
         buildConfigField("String", "CNS_ACCOUNTS_WEB_URL", "\"$accountsWebUrl\"")
         // Login QR codes link to <accounts site>/qr; the camera app opens them in this app.
@@ -39,7 +39,7 @@ android {
         manifestPlaceholders["accountsScheme"] = accountsSite.scheme
         manifestPlaceholders["accountsHost"] = accountsSite.host
         // Sendly, for this app as a trusted Sendly device (-PcnsSendlyUrl=... for a local one).
-        val sendlyUrl = providers.gradleProperty("cnsSendlyUrl").getOrElse("https://sendly.cns-studios.com")
+        val sendlyUrl = providers.gradleProperty("cnsSendlyUrl").getOrElse("https://sendly.zip")
         buildConfigField("String", "SENDLY_BASE_URL", "\"$sendlyUrl\"")
         // In-app updates: the latest GitHub release of this repository. Only release builds
         // signed with the release key and talking to production check (see buildTypes).
@@ -97,7 +97,7 @@ android {
                 }
             }
             signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
-            val production = providers.gradleProperty("cnsApiBaseUrl").orNull.let { it == null || it == "https://api.cns-studios.com" }
+            val production = providers.gradleProperty("cnsApiBaseUrl").orNull.let { it == null || it == "https://api.cns.ad" }
             buildConfigField("boolean", "UPDATES_ENABLED", (releaseKeystore != null && production).toString())
         }
     }

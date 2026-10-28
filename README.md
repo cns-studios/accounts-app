@@ -43,9 +43,9 @@ The app talks to the production services by default. Override them with Gradle p
 
 | Property            | Default                            |
 | ------------------- | ---------------------------------- |
-| `cnsApiBaseUrl`     | `https://api.cns-studios.com`      |
-| `cnsAccountsWebUrl` | `https://accounts.cns-studios.com` |
-| `cnsSendlyUrl`      | `https://sendly.cns-studios.com`   |
+| `cnsApiBaseUrl`     | `https://api.cns.ad`      |
+| `cnsAccountsWebUrl` | `https://accounts.cns.ad` |
+| `cnsSendlyUrl`      | `https://sendly.zip`   |
 
 For example, for a local auth-v2 server reached from the emulator:
 

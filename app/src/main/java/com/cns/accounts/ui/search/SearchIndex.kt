@@ -13,7 +13,7 @@ import com.cns.accounts.ui.history.eventTitle
 /**
  * The local search index: every settings entry (with extra keywords so "pw" or "mfa" find the
  * right row) plus the recent account activity already loaded for the History tab. The Help
- * Center and FAQ results the design also shows need help.cns-studios.com, which isn't built yet.
+ * Center and FAQ results the design also shows need help.cns.ad, which isn't built yet.
  *
  * A result is only listed when the query shows up somewhere on its card, so there is always a
  * highlight: in its description, in its title (for queries of [MinTitleMatch]+ characters), or
