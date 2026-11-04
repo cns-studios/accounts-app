@@ -62,9 +62,13 @@ class Notifier(private val appContext: Context) {
             "recovery_phrase_created" -> R.string.notify_recovery_phrase_created
             "recovery_phrase_removed" -> R.string.notify_recovery_phrase_removed
             "recovery_phrase_used" -> R.string.notify_recovery_phrase_used
+            "admin_reset_requested" -> R.string.notify_admin_reset_requested
+            "admin_reset_used" -> R.string.notify_admin_reset_used
             else -> return
         }
-        post(AccountChannel, AccountTag, event, context.getString(title), context.getString(R.string.notify_account_body))
+        // A reset link someone else asked support for is cancelled on the website, so say where.
+        val body = if (event == "admin_reset_requested") R.string.notify_admin_reset_requested_body else R.string.notify_account_body
+        post(AccountChannel, AccountTag, event, context.getString(title), context.getString(body))
     }
 
     /** History was on screen: the account events notified about have been seen. */

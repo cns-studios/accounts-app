@@ -29,7 +29,7 @@ enum class LockDelay(val millis: Long, @param:StringRes val label: Int) {
  */
 enum class NotificationEvent(val id: String, val events: Set<String>, @param:StringRes val label: Int) {
     NewLogin("new_login", setOf("new_login"), R.string.notify_event_new_login),
-    Password("password", setOf("password_changed"), R.string.notify_event_password),
+    Password("password", setOf("password_changed", "admin_reset_requested", "admin_reset_used"), R.string.notify_event_password),
     Username("username", setOf("username_changed"), R.string.notify_event_username),
     TwoFactor("2fa", setOf("2fa_enabled", "2fa_disabled"), R.string.notify_event_2fa),
     SecurityApp("security_app", setOf("require_app_enabled", "require_app_disabled"), R.string.notify_event_security_app),
