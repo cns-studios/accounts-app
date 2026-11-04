@@ -621,6 +621,18 @@ private fun requestTitle(request: SignInRequest): String = when (request.action)
     "recovery_phrase_create" -> stringResource(R.string.request_recovery_phrase_create)
     "recovery_phrase_remove" -> stringResource(R.string.request_recovery_phrase_remove)
     "qr_login" -> stringResource(R.string.request_qr_login)
+    // An admin confirming a change to someone else's sign-in: say whose and what, never
+    // "Sign-in request", so it can't be mistaken for a sign-in of their own.
+    "admin_credentials" -> stringResource(
+        when (request.credentialAction) {
+            "reset_link" -> R.string.request_admin_reset_link
+            "remove_recovery_phrase" -> R.string.request_admin_remove_recovery_phrase
+            "disable_totp" -> R.string.request_admin_disable_totp
+            "disable_require_app" -> R.string.request_admin_disable_require_app
+            else -> R.string.request_admin_credentials
+        },
+        request.detail ?: "?",
+    )
     else -> stringResource(R.string.sign_in_request)
 }
 

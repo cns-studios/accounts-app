@@ -65,7 +65,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     action = request.action,
                     device = listOfNotNull(request.device, request.ip).joinToString(" · "),
                     createdAt = request.createdAt,
-                    detail = request.clientName ?: request.newUsername,
+                    detail = request.clientName ?: request.newUsername ?: request.targetUsername,
+                    credentialAction = request.credentialAction,
                 )
             },
             twoFactor = twoFactor,

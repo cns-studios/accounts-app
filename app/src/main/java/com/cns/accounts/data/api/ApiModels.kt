@@ -160,6 +160,9 @@ data class PendingApproval(
     val newUsername: String?,
     val createdAt: Instant?,
     val expiresAtUnix: Long,
+    /** For `admin_credentials`: the account an admin is about to help back in, and how. */
+    val targetUsername: String? = null,
+    val credentialAction: String? = null,
 ) {
     companion object {
         fun fromJson(json: JSONObject): PendingApproval {
@@ -174,6 +177,8 @@ data class PendingApproval(
                 newUsername = context.optStringOrNull("new_username"),
                 createdAt = json.optInstant("created_at"),
                 expiresAtUnix = json.optLong("expires_at_unix"),
+                targetUsername = context.optStringOrNull("target_username"),
+                credentialAction = context.optStringOrNull("credential_action"),
             )
         }
 

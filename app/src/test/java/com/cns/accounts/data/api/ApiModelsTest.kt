@@ -122,6 +122,19 @@ class ApiModelsTest {
     }
 
     @Test
+    fun adminCredentialApprovalNamesTheAccountAndAction() {
+        val json = JSONObject().put("id", "a2").put("action", "admin_credentials").put("expires_at_unix", 1L)
+            .put("context", JSONObject().put("ip", "10.0.0.1").put("target_username", "lost_lena").put("credential_action", "reset_link"))
+        val approval = PendingApproval.fromJson(json)
+        assertEquals("lost_lena", approval.targetUsername)
+        assertEquals("reset_link", approval.credentialAction)
+        assertNull(approval.clientName)
+        val plain = PendingApproval.fromJson(JSONObject().put("id", "a3").put("action", "login"))
+        assertNull(plain.targetUsername)
+        assertNull(plain.credentialAction)
+    }
+
+    @Test
     fun approverInfo() {
         assertEquals(ApproverInfo(true, "d1", "Pixel 9"), ApproverInfo.fromJson(JSONObject().put("enabled", true).put("device", JSONObject().put("id", "d1").put("name", "Pixel 9"))))
         assertEquals(ApproverInfo(false, null, null), ApproverInfo.fromJson(JSONObject().put("enabled", false)))

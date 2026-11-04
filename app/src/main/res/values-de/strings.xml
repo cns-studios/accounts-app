@@ -427,4 +427,21 @@
     <string name="qr_login_not_ours">Dieser Link ist kein CNS-Anmeldecode.</string>
     <string name="qr_login_sign_in_first">Melde dich zuerst in der App an und scanne den Code dann noch einmal.</string>
     <string name="request_card_label">Bestätigung nötig</string>
+    <!-- Admin credential actions (users:credentials) and reset links from support -->
+    <string name="request_admin_credentials">Anmeldung von %1$s ändern</string>
+    <string name="request_admin_reset_link">%1$s einen Link zum Zurücksetzen des Passworts senden</string>
+    <string name="request_admin_remove_recovery_phrase">Wiederherstellungsphrase von %1$s entfernen</string>
+    <string name="request_admin_disable_totp">2FA für %1$s ausschalten</string>
+    <string name="request_admin_disable_require_app">Security-App-Bestätigung für %1$s ausschalten</string>
+    <string name="approval_subject_admin_credentials">Support-Aktion für ein anderes Konto</string>
+    <string name="notify_admin_reset_requested">Der CNS-Support hat einen Link zum Zurücksetzen deines Passworts gesendet</string>
+    <string name="notify_admin_reset_requested_body">Du hast den Support nicht um Hilfe gebeten? Widerrufe ihn auf der CNS-Accounts-Website unter Sicherheit.</string>
+    <string name="notify_admin_reset_used">Dein Passwort wurde mit einem Link vom CNS-Support zurückgesetzt</string>
+    <string name="event_password_reset_requested">Reset-Link vom Support</string>
+    <string name="event_password_reset_requested_hint">Zu deinem Support-Ticket wurde ein Link für ein neues Passwort gesendet</string>
+    <string name="event_password_reset_completed">Passwort per Support-Link neu gesetzt</string>
+    <string name="event_password_reset_completed_hint">Neues Passwort gesetzt, Wiederherstellungsphrase entfernt, alle Geräte abgemeldet</string>
+    <string name="event_password_reset_cancelled">Reset-Link widerrufen</string>
+    <string name="event_password_reset_cancelled_hint">Der Reset-Link vom Support funktioniert nicht mehr</string>
+    <string name="event_by_support_hint">Vom CNS-Support zu Ticket %1$s erledigt</string>
 </resources>

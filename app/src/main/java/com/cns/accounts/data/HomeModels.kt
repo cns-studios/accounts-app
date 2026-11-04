@@ -23,6 +23,8 @@ data class SignInRequest(
     val device: String,
     val createdAt: Instant?,
     val detail: String? = null,
+    /** For `admin_credentials`: what the admin is about to do to the account in [detail]. */
+    val credentialAction: String? = null,
 )
 
 /**
