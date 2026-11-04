@@ -39,6 +39,7 @@ fun rememberWindowBlur(radius: Dp = 20.dp): Boolean {
 
 @Composable
 fun WindowBlurBehind(radius: Dp = 20.dp) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
     val window = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
     val radiusPx = with(LocalDensity.current) { radius.toPx() }
     val amount = remember { Animatable(0f) }
