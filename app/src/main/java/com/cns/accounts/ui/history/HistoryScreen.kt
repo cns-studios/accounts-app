@@ -1,9 +1,10 @@
 package com.cns.accounts.ui.history
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -151,10 +153,15 @@ fun HistoryScreen(
                     top = 127.dp,
                     bottom = navClearance + FadeLength,
                 ),
-                verticalArrangement = Arrangement.spacedBy(17.dp),
             ) {
-                items(state.events, key = { it.id }) { event ->
-                    HistoryEventCard(event, modifier = Modifier.navAlignedWidth().animateItem().searchHighlight(event.id == highlightedId))
+                itemsIndexed(state.events, key = { _, event -> event.id }) { index, event ->
+                    // Entries are separated by a hairline rule instead of each having a border.
+                    Column(modifier = Modifier.navAlignedWidth().animateItem()) {
+                        if (index > 0) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = EntryInset), thickness = 1.dp, color = EntryDividerColor)
+                        }
+                        HistoryEventCard(event, modifier = Modifier.searchHighlight(event.id == highlightedId))
+                    }
                 }
                 if (state.isLoaded && state.events.isEmpty()) {
                     item(key = "empty") {
@@ -172,6 +179,13 @@ fun HistoryScreen(
     }
 }
 
+private val EntryInset = 8.dp
+// A size down from the History card styles, so the list reads lighter.
+private val EntryTitleText = HistoryEventTitleText.copy(fontSize = 16.sp, lineHeight = 20.sp)
+private val EntryTimeText = HistoryEventTimeText.copy(fontSize = 13.sp, lineHeight = 18.sp)
+private val EntryDetailText = HistoryEventDetailText.copy(fontSize = 13.sp, lineHeight = 17.sp)
+private val EntryDividerColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f)
+
 @Composable
 private fun HistoryEventCard(event: HistoryEvent, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
@@ -179,10 +193,9 @@ private fun HistoryEventCard(event: HistoryEvent, modifier: Modifier = Modifier)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .border(2.dp, colors.elevatedSurface, RoundedCornerShape(radii.card))
             .clip(RoundedCornerShape(radii.card))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = EntryInset, vertical = 13.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -195,13 +208,16 @@ private fun HistoryEventCard(event: HistoryEvent, modifier: Modifier = Modifier)
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TokenIcon(eventIcon(event.eventType), tint = colors.onSurface)
-                Text(eventTitle(event.eventType, event.data), color = colors.onSurface, style = HistoryEventTitleText)
+                TokenIcon(eventIcon(event.eventType), tint = colors.onSurface, modifier = Modifier.size(18.dp))
+                Text(eventTitle(event.eventType, event.data), color = colors.onSurface, style = EntryTitleText)
             }
-            Text(relativeTime(event.createdAt), color = colors.mutedText, style = HistoryEventTimeText, maxLines = 1, softWrap = false)
+            Text(relativeTime(event.createdAt), color = colors.mutedText, style = EntryTimeText, maxLines = 1, softWrap = false)
         }
-        Text(eventDescription(event.eventType, event.data), color = colors.mutedText, style = HistoryEventDetailText)
-        Text(event.subtitle ?: stringResource(R.string.unknown_device), color = colors.mutedText, style = HistoryEventDetailText)
+        // Indented under the title, past the icon, so each entry reads as one block.
+        Column(modifier = Modifier.padding(start = 26.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(eventDescription(event.eventType, event.data), color = colors.mutedText, style = EntryDetailText)
+            Text(event.subtitle ?: stringResource(R.string.unknown_device), color = colors.mutedText, style = EntryDetailText)
+        }
     }
 }
 

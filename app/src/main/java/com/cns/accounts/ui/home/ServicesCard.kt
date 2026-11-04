@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import com.cns.accounts.R
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.ServiceLoginRequest
@@ -229,7 +231,7 @@ private fun ServiceDetail(
     if (request != null) {
         LoginRequestDetail(request)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardButton(stringResource(R.string.deny), Color.White, Color.Black, Modifier.weight(1f)) { onDenyLogin(service) }
+            CardButton(stringResource(R.string.deny), LocalAppColors.current.surface, Color.White, Modifier.weight(1f)) { onDenyLogin(service) }
             CardButton(stringResource(R.string.allow), Color.White, Color.Black, Modifier.weight(1f)) { onApproveLogin(service) }
         }
     } else {
@@ -308,8 +310,8 @@ private fun CardButton(label: String, container: Color, content: Color, modifier
     val haptic = LocalHapticFeedback.current
     Box(
         modifier = modifier
-            .height(LocalDimensions.current.actionHeight)
-            .clip(RoundedCornerShape(LocalDimensions.current.requestButtonRadius))
+            .height(48.dp)
+            .clip(RoundedCornerShape(50))
             .background(container)
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -318,7 +320,7 @@ private fun CardButton(label: String, container: Color, content: Color, modifier
             .semantics { role = Role.Button },
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = content, style = RequestMetaText)
+        Text(label, color = content, style = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium), maxLines = 1)
     }
 }
 

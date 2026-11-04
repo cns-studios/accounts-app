@@ -416,7 +416,8 @@ fun HomeScreen(
             onSwipeDragStopped = onSwipeSettle,
             onUserClick = onAccountClick,
             avatarUrl = state.data.profile.avatarUrl,
-            historyUnread = state.historyUnread,
+            // Disabled for now: the History glyph turning yellow on unread activity.
+            // historyUnread = state.historyUnread,
             isSearchActive = searchActive,
             onSearchActiveChange = {
                 searchActive = it
@@ -456,6 +457,7 @@ private fun HomeDialogHost(
         )
         is HomeDialog.DisconnectApp -> ActionDialog(
             title = stringResource(R.string.disconnect_app_title),
+            destructive = true,
             subtitle = stringResource(R.string.disconnect_app_subtitle, dialog.service.name),
             primaryButtonLabel = stringResource(R.string.disconnect),
             isBusy = dialog.isBusy,
@@ -543,7 +545,7 @@ private fun ScanCard(onScan: () -> Unit, modifier: Modifier = Modifier) {
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(RequestButtonHeight)
                     .clip(RoundedCornerShape(50))
                     .background(SecondaryButtonColor)
                     .clickable {
@@ -580,26 +582,30 @@ private fun SignInRequestCard(
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(RequestCardPadding),
+                .padding(CardPadding),
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
         ) {
-            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // The card's name as a small label, the same as the Account and Services cards.
                 androidx.compose.foundation.layout.Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(requestTitle(request), modifier = Modifier.weight(1f, fill = false), color = colors.onSurface, style = CardHeadlineText)
-                    Text(relativeTime(request.createdAt), color = colors.onSurface.copy(alpha = 0.75f), style = CardLabelText)
+                    Text(stringResource(R.string.request_card_label), color = colors.onSurface.copy(alpha = 0.8f), style = CardLabelText)
+                    Text(relativeTime(request.createdAt), color = colors.onSurface.copy(alpha = 0.8f), style = CardLabelText)
                 }
-                Text(request.device, color = colors.onSurface.copy(alpha = 0.75f), style = CardSupportingText)
+                Text(requestTitle(request), color = colors.onSurface, style = CardHeadlineText)
+                if (request.device.isNotBlank()) {
+                    Text(request.device, color = colors.onSurface.copy(alpha = 0.8f), style = CardSupportingText)
+                }
             }
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LocalSpacing.current.sm),
             ) {
                 RequestButton(stringResource(R.string.deny), onDeny, Modifier.weight(1f))
-                RequestButton(stringResource(R.string.allow), onApprove, Modifier.weight(1f), outlined = true)
+                RequestButton(stringResource(R.string.allow), onApprove, Modifier.weight(1f), primary = true)
             }
         }
     }
@@ -620,39 +626,37 @@ private fun requestTitle(request: SignInRequest): String = when (request.action)
 }
 
 @Composable
-private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, outlined: Boolean = false) {
+private fun RequestButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = false) {
     val haptic = LocalHapticFeedback.current
-    Text(
-        label,
+    androidx.compose.foundation.layout.Box(
         modifier = modifier
-            .height(LocalDimensions.current.actionHeight)
-            .clip(RoundedCornerShape(LocalDimensions.current.requestButtonRadius))
-            .then(
-                if (outlined) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        shape = RoundedCornerShape(LocalDimensions.current.requestButtonRadius),
-                    )
-                } else {
-                    Modifier.background(LocalAppColors.current.mutedSurface)
-                },
+            .height(RequestButtonHeight)
+            .clip(RoundedCornerShape(50))
+            .background(
+                if (primary) androidx.compose.ui.graphics.Color.White
+                else androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.22f),
             )
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        textAlign = TextAlign.Center,
-        color = if (outlined) androidx.compose.ui.graphics.Color.White else LocalAppColors.current.onLightSurface,
-        style = RequestMetaText,
-    )
+            .semantics { role = Role.Button },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = if (primary) LocalAppColors.current.accent else androidx.compose.ui.graphics.Color.White,
+            style = CardButtonText,
+            maxLines = 1,
+        )
+    }
 }
+
+private val RequestButtonHeight = 48.dp
+private val CardButtonText = RequestMetaText.copy(fontSize = 16.sp, lineHeight = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
 
 // Home's cards: the same inset on every side.
 private val CardPadding = 16.dp
-// The request card is a tighter, denser card than the account card below it.
-private val RequestCardPadding = 10.dp
 // Keeps the column off the screen edges on phones narrower than the bottom nav.
 private val NavSideInset = 12.dp
 private const val HistorySeenDelayMillis = 450L

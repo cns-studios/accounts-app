@@ -45,13 +45,13 @@ val HistoryEventTimeText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineH
 val HistoryEventDetailText = TextStyle(fontFamily = Rubik, fontSize = 15.sp, lineHeight = 18.sp)
 
 // settings.tokens.json: the "80%" security-completion figure on the Security center card.
-val SecurityPercentText = TextStyle(fontFamily = JetBrainsMono, fontSize = 40.sp, lineHeight = 48.sp)
-val SecurityFactorLabelText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp)
+val SecurityPercentText = TextStyle(fontFamily = JetBrainsMono, fontSize = 40.sp, lineHeight = 44.sp)
+val SecurityFactorLabelText = TextStyle(fontFamily = Rubik, fontSize = 13.sp, lineHeight = 16.sp)
 
 // settings.tokens.json (Inputfield): the reusable input-field/action dialog text styles.
-val DialogTitleText = TextStyle(fontFamily = InstrumentSerif, fontSize = 32.sp, lineHeight = 38.sp)
-val DialogSubtitleText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp)
-val DialogButtonText = TextStyle(fontFamily = Rubik, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Medium)
+val DialogTitleText = TextStyle(fontFamily = InstrumentSerif, fontSize = 30.sp, lineHeight = 34.sp)
+val DialogSubtitleText = TextStyle(fontFamily = Rubik, fontSize = 15.sp, lineHeight = 21.sp)
+val DialogButtonText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium)
 
 // search.tokens.json: search-bar input text and result-card title styles.
 val SearchBarText = TextStyle(fontFamily = Rubik, fontSize = 16.sp, lineHeight = 20.sp)

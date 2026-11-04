@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.cns.accounts.R
 import com.cns.accounts.data.SettingsData
 import com.cns.accounts.data.SettingsToggles
@@ -314,14 +315,14 @@ private fun DeleteAccountCard(onDeleteAccount: () -> Unit, modifier: Modifier = 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(17.dp))
+            .clip(RoundedCornerShape(LocalRadii.current.card))
             .background(colors.elevatedSurface)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.delete_account_title), color = colors.onSurface, style = ProfileNameText)
-            Text(stringResource(R.string.delete_account_description), color = colors.onSurface, style = RequestCaptionText)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.delete_account_title), color = colors.onSurface, style = ProfileNameText.copy(fontSize = 28.sp, lineHeight = 32.sp))
+            Text(stringResource(R.string.delete_account_description), color = colors.dialogSubtitle, style = RequestCaptionText)
         }
         HoldToDeleteButton(onConfirmed = onDeleteAccount)
     }
@@ -428,6 +429,7 @@ private fun SettingsDialogHost(
         )
         SettingsDialogKind.RemoveAvatar -> ActionDialog(
             title = stringResource(R.string.remove_avatar),
+            destructive = true,
             subtitle = stringResource(R.string.remove_avatar_dialog_subtitle),
             primaryButtonLabel = stringResource(R.string.remove),
             errorText = error,
@@ -448,6 +450,7 @@ private fun SettingsDialogHost(
             val needsCode = dialog.values.size > 1
             ActionDialog(
                 title = stringResource(R.string.disable_2fa_title),
+                destructive = true,
                 subtitle = stringResource(if (needsCode) R.string.disable_2fa_subtitle else R.string.disable_2fa_subtitle_on_device),
                 primaryButtonLabel = stringResource(R.string.turn_off),
                 fields = if (needsCode) {
@@ -499,6 +502,7 @@ private fun SettingsDialogHost(
             val needsCode = dialog.values.size > 1
             ActionDialog(
                 title = stringResource(R.string.delete_account_dialog_title),
+                destructive = true,
                 subtitle = stringResource(if (needsCode) R.string.delete_account_dialog_subtitle_2fa else R.string.delete_account_dialog_subtitle),
                 primaryButtonLabel = stringResource(R.string.delete),
                 fields = if (needsCode) {

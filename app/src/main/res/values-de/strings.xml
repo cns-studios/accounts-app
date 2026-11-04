@@ -426,4 +426,5 @@
     <string name="qr_login_enter_code">Gib den 6-stelligen Code ein.</string>
     <string name="qr_login_not_ours">Dieser Link ist kein CNS-Anmeldecode.</string>
     <string name="qr_login_sign_in_first">Melde dich zuerst in der App an und scanne den Code dann noch einmal.</string>
+    <string name="request_card_label">Bestätigung nötig</string>
 </resources>

@@ -426,4 +426,5 @@
     <string name="qr_login_enter_code">Enter the 6-digit code.</string>
     <string name="qr_login_not_ours">This link isn\'t a CNS login code.</string>
     <string name="qr_login_sign_in_first">Log in to the app first, then scan the code again.</string>
+    <string name="request_card_label">Approval needed</string>
 </resources>

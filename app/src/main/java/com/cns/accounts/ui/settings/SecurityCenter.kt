@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,19 +31,19 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import com.cns.accounts.R
 import com.cns.accounts.data.SecurityFactor
 import com.cns.accounts.data.SecurityStatus
 import com.cns.accounts.data.securityStatus
 import com.cns.accounts.ui.theme.LocalAppColors
-import com.cns.accounts.ui.theme.RequestMetaText
+import com.cns.accounts.ui.theme.CardLabelText
 import com.cns.accounts.ui.theme.SecurityFactorLabelText
 import com.cns.accounts.ui.theme.SecurityPercentText
 import kotlinx.coroutines.delay
@@ -74,13 +72,14 @@ internal fun SecurityCenterCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // Not clipped: a celebration's particles may fly a little past the bars.
-            .border(2.dp, colors.elevatedSurface, RoundedCornerShape(20.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            // No card around it: it sits on the page like the setting rows below it.
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.security_center), color = colors.onSurface, style = RequestMetaText)
-        Text("$percent%", color = colors.onSurface, style = SecurityPercentText)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(stringResource(R.string.security_center), color = colors.dialogSubtitle, style = CardLabelText)
+            Text("$percent%", color = colors.onSurface, style = SecurityPercentText)
+        }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val count = security.factors.size.coerceAtLeast(1)
             val barWidth = (maxWidth - BarGap * (count - 1)) / count
@@ -108,11 +107,11 @@ internal fun SecurityCenterCard(
     }
 }
 
-private val BarGap = 10.dp
-private val BarHeight = 7.dp
+private val BarGap = 8.dp
+private val BarHeight = 6.dp
 
-// settings.tokens.json (Rectangle36-39): each factor is a 76x7px pill - solid white when
-// achieved, or an empty pill outlined with the accent red when still missing.
+// Each factor is a thin bar: solid white when achieved, an empty track when still missing, with
+// its label underneath (muted while missing).
 @Composable
 private fun SecurityFactorBar(factor: SecurityFactor, celebrate: Boolean, onCelebrated: () -> Unit, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
@@ -138,11 +137,11 @@ private fun SecurityFactorBar(factor: SecurityFactor, celebrate: Boolean, onCele
             fill.animateTo(if (factor.achieved) 1f else 0f, tween(360, easing = FastOutSlowInEasing))
         }
     }
-    val accent = colors.accent
+    val track = colors.elevatedSurface
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             modifier = Modifier
@@ -151,16 +150,8 @@ private fun SecurityFactorBar(factor: SecurityFactor, celebrate: Boolean, onCele
                 .drawBehind {
                     val radius = CornerRadius(size.height / 2)
                     val filled = fill.value
-                    if (filled < 1f) {
-                        drawRoundRect(
-                            color = accent.copy(alpha = 1f - filled),
-                            cornerRadius = radius,
-                            style = Stroke(
-                                width = 1.5.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.5.dp.toPx())),
-                            ),
-                        )
-                    }
+                    // The empty track every bar sits on; the white fill grows over it.
+                    drawRoundRect(color = track, cornerRadius = radius)
                     val b = burst.value
                     if (b > 0f) {
                         // A soft glow that swells out of the bar and fades.
@@ -183,7 +174,14 @@ private fun SecurityFactorBar(factor: SecurityFactor, celebrate: Boolean, onCele
                     }
                 },
         )
-        Text(factor.label, color = colors.onSurface, style = SecurityFactorLabelText)
+        Text(
+            factor.label,
+            color = if (factor.achieved) colors.onSurface else colors.dialogSubtitle,
+            style = SecurityFactorLabelText,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
