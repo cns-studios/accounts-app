@@ -539,7 +539,6 @@ private fun ScanCard(onScan: () -> Unit, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
         ) {
             androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.qr_scan_card_title), color = colors.dialogSubtitle, style = CardLabelText)
                 Text(stringResource(R.string.qr_scan_card_body), color = colors.onSurface, style = CardSupportingText)
             }
             androidx.compose.foundation.layout.Box(
@@ -688,8 +687,6 @@ private fun AccountCard(
             modifier = Modifier.padding(CardPadding),
             verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.md),
         ) {
-            // The card's name as a small label, so it never competes with what the card says.
-            Text(stringResource(R.string.authenticator_default_label), color = colors.dialogSubtitle, style = CardLabelText)
             when (state) {
                 is TwoFactorState.Active -> {
                     androidx.compose.foundation.layout.Row(

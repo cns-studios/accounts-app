@@ -124,10 +124,14 @@ fun ActionDialog(
         // the padding took the keyboard's height off again, squashing the card.
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false, decorFitsSystemWindows = false),
     ) {
+        // The app behind the dialog is blurred where the device supports it, and the card turns
+        // translucent so the blur shows through; the scrim is lighter since the blur already
+        // pushes the background back.
+        val blurred = rememberWindowBlur(24.dp)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))
+                .background(Color.Black.copy(alpha = if (blurred) 0.3f else 0.6f))
                 .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                     if (!isBusy) onDismissRequest()
                 }
@@ -150,7 +154,7 @@ fun ActionDialog(
                     .widthIn(max = 420.dp)
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(DialogRadius))
-                    .background(DialogColor)
+                    .background(glassSurface(DialogColor, blurred, alpha = 0.78f))
                     .border(1.dp, DialogBorderColor, RoundedCornerShape(DialogRadius))
                     .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                         // Consume taps on the card itself so they don't dismiss via the scrim below.

@@ -114,8 +114,6 @@ internal fun ServicesCard(
 @Composable
 private fun ServiceList(services: List<Service>?, onToggleService: (Service) -> Unit) {
     val colors = LocalAppColors.current
-    // The card's name as a small label above the rows (same as the Account card).
-    Text(stringResource(R.string.services), color = colors.dialogSubtitle, style = CardLabelText)
     if (services != null && services.isEmpty()) {
         Text(stringResource(R.string.no_connected_apps), color = colors.dialogSubtitle, style = CardSupportingText)
     }
