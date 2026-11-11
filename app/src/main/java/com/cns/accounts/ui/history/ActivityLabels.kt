@@ -7,12 +7,13 @@ import com.cns.accounts.R
 import com.cns.accounts.ui.components.TokenIconKind
 
 // User-facing names for auth-v2 audit event types, mirroring the web dashboard's
-// accounts/lib/format.ts so both clients describe the same event the same way.
+// accounts/lib/format.ts so both clients describe the same event the same way. Which events
+// the activity feed contains is decided by auth-v2 (an allow-list); an event this version has no
+// text for yet shows as a plain "Account event", never under its raw name.
 
 private class EventCopy(@param:StringRes val label: Int, @param:StringRes val hint: Int, val icon: TokenIconKind)
 
 private val EventCopies = mapOf(
-    "signup_request" to EventCopy(R.string.event_signup_request, R.string.event_signup_request_hint, TokenIconKind.User),
     "signup" to EventCopy(R.string.event_signup, R.string.event_signup_hint, TokenIconKind.User),
     "login_success" to EventCopy(R.string.event_login_success, R.string.event_login_success_hint, TokenIconKind.User),
     "login_failure" to EventCopy(R.string.event_login_failure, R.string.event_login_failure_hint, TokenIconKind.CircleX),
@@ -37,7 +38,6 @@ private val EventCopies = mapOf(
     "recovery_phrase_removed" to EventCopy(R.string.event_recovery_phrase_removed, R.string.event_recovery_phrase_removed_hint, TokenIconKind.Shield),
     "recovery_phrase_used" to EventCopy(R.string.event_recovery_phrase_used, R.string.event_recovery_phrase_used_hint, TokenIconKind.Shield),
     "recovery_failed" to EventCopy(R.string.event_recovery_failed, R.string.event_recovery_failed_hint, TokenIconKind.CircleX),
-    "admin_action" to EventCopy(R.string.event_admin_action, R.string.event_admin_action_hint, TokenIconKind.Shield),
     "password_reset_requested" to EventCopy(R.string.event_password_reset_requested, R.string.event_password_reset_requested_hint, TokenIconKind.Shield),
     "password_reset_completed" to EventCopy(R.string.event_password_reset_completed, R.string.event_password_reset_completed_hint, TokenIconKind.Shield),
     "password_reset_cancelled" to EventCopy(R.string.event_password_reset_cancelled, R.string.event_password_reset_cancelled_hint, TokenIconKind.CircleX),
@@ -74,13 +74,6 @@ private val ApprovalOutcomes = mapOf(
 
 private fun outcome(data: Map<String, String>) = ApprovalOutcomes[data["status"]] ?: ApprovalOutcomes.getValue("pending")
 
-// Bookkeeping events the API still returns but that mean nothing to an end user.
-private val HiddenEventTypes = setOf("refresh_reuse_detected", "login_challenge_approval")
-private val HiddenEventPrefixes = listOf("service_data_", "token_", "auth_code_")
-
-fun isUserFacingEvent(eventType: String): Boolean =
-    eventType !in HiddenEventTypes && HiddenEventPrefixes.none(eventType::startsWith)
-
 @Composable
 fun eventTitle(eventType: String, data: Map<String, String> = emptyMap()): String = when {
     eventType == "approval" -> {
@@ -95,7 +88,7 @@ fun eventTitle(eventType: String, data: Map<String, String> = emptyMap()): Strin
     eventType == "recovery_phrase_created" && data["replaced"] == "true" -> stringResource(R.string.event_recovery_phrase_replaced)
     eventType == "login_success" && data["via"] == "qr" -> stringResource(R.string.event_login_qr)
     eventType == "login_success" && !data["client_name"].isNullOrBlank() -> stringResource(R.string.event_login_app, data.getValue("client_name"))
-    else -> EventCopies[eventType]?.let { stringResource(it.label) } ?: humanize(eventType)
+    else -> stringResource(EventCopies[eventType]?.label ?: R.string.event_unknown)
 }
 
 @Composable
@@ -114,6 +107,3 @@ fun eventIcon(eventType: String): TokenIconKind = when (eventType) {
     "approval" -> TokenIconKind.Shield
     else -> EventCopies[eventType]?.icon ?: TokenIconKind.User
 }
-
-private fun humanize(eventType: String): String =
-    eventType.split('_').filter { it.isNotBlank() }.joinToString(" ") { it.replaceFirstChar(Char::uppercase) }

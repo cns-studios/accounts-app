@@ -172,7 +172,8 @@
     <string name="event_revoke_all_sessions_hint">Every other session was signed out</string>
     <string name="event_account_locked">Account locked</string>
     <string name="event_account_locked_hint">Too many failed sign-in attempts</string>
-    <string name="event_unknown_hint">Account event</string>
+    <string name="event_unknown">Account event</string>
+    <string name="event_unknown_hint">Something changed in your account</string>
 
     <!-- Search -->
     <string name="search_kind_settings">Settings</string>
@@ -332,8 +333,6 @@
     <string name="notify_recovery_phrase_used">Your account was recovered with your recovery phrase</string>
     <string name="notify_event_recovery_phrase">Recovery phrase changes</string>
     <!-- Activity events -->
-    <string name="event_signup_request">Sign-up requested</string>
-    <string name="event_signup_request_hint">A verification code was sent to your email</string>
     <string name="event_require_app_enabled">Security App approvals on</string>
     <string name="event_require_app_enabled_hint">Sign-ins and account changes now need your OK in the CNS Accounts app</string>
     <string name="event_require_app_disabled">Security App approvals off</string>
@@ -351,8 +350,6 @@
     <string name="event_recovery_phrase_used_hint">Recovery phrase used: new password, 2FA off, all devices signed out</string>
     <string name="event_recovery_failed">Failed recovery attempt</string>
     <string name="event_recovery_failed_hint">A wrong recovery phrase was entered for your account</string>
-    <string name="event_admin_action">Changed by CNS support</string>
-    <string name="event_admin_action_hint">An administrator made a change to your account</string>
     <string name="approval_event_title">%1$s %2$s</string>
     <string name="approval_subject_login">Sign-in</string>
     <string name="approval_subject_authorize">App sign-in</string>

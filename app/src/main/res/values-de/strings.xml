@@ -172,7 +172,8 @@
     <string name="event_revoke_all_sessions_hint">Überall abgemeldet</string>
     <string name="event_account_locked">Konto gesperrt</string>
     <string name="event_account_locked_hint">Zu viele fehlgeschlagene Anmeldeversuche</string>
-    <string name="event_unknown_hint">Kontoereignis</string>
+    <string name="event_unknown">Kontoereignis</string>
+    <string name="event_unknown_hint">In deinem Konto hat sich etwas geändert</string>
 
     <!-- Search -->
     <string name="search_kind_settings">Einstellungen</string>
@@ -332,8 +333,6 @@
     <string name="notify_recovery_phrase_used">Dein Konto wurde mit deiner Wiederherstellungsphrase wiederhergestellt</string>
     <string name="notify_event_recovery_phrase">Änderungen der Wiederherstellungsphrase</string>
     <!-- Activity events -->
-    <string name="event_signup_request">Registrierung angefragt</string>
-    <string name="event_signup_request_hint">Ein Bestätigungscode wurde an deine E-Mail gesendet</string>
     <string name="event_require_app_enabled">Security-App-Bestätigung an</string>
     <string name="event_require_app_enabled_hint">Anmeldungen und Kontoänderungen brauchen jetzt dein OK in der CNS Accounts App</string>
     <string name="event_require_app_disabled">Security-App-Bestätigung aus</string>
@@ -351,8 +350,6 @@
     <string name="event_recovery_phrase_used_hint">Phrase benutzt: neues Passwort, 2FA aus, alle Geräte abgemeldet</string>
     <string name="event_recovery_failed">Fehlgeschlagene Wiederherstellung</string>
     <string name="event_recovery_failed_hint">Für dein Konto wurde eine falsche Wiederherstellungsphrase eingegeben</string>
-    <string name="event_admin_action">Vom CNS-Support geändert</string>
-    <string name="event_admin_action_hint">Ein Administrator hat dein Konto geändert</string>
     <string name="approval_event_title">%1$s %2$s</string>
     <string name="approval_subject_login">Anmeldung</string>
     <string name="approval_subject_authorize">App-Anmeldung</string>

@@ -21,7 +21,6 @@ import com.cns.accounts.data.authenticator.TwoFactorMoveIncompleteException
 import com.cns.accounts.data.toUserMessage
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.ui.history.HistoryUiState
-import com.cns.accounts.ui.history.isUserFacingEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -87,7 +86,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         HomeUiState(
             data = data,
             history = HistoryUiState(
-                events = feed.entries.filter { isUserFacingEvent(it.eventType) }.map(::toHistoryEvent),
+                events = feed.entries.map(::toHistoryEvent),
                 isLoaded = feed.loaded,
                 isRefreshing = local.isRefreshingHistory,
                 canLoadMore = feed.nextCursor != null,
@@ -128,7 +127,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun newestEventMillis(feed: ActivityFeed): Long =
-        feed.entries.filter { isUserFacingEvent(it.eventType) }.maxOfOrNull { it.createdAt?.toEpochMilli() ?: 0L } ?: 0L
+        feed.entries.maxOfOrNull { it.createdAt?.toEpochMilli() ?: 0L } ?: 0L
 
     fun selectDestination(destination: String) = local.update { it.copy(selectedDestination = destination) }
 
