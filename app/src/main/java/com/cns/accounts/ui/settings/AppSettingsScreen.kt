@@ -359,6 +359,9 @@ private fun NestedRows(visible: Boolean, content: @Composable () -> Unit) {
 private fun languageLabel(tag: String): String = when (tag) {
     "en" -> "English"
     "de" -> "Deutsch"
+    "fr" -> "Français"
+    "es" -> "Español"
+    "en-brainrot" -> "English (brainrotted)"
     else -> stringResource(R.string.language_system)
 }
 
