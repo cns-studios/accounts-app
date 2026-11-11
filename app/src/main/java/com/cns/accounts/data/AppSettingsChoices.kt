@@ -34,6 +34,7 @@ enum class NotificationEvent(val id: String, val events: Set<String>, @param:Str
     TwoFactor("2fa", setOf("2fa_enabled", "2fa_disabled"), R.string.notify_event_2fa),
     SecurityApp("security_app", setOf("require_app_enabled", "require_app_disabled"), R.string.notify_event_security_app),
     RecoveryPhrase("recovery_phrase", setOf("recovery_phrase_created", "recovery_phrase_removed", "recovery_phrase_used"), R.string.notify_event_recovery_phrase),
+    Legal("legal", setOf("legal_update"), R.string.notify_event_legal),
     ;
 
     companion object {
@@ -52,6 +53,10 @@ object AppLanguage {
 
     fun stored(context: Context): String =
         context.getSharedPreferences(AppPreferences.Name, Context.MODE_PRIVATE).getString(Key, "").orEmpty()
+
+    /** The language tag texts from the API should be shown in: the chosen one, or the device's. */
+    fun current(context: Context): String =
+        stored(context).takeIf { it in Supported } ?: context.resources.configuration.locales[0].language
 
     /** [base] with the chosen language applied ("" keeps the device's). */
     fun wrap(base: Context): Context {

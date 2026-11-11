@@ -125,6 +125,13 @@ class AccountRepository(
         session.signOutLocally()
     }
 
+    /** Confirms the open legal documents and reflects the answer without a reload. */
+    suspend fun acceptLegal() {
+        val open = _user.value?.legal ?: return
+        val remaining = api.acceptLegal(open.documents)
+        _user.value?.let { setUser(it.copy(legal = remaining)) }
+    }
+
     suspend fun signOut() = session.signOut()
 
     /** Drops everything account-specific; called whenever the session ends. */

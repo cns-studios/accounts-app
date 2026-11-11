@@ -391,7 +391,7 @@ private fun HoldToDeleteButton(onConfirmed: () -> Unit) {
 
 /** Renders [SettingsUiState.dialog]: titles, fields and buttons per [SettingsDialogKind]. */
 @Composable
-private fun SettingsDialogHost(
+internal fun SettingsDialogHost(
     dialog: SettingsDialog?,
     onFieldChange: (Int, String) -> Unit,
     onConfirm: () -> Unit,

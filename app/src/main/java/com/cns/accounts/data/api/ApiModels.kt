@@ -24,6 +24,8 @@ data class AccountUser(
     /** A recovery phrase is set up (it can reset the password, 2FA and Require Security App). */
     val recoveryPhraseEnabled: Boolean = false,
     val recoveryPhraseCreatedAt: Instant? = null,
+    /** Changes to the terms or the privacy policy the account has not confirmed yet. */
+    val legal: LegalState? = null,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id)
@@ -36,6 +38,7 @@ data class AccountUser(
         .put("require_app_approval", requireAppApproval)
         .put("recovery_phrase_enabled", recoveryPhraseEnabled)
         .put("recovery_phrase_created_at", recoveryPhraseCreatedAt?.toString() ?: JSONObject.NULL)
+        .put("legal", legal?.toJson() ?: JSONObject.NULL)
 
     companion object {
         fun fromJson(json: JSONObject) = AccountUser(
@@ -49,6 +52,7 @@ data class AccountUser(
             requireAppApproval = json.optBoolean("require_app_approval"),
             recoveryPhraseEnabled = json.optBoolean("recovery_phrase_enabled"),
             recoveryPhraseCreatedAt = json.optInstant("recovery_phrase_created_at"),
+            legal = LegalState.fromJson(json.optJSONObject("legal")),
         )
     }
 }

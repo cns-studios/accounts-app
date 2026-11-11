@@ -41,6 +41,7 @@ private val EventCopies = mapOf(
     "password_reset_requested" to EventCopy(R.string.event_password_reset_requested, R.string.event_password_reset_requested_hint, TokenIconKind.Shield),
     "password_reset_completed" to EventCopy(R.string.event_password_reset_completed, R.string.event_password_reset_completed_hint, TokenIconKind.Shield),
     "password_reset_cancelled" to EventCopy(R.string.event_password_reset_cancelled, R.string.event_password_reset_cancelled_hint, TokenIconKind.CircleX),
+    "legal_accepted" to EventCopy(R.string.event_legal_accepted, R.string.event_legal_accepted_hint, TokenIconKind.Shield),
     "qr_login_cancelled" to EventCopy(R.string.event_qr_login_cancelled, R.string.event_qr_login_cancelled_hint, TokenIconKind.CircleX),
 )
 

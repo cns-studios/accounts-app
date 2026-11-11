@@ -1,7 +1,10 @@
 package com.cns.accounts.navigation
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,7 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,7 +45,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.cns.accounts.AppContainer
+import com.cns.accounts.BuildConfig
 import com.cns.accounts.R
+import com.cns.accounts.data.AppLanguage
+import com.cns.accounts.data.api.LegalState
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.ui.components.AppToastHost
 import com.cns.accounts.ui.components.LocalDialogsShown
@@ -47,6 +57,7 @@ import com.cns.accounts.ui.components.ToastState
 import com.cns.accounts.ui.home.HomeDialog
 import com.cns.accounts.ui.home.HomeScreen
 import com.cns.accounts.ui.home.HomeViewModel
+import com.cns.accounts.ui.legal.LegalGateScreen
 import com.cns.accounts.ui.lock.Biometrics
 import com.cns.accounts.ui.lock.LockScreen
 import com.cns.accounts.ui.login.LoginScreen
@@ -56,10 +67,12 @@ import com.cns.accounts.ui.settings.AppSettingsScreen
 import com.cns.accounts.ui.settings.AppSettingsViewModel
 import com.cns.accounts.ui.settings.RecoveryPhraseScreen
 import com.cns.accounts.ui.settings.RecoveryPhraseViewModel
+import com.cns.accounts.ui.settings.SettingsDialogHost
 import com.cns.accounts.ui.settings.SettingsDialogKind
 import com.cns.accounts.ui.settings.SettingsScreen
 import com.cns.accounts.ui.settings.SettingsViewModel
 import com.cns.accounts.ui.settings.isAppSettingsId
+import kotlinx.coroutines.launch
 
 /**
  * The app root: sign-in while there is no session, the Home/Settings graph while there is,
@@ -80,6 +93,9 @@ fun AppRoot(container: AppContainer) {
     val homeViewModel = containerViewModel { c, _ -> HomeViewModel(c) }
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val signedIn = authState == AuthState.SignedIn
+    val account by container.account.user.collectAsStateWithLifecycle()
+    // A notice (nothing blocks) can be put off until the app is opened again.
+    var legalPostponed by rememberSaveable { mutableStateOf(false) }
     val isLocked = signedIn && biometricUnlock && locked
     // A scanned login QR code (the scanner, or the camera app via a link): Home shows it once
     // the app is unlocked. Signed out, there is no account to log anything in with.
@@ -110,6 +126,11 @@ fun AppRoot(container: AppContainer) {
                 LoginRoute()
             }
         }
+        // Changed terms or privacy policy: over the app, under the lock.
+        val legal = account?.legal
+        if (signedIn && legal != null && !homeState.isLoadingAccount && (legal.blocking || !legalPostponed)) {
+            LegalRoute(container, legal, onLater = { legalPostponed = true })
+        }
         if (isLocked) {
             LockScreen(onUnlocked = container.appLock::unlock)
         }
@@ -123,6 +144,51 @@ fun AppRoot(container: AppContainer) {
                 .padding(bottom = 96.dp),
         )
     }
+}
+
+/**
+ * The accept screen for changed legal documents, plus the two ways out it offers: logging out
+ * (the same rule as in Settings: not while this device is the authenticator or Security App)
+ * and deleting the account (the same confirmation dialog as in Your Account).
+ */
+@Composable
+private fun LegalRoute(container: AppContainer, legal: LegalState, onLater: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var busy by remember { mutableStateOf(false) }
+    val settings = containerViewModel { c, application -> SettingsViewModel(c, application) }
+    val settingsState by settings.uiState.collectAsStateWithLifecycle()
+    val appSettings = containerViewModel { c, _ -> AppSettingsViewModel(c) }
+    // Nothing behind a blocking screen to go back to.
+    BackHandler(enabled = legal.blocking) {}
+    LegalGateScreen(
+        state = legal,
+        language = AppLanguage.current(context),
+        isBusy = busy,
+        onRead = { document ->
+            val url = "${BuildConfig.CNS_ACCOUNTS_WEB_URL}/${document.kind}/${document.version}"
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        },
+        onConfirm = {
+            busy = true
+            scope.launch {
+                runCatching { container.account.acceptLegal() }
+                    .onFailure { container.messages.show(R.string.legal_accept_failed, isError = true) }
+                busy = false
+            }
+        },
+        onLater = onLater,
+        onLogOut = appSettings::logOut,
+        onDeleteAccount = { settings.openDialog(SettingsDialogKind.DeleteAccount) },
+    )
+    SettingsDialogHost(
+        dialog = settingsState.dialog?.takeIf { it.kind == SettingsDialogKind.DeleteAccount },
+        onFieldChange = settings::updateField,
+        onConfirm = settings::confirmDialog,
+        onDismiss = settings::dismissDialog,
+        onPickAvatar = {},
+        hasAvatar = false,
+    )
 }
 
 @Composable

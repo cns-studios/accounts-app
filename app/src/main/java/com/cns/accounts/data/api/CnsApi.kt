@@ -65,6 +65,15 @@ class CnsApi(
         authed("POST", "/api/me/delete", JSONObject().put("password", password).put("code", code).putOpt("approval_id", approvalId))
     }
 
+    /**
+     * Confirms the newest version of the given legal documents (an accept for a material change,
+     * an acknowledgement for a notice). Returns what is still open, null when nothing is.
+     */
+    suspend fun acceptLegal(documents: List<LegalDocument>): LegalState? {
+        val list = org.json.JSONArray(documents.map { JSONObject().put("kind", it.kind).put("version", it.version) })
+        return LegalState.fromJson(authed("POST", "/api/me/legal/accept", JSONObject().put("documents", list)).optJSONObject("legal"))
+    }
+
     // --- recovery phrase (gated like the account changes above: password, plus the 2FA code or an approval) ---
 
     suspend fun setupRecoveryPhrase(password: String, code: String?, approvalId: String? = null): RecoveryPhraseDraft {
