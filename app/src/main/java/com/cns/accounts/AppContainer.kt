@@ -20,6 +20,7 @@ import com.cns.accounts.data.qr.QrLogins
 import com.cns.accounts.data.sendly.SendlySession
 import com.cns.accounts.data.session.AuthState
 import com.cns.accounts.data.session.SecureStore
+import com.cns.accounts.data.session.SignedInAccount
 import com.cns.accounts.data.session.SessionManager
 import com.cns.accounts.data.update.AppUpdates
 import com.cns.accounts.data.update.UpdateCheckWorker
@@ -30,7 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.launch
 
 /** Hand-rolled dependency graph: one instance of each app-wide object, created in [CnsApplication]. */
@@ -60,13 +61,22 @@ class AppContainer(context: Context) {
     val qrLogins = QrLogins(api, approvals, twoFactor, BuildConfig.CNS_ACCOUNTS_WEB_URL)
 
     init {
-        // Whatever ended the session (sign-out, account deletion, a refresh token the server
-        // rejected), forget the account data. Authenticator keys stay: they belong to the
+        // The app shows one account at a time: when the active one changes (a switch, a new
+        // sign-in, or the active one signing out), the screens start over with the new one.
+        appScope.launch {
+            session.activeAccountId.collect { id ->
+                account.switchTo(id)
+            }
+        }
+        // Whatever ended a session (sign-out, account deletion, a refresh token the server
+        // rejected), forget that account's data. Authenticator keys stay: they belong to the
         // account, not the session, and are needed to sign back in.
         appScope.launch {
-            session.authState.drop(1).filter { it == AuthState.SignedOut }.collect {
-                account.clear()
-            }
+            session.accounts.runningFold(emptyList<SignedInAccount>() to emptyList<SignedInAccount>()) { (_, before), now -> before to now }
+                .drop(1)
+                .collect { (before, now) ->
+                    (before.map { it.userId } - now.map { it.userId }.toSet()).forEach(account::forget)
+                }
         }
         push.start()
         if (appUpdates.enabled) UpdateCheckWorker.schedule(context)

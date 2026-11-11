@@ -48,6 +48,10 @@ class Approvals(
     private val _approverElsewhere = MutableStateFlow<String?>(null)
     private var expiryJob: Job? = null
 
+    // The account the waiting requests belong to: switching accounts must not show (or let the
+    // person answer) a request of the one before.
+    @Volatile private var pendingOwner: Long? = null
+
     // Requests this device raised and decides itself (gated): never a card or a notification.
     private val decidedHere: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
@@ -92,6 +96,9 @@ class Approvals(
             return
         }
         val pending = api.pendingApprovals()
+        // Answered after the app switched accounts: they are the other account's requests.
+        if (account.user.value?.id != user.id) return
+        pendingOwner = user.id
         setPending(pending)
         // Decided on the web or another way, withdrawn, or expired: its notification goes too.
         notifier.dismissApprovalsExcept(pending.mapTo(HashSet()) { it.id }, since)
@@ -272,7 +279,16 @@ class Approvals(
 
     /** Keeps the local key in step with the account: renamed, or retired once it was turned off. */
     private fun reconcile(user: AccountUser?) {
-        user ?: return setPending(emptyList())
+        if (user == null) {
+            pendingOwner = null
+            _approverElsewhere.value = null
+            return setPending(emptyList())
+        }
+        if (pendingOwner != user.id) {
+            pendingOwner = user.id
+            _approverElsewhere.value = null
+            setPending(emptyList())
+        }
         if (!keys.has(user.id)) return
         keys.rename(user.id, user.username)
         // A profile fetched just before an enrollment would still say "off"; spare a fresh key.

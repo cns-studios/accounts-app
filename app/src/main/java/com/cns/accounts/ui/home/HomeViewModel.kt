@@ -82,7 +82,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         )
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(homeData, account.activity, local, container.preferences.historySeenAt) { data, feed, local, seenAt ->
+    val uiState: StateFlow<HomeUiState> = combine(homeData, account.activity, local, container.preferences.historySeenAt, container.session.accounts) { data, feed, local, seenAt, accounts ->
         HomeUiState(
             data = data,
             history = HistoryUiState(
@@ -98,15 +98,19 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             expandedServiceId = local.expandedServiceId,
             isLoadingAccount = local.isLoadingAccount,
             historyUnread = seenAt != AppPreferences.NotSeen && newestEventMillis(feed) > seenAt,
+            accounts = accounts,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState(isLoadingAccount = signedInAtStart))
 
     init {
-        // This ViewModel outlives a sign-out (it is activity-scoped), so load on every sign-in,
-        // not just on creation; the StateFlow replays the current state, covering the first load.
+        // This ViewModel outlives a sign-out and an account switch (it is activity-scoped), so
+        // load whenever the active account changes, not just on creation; the StateFlow replays
+        // the current one, covering the first load.
         viewModelScope.launch {
-            container.session.authState.collect { state ->
-                if (state == AuthState.SignedIn) refresh(showIndicator = false, initial = true)
+            container.session.activeAccountId.collect { id ->
+                // Whatever was open belongs to the account before.
+                local.update { it.copy(dialog = null, expandedServiceId = null, isSettingUpTwoFactor = false) }
+                if (id != null) refresh(showIndicator = false, initial = true)
             }
         }
         // The first feed this install ever loads counts as seen: only what arrives later is "new".
@@ -194,6 +198,20 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    fun showAccounts() = local.update { it.copy(dialog = HomeDialog.Accounts) }
+
+    /** Another signed-in account takes over; everything on screen starts over with it (see the active account collector). */
+    fun switchAccount(userId: Long) {
+        local.update { it.copy(dialog = null) }
+        container.session.switchTo(userId)
+    }
+
+    /** Opens the sign-in screen on top of the app; the accounts already here stay signed in. */
+    fun addAccount() {
+        local.update { it.copy(dialog = null) }
+        container.session.beginAddingAccount()
+    }
+
     fun showTransferTwoFactor() = local.update { it.copy(dialog = HomeDialog.TransferTwoFactor()) }
 
     fun updateDialogField(index: Int, value: String) = local.update { state ->
@@ -215,7 +233,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 QrLoginStep.EnterCode -> logInQr(dialog, typedCode = dialog.typedCode)
                 QrLoginStep.WaitingForApproval -> cancelQr()
             }
-            null -> Unit
+            HomeDialog.Accounts, null -> Unit
         }
     }
 
@@ -233,7 +251,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             is HomeDialog.TransferTwoFactor -> dialog.isBusy
             is HomeDialog.SetUpService -> dialog.isBusy
             is HomeDialog.QrLogin -> dialog.isBusy
-            null -> false
+            HomeDialog.Accounts, null -> false
         }
         if (busy) state else state.copy(dialog = null)
     }

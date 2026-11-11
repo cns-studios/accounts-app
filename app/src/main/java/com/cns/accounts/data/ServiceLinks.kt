@@ -49,10 +49,23 @@ class ServiceLinks(
     private val _sendly = MutableStateFlow(SendlyLink())
     val sendly: StateFlow<SendlyLink> = _sendly.asStateFlow()
 
+    // The account the link state belongs to: another account starts with a clean one.
+    private var linkOwner: Long? = null
+
     init {
         scope.launch {
             account.user.collect { user ->
-                if (user == null) _sendly.value = SendlyLink() else _sendly.update { it.copy(isSetUp = identity(user.id) != null) }
+                when {
+                    user == null -> {
+                        linkOwner = null
+                        _sendly.value = SendlyLink()
+                    }
+                    linkOwner != user.id -> {
+                        linkOwner = user.id
+                        _sendly.value = SendlyLink(isSetUp = identity(user.id) != null)
+                    }
+                    else -> _sendly.update { it.copy(isSetUp = identity(user.id) != null) }
+                }
             }
         }
     }

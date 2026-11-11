@@ -465,4 +465,13 @@
     <string name="legal_decline_text">Your account can only be used with the current terms. You can log out and decide later, or delete your account. Deleting it erases your data as described in the privacy policy.</string>
     <string name="legal_back">Back</string>
     <string name="legal_accept_failed">We could not save your answer. Please try again.</string>
+
+    <!-- Several accounts on one device -->
+    <string name="accounts_title">Accounts</string>
+    <string name="accounts_subtitle">Switch between the accounts signed in on this device.</string>
+    <string name="accounts_active">Active</string>
+    <string name="accounts_add">Add account</string>
+    <string name="accounts_switch">Switch account</string>
+    <string name="accounts_notifications_note">Notifications and approval requests go to the account you are using.</string>
+    <string name="login_adding_subtitle">Sign in to add another account. The accounts already here stay signed in.</string>
 </resources>

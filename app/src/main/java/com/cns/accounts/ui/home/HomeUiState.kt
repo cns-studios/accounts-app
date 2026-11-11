@@ -1,6 +1,7 @@
 package com.cns.accounts.ui.home
 
 import androidx.compose.runtime.Immutable
+import com.cns.accounts.data.session.SignedInAccount
 import com.cns.accounts.data.HomeData
 import com.cns.accounts.data.Service
 import com.cns.accounts.data.UserMessage
@@ -22,11 +23,16 @@ data class HomeUiState(
     val isLoadingAccount: Boolean = false,
     // History has events newer than the ones the user last saw there.
     val historyUnread: Boolean = false,
+    // Every account signed in on this device, for the account picker.
+    val accounts: List<SignedInAccount> = emptyList(),
 )
 
 /** The one dialog Home can show at a time; its field values live here so they survive recomposition. */
 @Immutable
 sealed interface HomeDialog {
+    /** The account picker: switch to another signed-in account, or add one. */
+    data object Accounts : HomeDialog
+
     /** Move the account's 2FA onto this device: password + a code from the device that has it. */
     data class TransferTwoFactor(
         val password: String = "",

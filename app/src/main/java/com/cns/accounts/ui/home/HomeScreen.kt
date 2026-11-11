@@ -80,6 +80,7 @@ import com.cns.accounts.data.TimerSquareCount
 import com.cns.accounts.data.authenticator.Totp
 import com.cns.accounts.data.authenticator.TwoFactorState
 import com.cns.accounts.data.sampleHomeData
+import com.cns.accounts.ui.components.AccountPickerDialog
 import com.cns.accounts.ui.components.ActionDialog
 import com.cns.accounts.ui.components.SecondaryButtonColor
 import com.cns.accounts.ui.components.DialogField
@@ -131,6 +132,9 @@ fun HomeScreen(
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onSwitchAccount: () -> Unit = {},
+    onPickAccount: (Long) -> Unit = {},
+    onAddAccount: () -> Unit = {},
     // False while something covers Home (the lock screen): the code's rollover buzz stays quiet.
     codeHapticsAllowed: Boolean = true,
 ) {
@@ -299,7 +303,7 @@ fun HomeScreen(
                             .padding(horizontal = NavSideInset),
                         contentAlignment = Alignment.Center,
                     ) {
-                        ProfileHeader(state.data.profile, onSettingsClick, modifier = Modifier.navAlignedWidth())
+                        ProfileHeader(state.data.profile, onSettingsClick, modifier = Modifier.navAlignedWidth(), onSwitchAccount = onSwitchAccount)
                     }
                 }
                 item(key = "profile-request-gap", contentType = "spacer") {
@@ -431,6 +435,15 @@ fun HomeScreen(
         )
     }
     HomeDialogHost(state.dialog, onDialogFieldChange, onDialogConfirm, onDialogDismiss)
+    if (state.dialog == HomeDialog.Accounts) {
+        AccountPickerDialog(
+            accounts = state.accounts,
+            activeAvatarUrl = state.data.profile.avatarUrl,
+            onSwitch = onPickAccount,
+            onAdd = onAddAccount,
+            onDismiss = onDialogDismiss,
+        )
+    }
 }
 
 @Composable
@@ -441,6 +454,8 @@ private fun HomeDialogHost(
     onDismiss: () -> Unit,
 ) {
     when (dialog) {
+        // The picker has its own host in HomeScreen (it needs the accounts and their callbacks).
+        HomeDialog.Accounts -> Unit
         is HomeDialog.TransferTwoFactor -> ActionDialog(
             title = stringResource(R.string.transfer_2fa_title),
             subtitle = stringResource(R.string.transfer_2fa_subtitle),

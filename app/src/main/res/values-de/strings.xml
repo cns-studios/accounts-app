@@ -465,4 +465,13 @@
     <string name="legal_decline_text">Dein Konto lässt sich nur mit den aktuellen Bedingungen nutzen. Du kannst dich abmelden und später entscheiden oder dein Konto löschen. Beim Löschen werden deine Daten wie in der Datenschutzerklärung beschrieben gelöscht.</string>
     <string name="legal_back">Zurück</string>
     <string name="legal_accept_failed">Wir konnten deine Antwort nicht speichern. Bitte versuche es erneut.</string>
+
+    <!-- Several accounts on one device -->
+    <string name="accounts_title">Konten</string>
+    <string name="accounts_subtitle">Wechsle zwischen den Konten, die auf diesem Gerät angemeldet sind.</string>
+    <string name="accounts_active">Aktiv</string>
+    <string name="accounts_add">Konto hinzufügen</string>
+    <string name="accounts_switch">Konto wechseln</string>
+    <string name="accounts_notifications_note">Benachrichtigungen und Freigabeanfragen gehen an das Konto, das du gerade nutzt.</string>
+    <string name="login_adding_subtitle">Melde dich an, um ein weiteres Konto hinzuzufügen. Die Konten, die schon hier sind, bleiben angemeldet.</string>
 </resources>

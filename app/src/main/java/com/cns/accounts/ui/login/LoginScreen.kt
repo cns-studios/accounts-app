@@ -114,6 +114,8 @@ fun LoginScreen(
     onNewPasswordChange: (String) -> Unit = {},
     onNewPasswordConfirmChange: (String) -> Unit = {},
     onSubmitRecovery: () -> Unit = {},
+    // Set while this screen adds another account on top of a signed-in app: a way back to it.
+    onCancelAdding: (() -> Unit)? = null,
 ) {
     val colors = LocalAppColors.current
     val step = when {
@@ -127,6 +129,7 @@ fun LoginScreen(
     var logInSplit by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = step == LoginStep.Welcome && logInSplit) { logInSplit = false }
     BackHandler(enabled = step != LoginStep.Welcome, onBack = onBack)
+    BackHandler(enabled = step == LoginStep.Welcome && !logInSplit && onCancelAdding != null) { onCancelAdding?.invoke() }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -155,6 +158,7 @@ fun LoginScreen(
                         onLogIn = { logInSplit = true },
                         onContinue = onShowCredentials,
                         onUsePasskey = onUsePasskey,
+                        onCancelAdding = onCancelAdding,
                     )
                     LoginStep.Credentials -> CredentialsStep(state, onUsernameChange, onPasswordChange, onSubmitCredentials, onShowRecovery)
                     LoginStep.TwoFactor -> TwoFactorStep(state, onCodeChange, onSubmitCode, onShowRecovery)
@@ -187,13 +191,23 @@ private fun stepTransition(forward: Boolean): ContentTransform {
 }
 
 @Composable
-private fun WelcomeStep(split: Boolean, onLogIn: () -> Unit, onContinue: () -> Unit, onUsePasskey: () -> Unit) {
+private fun WelcomeStep(
+    split: Boolean,
+    onLogIn: () -> Unit,
+    onContinue: () -> Unit,
+    onUsePasskey: () -> Unit,
+    onCancelAdding: (() -> Unit)?,
+) {
     val context = LocalContext.current
-    Heading(stringResource(R.string.welcome_title), stringResource(R.string.welcome_subtitle))
+    val subtitle = if (onCancelAdding != null) R.string.login_adding_subtitle else R.string.welcome_subtitle
+    Heading(stringResource(R.string.welcome_title), stringResource(subtitle))
     ButtonColumn {
         LogInButtons(split = split, onLogIn = onLogIn, onContinue = onContinue, onUsePasskey = onUsePasskey)
         PillButton(stringResource(R.string.create_account_button), secondary = true) {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.CNS_ACCOUNTS_WEB_URL}/signup")))
+        }
+        if (onCancelAdding != null) {
+            PillButton(stringResource(R.string.cancel), secondary = true, onClick = onCancelAdding)
         }
     }
 }

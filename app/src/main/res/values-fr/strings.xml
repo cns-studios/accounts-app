@@ -438,4 +438,11 @@
     <string name="legal_decline_text">Votre compte ne peut être utilisé qu\'avec les conditions actuelles. Vous pouvez vous déconnecter et décider plus tard, ou supprimer votre compte. La suppression efface vos données comme décrit dans la politique de confidentialité.</string>
     <string name="legal_back">Retour</string>
     <string name="legal_accept_failed">Nous n\'avons pas pu enregistrer votre réponse. Veuillez réessayer.</string>
+    <string name="accounts_title">Comptes</string>
+    <string name="accounts_subtitle">Passez d\'un compte à l\'autre parmi ceux connectés sur cet appareil.</string>
+    <string name="accounts_active">Actif</string>
+    <string name="accounts_add">Ajouter un compte</string>
+    <string name="accounts_switch">Changer de compte</string>
+    <string name="accounts_notifications_note">Les notifications et les demandes d\'approbation vont au compte que vous utilisez.</string>
+    <string name="login_adding_subtitle">Connectez-vous pour ajouter un autre compte. Les comptes déjà présents restent connectés.</string>
 </resources>

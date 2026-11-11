@@ -93,6 +93,8 @@ fun AppRoot(container: AppContainer) {
     val homeViewModel = containerViewModel { c, _ -> HomeViewModel(c) }
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val signedIn = authState == AuthState.SignedIn
+    // The sign-in screen is open on top of the signed-in app, to add another account.
+    val adding by container.session.addingAccount.collectAsStateWithLifecycle()
     val account by container.account.user.collectAsStateWithLifecycle()
     // A notice (nothing blocks) can be put off until the app is opened again.
     var legalPostponed by rememberSaveable { mutableStateOf(false) }
@@ -111,7 +113,7 @@ fun AppRoot(container: AppContainer) {
     ) {
         // Sign-in and the app swap with a short fade-through, not a hard cut.
         AnimatedContent(
-            targetState = signedIn,
+            targetState = signedIn && !adding,
             transitionSpec = {
                 (fadeIn(tween(260, delayMillis = 60)) + scaleIn(tween(320, easing = EmphasizedDecelerate), initialScale = 0.96f))
                     .togetherWith(fadeOut(tween(160)))
@@ -123,7 +125,7 @@ fun AppRoot(container: AppContainer) {
                     AppNavGraph(container, homeViewModel, codeHapticsAllowed = !isLocked)
                 }
             } else {
-                LoginRoute()
+                LoginRoute(onCancelAdding = if (signedIn && adding) container.session::cancelAddingAccount else null)
             }
         }
         // Changed terms or privacy policy: over the app, under the lock.
@@ -192,7 +194,7 @@ private fun LegalRoute(container: AppContainer, legal: LegalState, onLater: () -
 }
 
 @Composable
-private fun LoginRoute() {
+private fun LoginRoute(onCancelAdding: (() -> Unit)?) {
     val viewModel = containerViewModel { container, _ -> LoginViewModel(container) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LoginScreen(
@@ -211,6 +213,7 @@ private fun LoginRoute() {
         onNewPasswordChange = viewModel::updateNewPassword,
         onNewPasswordConfirmChange = viewModel::updateNewPasswordConfirm,
         onSubmitRecovery = viewModel::submitRecovery,
+        onCancelAdding = onCancelAdding,
     )
 }
 
@@ -246,6 +249,9 @@ private fun AppNavGraph(container: AppContainer, viewModel: HomeViewModel, codeH
                     viewModel.selectDestination(destination)
                     if (destination != "home") navController.navigate(destination)
                 },
+                onSwitchAccount = viewModel::showAccounts,
+                onPickAccount = viewModel::switchAccount,
+                onAddAccount = viewModel::addAccount,
                 onSettingsClick = {
                     navController.navigate("app-settings") { launchSingleTop = true }
                 },

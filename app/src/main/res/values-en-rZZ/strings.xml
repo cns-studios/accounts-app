@@ -438,4 +438,11 @@
     <string name="legal_decline_text">your account only works with the current terms. you can log out and think about it, or delete your account. deleting it wipes your data like the privacy policy says.</string>
     <string name="legal_back">bail</string>
     <string name="legal_accept_failed">we could not save your answer. try again.</string>
+    <string name="accounts_title">accounts</string>
+    <string name="accounts_subtitle">switch between the accounts signed in on this device.</string>
+    <string name="accounts_active">active</string>
+    <string name="accounts_add">add account</string>
+    <string name="accounts_switch">switch account</string>
+    <string name="accounts_notifications_note">notifications and approval requests go to the account you are using.</string>
+    <string name="login_adding_subtitle">sign in to add another account. the accounts already here stay signed in.</string>
 </resources>

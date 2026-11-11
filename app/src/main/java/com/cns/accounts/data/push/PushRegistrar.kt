@@ -27,7 +27,9 @@ data class PushEvent(val data: Map<String, String>) {
 }
 
 /**
- * Keeps auth-v2 told where to push this session (`PUT /api/me/push`). Push is Firebase Cloud
+ * Keeps auth-v2 told where to push the active account's session (`PUT /api/me/push`): auth
+ * keeps one account per device token, so with several accounts signed in only the one the app
+ * shows gets pushes, and switching registers the device for the new one. Push is Firebase Cloud
  * Messaging, set up from build properties instead of google-services.json (see
  * app/build.gradle.kts); a build without them simply has no push. Account-event pushes follow
  * the Notifications setting; sign-in approval pushes always come.
@@ -65,9 +67,10 @@ class PushRegistrar(
             )
         }
         scope.launch {
-            combine(session.authState, preferences.notifications) { auth, events -> auth to events }
+            // Pushes go to the account in use: another one taking over registers this device for it.
+            combine(session.authState, session.activeAccountId, preferences.notifications) { auth, id, events -> Triple(auth, id, events) }
                 .distinctUntilChanged()
-                .collect { (auth, _) -> if (auth == AuthState.SignedIn) sync() }
+                .collect { (auth, _, _) -> if (auth == AuthState.SignedIn) sync() }
         }
     }
 

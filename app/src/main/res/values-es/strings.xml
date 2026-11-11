@@ -438,4 +438,11 @@
     <string name="legal_decline_text">Tu cuenta solo se puede usar con los términos actuales. Puedes cerrar sesión y decidir más tarde, o eliminar tu cuenta. Al eliminarla se borran tus datos como se describe en la política de privacidad.</string>
     <string name="legal_back">Atrás</string>
     <string name="legal_accept_failed">No hemos podido guardar tu respuesta. Inténtalo de nuevo.</string>
+    <string name="accounts_title">Cuentas</string>
+    <string name="accounts_subtitle">Cambia entre las cuentas con sesión iniciada en este dispositivo.</string>
+    <string name="accounts_active">Activa</string>
+    <string name="accounts_add">Añadir cuenta</string>
+    <string name="accounts_switch">Cambiar de cuenta</string>
+    <string name="accounts_notifications_note">Las notificaciones y las solicitudes de aprobación van a la cuenta que estás usando.</string>
+    <string name="login_adding_subtitle">Inicia sesión para añadir otra cuenta. Las cuentas que ya están aquí siguen con la sesión iniciada.</string>
 </resources>

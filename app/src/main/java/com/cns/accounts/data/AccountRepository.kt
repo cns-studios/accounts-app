@@ -5,6 +5,7 @@ import com.cns.accounts.data.api.AccountUser
 import com.cns.accounts.data.api.ActivityEntry
 import com.cns.accounts.data.api.CnsApi
 import com.cns.accounts.data.api.ConnectedApp
+import com.cns.accounts.data.session.SessionBook
 import com.cns.accounts.data.session.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,11 +20,13 @@ data class ActivityFeed(
 )
 
 /**
- * The signed-in account as the screens see it: profile, connected apps and the activity feed,
+ * The active account as the screens see it: profile, connected apps and the activity feed,
  * each a [StateFlow] that Home, History, Settings and Search share, plus the account mutations
  * (which update those flows on success so every screen reflects the change without a reload).
- * The profile is cached on disk so the app opens with a name and avatar even before (or without)
- * a network round trip.
+ * The profile of every signed-in account is cached on disk, so the app opens with a name and
+ * avatar even before (or without) a network round trip, and switching accounts shows the
+ * other one right away. An answer that arrives after the app switched to another account is
+ * kept out of the flows: they only ever hold the active account.
  */
 class AccountRepository(
     context: Context,
@@ -32,7 +35,7 @@ class AccountRepository(
 ) {
     private val cache = context.getSharedPreferences("cns_account", Context.MODE_PRIVATE)
 
-    private val _user = MutableStateFlow(loadCachedUser())
+    private val _user = MutableStateFlow(session.activeAccountId.value?.let(::loadCachedUser))
     val user: StateFlow<AccountUser?> = _user.asStateFlow()
 
     private val _connectedApps = MutableStateFlow<List<ConnectedApp>?>(null)
@@ -43,26 +46,46 @@ class AccountRepository(
 
     suspend fun refreshProfile(): AccountUser = api.me().also(::setUser)
 
-    /** Seeds the profile from the sign-in response so Home has a name before its first refresh. */
+    /**
+     * Seeds the profile from the sign-in response so Home has a name before its first refresh.
+     * It is only stored: the screens get it when the session of that account becomes the active one.
+     */
     fun onSignedIn(user: AccountUser?) {
         user?.let(::setUser)
+    }
+
+    /** The app now shows [userId] (null: nobody is signed in). Everything of the account before it leaves the flows. */
+    fun switchTo(userId: Long?) {
+        if (userId == null || _user.value?.id != userId) _user.value = userId?.let(::loadCachedUser)
+        _connectedApps.value = null
+        _activity.value = ActivityFeed()
+    }
+
+    /** The account signed out: its cached profile goes with it. */
+    fun forget(userId: Long) {
+        cache.edit().remove(userKey(userId)).apply()
     }
 
     suspend fun refreshConnectedApps() {
         // Not filtered on is_revoked: auth-v2 sets it as soon as ANY of an app's sessions was
         // revoked (a logout is enough), so it hid apps that are still connected. Same list as the
         // web dashboard until auth reports it per app (see docs/api_wiring.md).
-        _connectedApps.value = api.connectedApps()
+        val asked = session.activeAccountId.value
+        val apps = api.connectedApps()
+        if (session.activeAccountId.value == asked) _connectedApps.value = apps
     }
 
     suspend fun refreshActivity() {
+        val asked = session.activeAccountId.value
         val page = api.activity()
-        _activity.value = ActivityFeed(page.entries, page.nextCursor, loaded = true)
+        if (session.activeAccountId.value == asked) _activity.value = ActivityFeed(page.entries, page.nextCursor, loaded = true)
     }
 
     suspend fun loadMoreActivity() {
         val cursor = _activity.value.nextCursor ?: return
+        val asked = session.activeAccountId.value
         val page = api.activity(cursor)
+        if (session.activeAccountId.value != asked) return
         _activity.update { feed ->
             val known = feed.entries.mapTo(HashSet()) { it.id }
             feed.copy(entries = feed.entries + page.entries.filterNot { it.id in known }, nextCursor = page.nextCursor)
@@ -134,24 +157,28 @@ class AccountRepository(
 
     suspend fun signOut() = session.signOut()
 
-    /** Drops everything account-specific; called whenever the session ends. */
-    fun clear() {
-        cache.edit().clear().apply()
-        _user.value = null
-        _connectedApps.value = null
-        _activity.value = ActivityFeed()
-    }
-
     private fun setUser(user: AccountUser) {
-        _user.value = user
-        cache.edit().putString(UserKey, user.toJson().toString()).apply()
+        cache.edit().putString(userKey(user.id), user.toJson().toString()).apply()
+        // Only the active account is shown; the profile of another one is just remembered.
+        if (user.id == session.activeAccountId.value) _user.value = user
     }
 
-    private fun loadCachedUser(): AccountUser? = cache.getString(UserKey, null)?.let { raw ->
-        runCatching { AccountUser.fromJson(JSONObject(raw)) }.getOrNull()
+    private fun loadCachedUser(userId: Long): AccountUser? {
+        cache.getString(userKey(userId), null)?.let { raw ->
+            return runCatching { AccountUser.fromJson(JSONObject(raw)) }.getOrNull()
+        }
+        // The one profile single-account builds cached, for the account that was signed in then.
+        val legacy = cache.getString(LegacyUserKey, null)?.let { raw ->
+            runCatching { AccountUser.fromJson(JSONObject(raw)) }.getOrNull()
+        } ?: return null
+        if (userId != SessionBook.UnknownUser && legacy.id != userId) return null
+        cache.edit().remove(LegacyUserKey).putString(userKey(legacy.id), legacy.toJson().toString()).apply()
+        return legacy
     }
+
+    private fun userKey(userId: Long) = "user_$userId"
 
     private companion object {
-        const val UserKey = "user"
+        const val LegacyUserKey = "user"
     }
 }

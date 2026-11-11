@@ -36,6 +36,8 @@ fun ProfileHeader(
     profile: Profile,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Opens the account picker; null while there is nothing to switch to (and no way to add one).
+    onSwitchAccount: (() -> Unit)? = null,
 ) {
     val colors = LocalAppColors.current
     val dimensions = LocalDimensions.current
@@ -48,8 +50,18 @@ fun ProfileHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val switchLabel = stringResource(R.string.accounts_switch)
         Row(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .then(
+                    if (onSwitchAccount == null) Modifier else Modifier
+                        .clip(RoundedCornerShape(LocalRadii.current.pill))
+                        .clickable(onClickLabel = switchLabel, role = Role.Button) {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSwitchAccount()
+                        },
+                ),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
